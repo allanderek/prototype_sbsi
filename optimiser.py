@@ -402,17 +402,26 @@ class BioPEPASolver:
     biopepa_file = open(self.model_file, "r")
     output_file = open(self.paramed_file, "w")
 
+    parameterised_names = []
+
     for line in biopepa_file:
       if '=' in line:
-        (name, equals, rest) = line.partition('=')
+        name = line.partition('=')[0]
         name = name.lstrip().rstrip()
         if dictionary.has_key (name):
           new_value = dictionary[name]
           output_file.write(name + " = " + str(new_value) + " ;\n")
+          parameterised_names.append(name)
         else:
           output_file.write(line)
       else:
         output_file.write(line)
+
+    unparameterised = [ x for x in dictionary.keys()
+                            if x not in parameterised_names ]
+    if unparameterised:
+      logging.error ("Failed to fully parameterise Bio-PEPA file")
+      sys.exit(1)
 
     biopepa_file.close()
     output_file.close()
