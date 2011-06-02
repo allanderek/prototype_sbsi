@@ -274,7 +274,6 @@ class SbmlCvodeSolver:
                     ]
     lib_flags = [ "-L" + os.path.join(self.cflags_prefix, "lib") ]
     extra_flags = [ "-DWL=32", "-DNO_UCF", ] 
-    model_name = "model"
     c_compiler = "mpic++"
     first_c_command = [ c_compiler, "-o", "main_RHS_Model.o",
                         "-c", "main_RHS_Model.C"
@@ -326,11 +325,6 @@ class SbmlCvodeSolver:
     """Solve the given model and return a timeseries, or None
        if solving the model has failed for some reason"""
 
-    # get_rhs_command = [ "./test-rhs.sh" ]
-    # get_rhs_process = Popen(get_rhs_command)
-    # get_rhs_process.communicate()
-    # os.system("./test-rhs.sh")
-
     # We need a relatively portable way to check that this command
     # succeeds. Because we are constrained for the moment to using
     # os.system, I'm a little unsure about simply checking the return
@@ -339,6 +333,9 @@ class SbmlCvodeSolver:
     # We should be able to update this to use subprocess, but for now
     # this is better than the alternative of reading in the previous
     # time series.
+    # We have updated this with the user of subprocess, but I'm leaving
+    # it in for now since it seems quite robust, but it would certainly
+    # be a slight optimistation to avoid doing this.
     results_file_prefix = "model"
     results_file = results_file_prefix + "_RHS.dat"
     if os.path.exists(results_file):
@@ -346,8 +343,6 @@ class SbmlCvodeSolver:
 
     # Obviously all of these things should come from the
     # configuration
-    t_final      = configuration.stop_time
-    t_init       = 0.0
     max_times    = 100000000000
     interval     = 0.01
     out_interval = 0.1
@@ -358,8 +353,8 @@ class SbmlCvodeSolver:
     mpirun_command = [ "mpirun",
                        self.model_exec,
                        "model_name", # Could get model name from xml file
-                       str(t_final),
-                       str(t_init),
+                       str(configuration.t_final),
+                       str(configuration.t_init),
                        str(max_times),
                        str(interval),
                        str(out_interval),
@@ -371,8 +366,9 @@ class SbmlCvodeSolver:
     mpi_output = mpi_process.communicate()[0]
     logging.debug(mpi_output)
                     
-    # So we check if it is exists and if not we assume it failed
-    # Also now I can actually check the return code
+    # So we check if the results file actually exists and if
+    # not we assume it failed. Also now I can actually check
+    # the return code
     if not os.path.exists(results_file) or mpi_process.returncode != 0:
       logging.warning("Model solving failed")
       return None 
@@ -437,8 +433,10 @@ class BioPEPASolver:
                         "dopr-adaptive",
                         "--timeStep",
                         "0.01",
+                        "--startTime",
+                        str(configuration.t_init),
                         "--stopTime",
-                        str(configuration.stop_time),
+                        str(configuration.t_final),
                         "--dataPoints",
                         "11"
                         # "--output-file",
@@ -823,7 +821,8 @@ class Configuration:
     self.optimisation = optimisation
     self.num_generations = 5
     self.population_size = 5
-    self.stop_time = 1.0
+    self.t_final = 1.0
+    self.t_init  = 0.0
 
     home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
     cflags_prefix = os.path.join (home_dir, "Source/svn-git-sbsi/install/")
@@ -903,7 +902,7 @@ def get_configuration(arguments, optimisation):
     configuration.population_size = int(population_size)
   stop_time = get_single_option("stop-time", arguments)
   if stop_time:
-    configuration.stop_time = float(stop_time)
+    configuration.t_final = float(stop_time)
   algorithm = get_single_option("algorithm", arguments)
   if algorithm:
     configuration.set_search_agorithm(algorithm)
