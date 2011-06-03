@@ -1,0 +1,12 @@
+<OFWConfig>
+  <Solver>
+    <CVODESolver>
+      <TFinal>1.0</TFinal>
+      <TInit>0</TInit>
+      <Interval>0.010</Interval>
+      <MaxTimes>1000000</MaxTimes>
+      <Atol>1E-14</Atol>
+      <Reltol>0.00010</Reltol>
+    </CVODESolver>
+  </Solver>
+</OFWConfig>
