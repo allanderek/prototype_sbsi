@@ -9,4 +9,10 @@
       <Reltol>0.00010</Reltol>
     </CVODESolver>
   </Solver>
+  <Setup>
+    <MaxCost>100000</MaxCost>
+    <MaxRandomNumberGenerator>5000</MaxRandomNumberGenerator>
+    <ModelCostFunction>1</ModelCostFunction>
+    <ModelCostFunction>3</ModelCostFunction>
+  </Setup>
 </OFWConfig>
