@@ -427,6 +427,7 @@ def print_parse_config(module_file):
   config_element = dom.getElementsByTagName("OFWConfig")[0]
   ofwconfig = OFWConfig()
   ofwconfig.parse_OFWConfig(config_element)
+  return ofwconfig
   """ 
   module_file.write(parse_config)
 
