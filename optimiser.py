@@ -10,6 +10,7 @@ import sys
 import random
 import math
 import logging
+import configuration
 
 def get_options(option_name, arguments):
   """Gets all options of the form <option_name>=<argument> and returns
@@ -48,9 +49,32 @@ class Timeseries:
      numerical evaluation of the given model. It could also be the
      gold standard to which we are comparing the results in order to
      direct the search"""
+ 
+  # The data structure for time series is questionable, in particular
+  # it would be nice to at least just use arrays.
+
   def __init__(self, columns, rows):
     self.columns = columns
     self.rows = rows
+
+  def get_column_names(self):
+    """Returns the set of columns, however does not include the
+       first column because that is the 'Time' column"""
+    return self.columns[1:]
+
+  def get_column_data(self, column_name, start=None, end=None):
+    """Retrieve the data for just a single column"""
+    # We should catch the exception (I think ValueError) in case
+    # the given column name is not here.
+    column_index = self.columns.index(column_name)
+
+    column_data = []
+    for this_row in self.rows:
+      row_time = this_row[0]
+      if ( (start == None or row_time >= start) and 
+           (end == None or row_time <= end) ):
+        column_data.append(this_row[column_index])
+    return column_data
 
   def write_to_file(self, results_file):
     """Format the time series and write it to the given file"""
@@ -70,6 +94,24 @@ class Timeseries:
         results_file.write(str(value))
         prefix = ", "
       results_file.write("\n")
+
+  def get_best_matching_time_row(self, gold_time):
+    """Return the row which has the closest time to the given target
+       time. Used for comparing timeseries, we have data in one row
+       of one time series and we wish to find the row of this time
+       series to which to compare it."""
+    best_row_distance = sys.maxint
+    best_row = self.rows[0]
+    # The search for the best row could be made a bit faster by
+    # only starting from the previous best row
+    # We could also break as soon as the value is going higher.
+    for row in self.rows:
+      row_distance = abs(row[0] - gold_time)
+      if row_distance < best_row_distance:
+        best_row = row  
+        best_row_distance = row_distance
+    return best_row
+
 
 def parse_csv(csv, separator):
   """Parse a comma-separated value file into a timeseries"""
@@ -110,16 +152,49 @@ class MultipleCostFunctions:
     for comparison in self.cost_functions:
       cost += comparison.compare_timeseries(candidate_ts)
     return cost
- 
+
+
+
 class FFTcost:
   """A cost function based on the fast fourier transform"""
   def __init__(self, gold_ts):
     self.gold_standard_timeseries = gold_ts
+    # This clearly isn't correct, since not all of the states
+    # may be periodic
+    self.state_names = gold_ts.get_column_names()
+
+  @staticmethod
+  def dft(x, k):
+    N = len(x)
+    inv = -1 
+    Xk = 0
+    for n in xrange(N) :
+      Xk += x[n] * math.e**(inv * 2j * math.pi * k * n / N)
+    Xk = Xk / N
+    return Xk
+
 
   def compare_timeseries(self, candidate_ts):
-    """Compare two timeseries based on the fft"""
-    gold_ts = self.gold_standard_timeseries 
-    return 0
+    """Evaluate the given time series based on this DFT cost"""
+    # So the target period is actually 
+    start_sampling = 30.0
+    stop_sampling  = 200.0
+    target_period  = 20.0
+    num_cycles     = (stop_sampling - start_sampling) / target_period
+    # 300 / 20 = 15 
+    # num_cycles = 10 # 15 
+    cost = 0
+    for column_name in self.state_names:
+      column_data = candidate_ts.get_column_data(column_name)
+      
+      dft_energy = self.dft(column_data, num_cycles)
+      logging.info("dft_energy = " + str(dft_energy))
+      absolute_energy = abs(dft_energy)
+      logging.info("dft_absolute = " + str(absolute_energy))
+      this_cost = 100 - absolute_energy
+      cost += this_cost 
+      logging.info("dft_cost(" + column_name + ") = " + str(this_cost))
+    return cost
 
 # Returns the indexes into candidate time series which correspond
 # to the columns of the gold standard time series. The first index
@@ -164,15 +239,8 @@ class SpecialCost:
       # Just skip if the gold standard has a zero time point
       if gold_time <= 0.0:
         continue
-      best_row_distance = sys.maxint
-      best_row = candidate_ts.rows[0]
-      # The search for the best row could be made a bit faster by
-      # only starting from the previous best row
-      for row in candidate_ts.rows:
-        row_distance = abs(row[0] - gold_time)
-        if row_distance < best_row_distance:
-          best_row = row  
-          best_row_distance = row_distance
+      best_row = candidate_ts.get_best_matching_time_row(gold_time)
+
       # Now that we've found the best row, we basically ignore the
       # gold standard and just check that all values within that
       # row are within 100 and 500
@@ -187,6 +255,53 @@ class SpecialCost:
             diff = candidate_value - 1500
             cost += diff * diff
     return cost 
+
+# This should be generalised into a range cost.
+# It should take the following parameters,
+# 1. The columns to check, perhaps all is permitted, or as in
+#    the Cholesterol model, all but a given few.
+# 2. The time range, rather than look at the gold standard times
+#    we should specify a range of times within which we check
+#    (perhaps also we can specify an interval, to avoid checking all
+#     the output).
+# 3. The range values, not that this will not be per column, but a
+#    global range, the intention is that this is generally used in
+#    conjunction with another cost function.
+class CircadCost:
+  """A special cost function only for the Circadian Clock model.
+     However in time we do wish to allow for user cost functions
+     and I believe writing them in Python is not a bad way to go"""
+  def __init__(self, gold_standard):
+    # self.factor = len(gold_standard.rows)
+    self.gold_standard = gold_standard
+
+  def compare_timeseries(self, candidate_ts):
+    """cost the time series by checking if all indexes are below
+       100"""
+    # all_rows = candidate_ts.rows
+    # last_row = all_rows[len(all_rows) - 1] 
+    cost = 0
+
+    for gold_row in self.gold_standard.rows:
+      # Find the best candidate row, here we assume that time is the
+      # first column
+      gold_time = gold_row[0]
+      # Just skip if the gold standard has a zero time point
+      if gold_time <= 0.0:
+        continue
+      best_row = candidate_ts.get_best_matching_time_row(gold_time)
+
+      # Now that we've found the best row, we basically ignore the
+      # gold standard and just check that all values within that
+      # row are within 100 and 500
+      for i in range(1, len(candidate_ts.columns)):
+        candidate_column = candidate_ts.columns[i]
+        candidate_value = best_row[i]
+        if candidate_value > 100:
+          diff = candidate_value - 50
+          cost += diff * diff
+    return cost 
+
 
 class X2cost:
   """ A chi-squared cost function which works by squaring the
@@ -213,16 +328,7 @@ class X2cost:
       # Just skip if the gold standard has a zero time point
       if gold_time <= 0.0:
         continue
-      best_row_distance = sys.maxint
-      best_row = candidate_ts.rows[0]
-      # The search for the best row could be made a bit faster by
-      # only starting from the previous best row
-      # We could also break as soon as the value is going higher.
-      for row in candidate_ts.rows:
-        row_distance = abs(row[0] - gold_time)
-        if row_distance < best_row_distance:
-          best_row = row  
-          best_row_distance = row_distance
+      best_row = candidate_ts.get_best_matching_time_row(gold_time)
 
       # Now that we've found the best row, we should compare the 
       # two rows. We go from '1' because we are skipping over 'time'
@@ -878,7 +984,9 @@ class Configuration:
     elif function_name == "fft":
       return FFTcost(gold_standard)
     elif function_name == "special":
-      return SpecialCost()
+      return SpecialCost(gold_standard)
+    elif function_name == "circad":
+      return CircadCost(gold_standard)
     else:
       print ("Unrecognised cost function name: " + function_name)
       print ("Choose from: x2 fft")
