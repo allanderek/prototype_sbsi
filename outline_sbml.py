@@ -58,7 +58,7 @@ class Reaction:
      return self.products and not self.reactants
 
   def format_reaction(self):
-    results = ""
+    results = self.name + ": "
 
     # so the first reactant has nothing attached to the front of it
     prefix = ""
