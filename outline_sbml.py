@@ -1,142 +1,107 @@
-"""A simple script to give a simple outline of an sbml model"""
+"""a simple script to give a simple outline of an sbml model"""
 import sys
 import xml.dom.minidom
+import argparse
+
+class ReactionParticipant:
+  def __init__(self, name, stoich=1):
+    self.name = name
+    self.stoich = stoich
+
+  def get_name(self):
+    return self.name
+  def get_stoichiometry(self):
+    return self.stoich
+
+class Species:
+  def __init__(self, name, compartment):
+    self.name = name
+    self.compartment = compartment
+  def get_name(self):
+    return self.name
 
 class Reaction:
-  def __init__(self):
-    """Initialise a reaction which has no reactants or products
+  def __init__(self, name):
+    """initialise a reaction which has no reactants or products
        these may in turn be added with 'add_reactant' and 'add_product'"""
     self.reactants = []
     self.products = []
+    self.name = name
+
+  def get_name(self):
+    return self.name
   
   def add_reactant(self, r):
-    """Add a reactant into the reaction definition"""
+    """add a reactant into the reaction definition"""
     self.reactants.append(r)
 
   def add_product(self, p):
-    """Add a product to the reaction"""
+    """add a product to the reaction"""
     self.products.append(p)
+
+  def get_reactants(self):
+    """return the list of reactant names"""
+    return self.reactants
+
+  def get_products(self):
+    """return the list of product names"""
+    return self.products
+
+  def is_sink(self):
+    """returns true if the reaction is a sink,
+       in that it has at least one reactant and no products"""
+    return self.reactants and not self.products
+
+  def is_source(self):
+     """returns true if the reaction is a source reaction,
+        in that it has at least one product and no reactants"""
+     return self.products and not self.reactants
 
   def format_reaction(self):
     results = ""
 
-    # So the first reactant has nothing attached to the front of it
+    # so the first reactant has nothing attached to the front of it
     prefix = ""
     for reactant in self.reactants:
       results += prefix
-      results += reactant
-      # Hence, every reactant other than the first will have ", "
+      results += reactant.get_name()
+      # hence, every reactant other than the first will have ", "
       # prefixed to the front of it, separating it from the previous one
       prefix = ", "
     results += " --> "
     prefix = ""
     for product in self.products:
       results += prefix
-      results += product
+      results += product.get_name()
       prefix = ", "
   
     return results
 
-
-def obfuscate_named_attribute(element, attribute):
-  """A helper function to obfuscate a given named attribute if
-     that attribute is present in the given element"""
-  name = element.getAttribute(attribute)
-  if attribute and name:
-    new_name = symbol_factory.get_new_symbol(name)
-    element.setAttribute(attribute, new_name)
-
-def obfuscate_compartment_type(compartment_type):
-  """Simple as is function to obfuscate a compartment type definition"""
-  obfuscate_named_attribute(compartment_type, "name")
-  obfuscate_named_attribute(compartment_type, "id")
-
-def obfuscate_compartment(compartment):
-  """Simple obfuscate the names in a compartment definition"""
-  obfuscate_named_attribute(compartment, "name")
-  obfuscate_named_attribute(compartment, "id")
-  
-def obfuscate_species(species):
-  """Simple obfuscation for a species declaration"""
-  obfuscate_named_attribute(species, "name")
-  obfuscate_named_attribute(species, "id")
-  obfuscate_named_attribute(species, "compartment")
-
-def obfuscate_parameter(parameter):
-  """Simple obfuscation of a parameter definition"""
-  obfuscate_named_attribute(parameter, "name")
-  obfuscate_named_attribute(parameter, "id")
-
-def obfuscate_maths(maths):
-  """A function to obfuscate math nodes. Essentially all we're doing is
-     descending down through the sub-elements until we come across
-     a 'ci' node at which point we symbol-obfuscate its contents"""
-  if maths.nodeType == maths.ELEMENT_NODE:
-    if maths.tagName == "ci":
-      text = maths.firstChild
-      old_string = text.data
-      new_string = symbol_factory.get_new_symbol(old_string)
-      text.data = new_string
-    else:
-      for child in maths.childNodes:
-        obfuscate_maths(child)
-
-def obfuscate_raterule(raterule):
-  """A simple as is possible to obfuscate a rate rule"""
-  obfuscate_named_attribute(raterule, "variable")
-  maths = raterule.getElementsByTagName("math")[0]
-  obfuscate_maths(maths)
-
-def obfuscate_init_assign(init_assign):
-  """A simple function to obfuscate an initial assignment"""
-  obfuscate_named_attribute(init_assign, "symbol")
-  maths = init_assign.getElementsByTagName("math")[0]
-  obfuscate_maths(maths)
-
-def obfuscate_species_reference(spec_ref):
-  """A simple function to obfuscate a <speciesReference> tag"""
-  obfuscate_named_attribute(spec_ref, "species")
-
-def obfuscate_kinetic_law(kin_law):
-  """A simple function to obfuscate a <kineticLaw> tag"""
-  # There should only be one 'maths' element but it doesn't hurt
-  # to call it as a possible many maths sub-elements
-  obfuscate_list_of(kin_law, "math", obfuscate_maths)
-
-def obfuscate_reaction(reaction):
-  """A function to obfuscate a reaction"""
-  obfuscate_named_attribute(reaction, "id")
-  obfuscate_list_of_list_of (reaction,
-                             "listOfReactants",
-                             "speciesReference",
-                             obfuscate_species_reference)
-  obfuscate_list_of_list_of (reaction,
-                             "listOfProducts",
-                             "speciesReference",
-                             obfuscate_species_reference)
-  obfuscate_list_of(reaction, "kineticLaw", obfuscate_kinetic_law)
 
 def name_of_species_reference(spec_ref):
   name = spec_ref.getAttribute("species")
   return name
 
 def get_reaction_of_element(reaction_element):
-  """A function to return a reaction object from a reaction sbml element"""
-  reaction = Reaction()
+  """a function to return a reaction object from a reaction sbml element"""
+  name = reaction_element.getAttribute("id")
+  reaction = Reaction(name)
   reactants = get_elements_from_lists_of_list("listOfReactants",
                                               "speciesReference",
                                               name_of_species_reference,
                                               reaction_element)
-  for reactant in reactants:
-    reaction.add_reactant(reactant)
+  # todo we should add the 
 
-  # Of course we do the same for products
+  for reactant in reactants:
+    reaction.add_reactant(ReactionParticipant(reactant))
+
+  # of course we do the same for products
   products = get_elements_from_lists_of_list("listOfProducts",
                                              "speciesReference",
                                              name_of_species_reference,
                                              reaction_element)
   for product in products:
-    reaction.add_product(product)
+    reaction.add_product(ReactionParticipant(product))
 
   return reaction
    
@@ -160,16 +125,28 @@ def get_list_of_reactions(model):
                                          get_reaction_of_element,
                                          model)
 
+def get_species_of_element(species_element):
+  name = species_element.getAttribute("id")
+  compartment = species_element.getAttribute("compartment")
+  species = Species(name, compartment)
+  return species
+
+def get_list_of_species(model):
+  return get_elements_from_lists_of_list("listOfSpecies",
+                                         "species",
+                                         get_species_of_element,
+                                         model)
+
 def print_amount(num, singular, plural):
   if num == 0:
-    print("No " + plural)
+    print("no " + plural)
   elif num == 1:
     print("1 " + singular)
   else:
     print(str(num) + " " + plural)
 
 
-class ExprVistor: 
+class ExprVisitor: 
   def __init__(self):
     self.result = ""
 
@@ -183,7 +160,7 @@ class ExprVistor:
     if element.nodeType == element.ELEMENT_NODE :
       tag_name = element.tagName
       if tag_name == "apply":
-        self.visit_Apply(element)
+        self.visit_apply(element)
       elif tag_name == "ci":
         self.visit_ci(element)
       else:
@@ -194,7 +171,7 @@ class ExprVistor:
   def visit_ci(self, element):
     self.print_str(element.firstChild.data)
 
-  def visit_Apply(self, element):
+  def visit_apply(self, element):
     children = [ x for x in element.childNodes 
                    if x.nodeType == x.ELEMENT_NODE
                ]
@@ -219,15 +196,15 @@ class ExprVistor:
         self.print_str (", ")
       self.print_str (")")
 
-  def visit_Maths(self, maths):
+  def visit_maths(self, maths):
     for child in maths.childNodes:
       if maths.nodeType == maths.ELEMENT_NODE:
         self.generic_visit(child)
 
 def format_rate_rule(raterule):
-  maths_visitor = ExprVistor()
-  maths = raterule.getElementsByTagName("math")[0]
-  maths_visitor.visit_Maths(maths)
+  maths_visitor = ExprVisitor()
+  maths = raterule.getElementsByTagName ("math")[0]
+  maths_visitor.visit_maths(maths)
   name = raterule.getAttribute("variable")
   return name + " = " + maths_visitor.get_results()
 
@@ -242,35 +219,45 @@ def outline_rate_rules(model):
   for rate_rule in rate_rules:
     print("  " + rate_rule)
 
-def outline_model(model):
-  """Format and print out an outline for the given model"""
+def outline_model(model, ignore_sources, ignore_sinks):
+  """format and print out an outline for the given model"""
   reactions = get_list_of_reactions(model)
   print_amount(len(reactions), "reaction", "reactions")
   for reaction in reactions:
-    print("  " + reaction.format_reaction())
+    if ( (ignore_sources and reaction.is_sources()) or
+         (ignore_sinks and reaction.is_sink()) ):
+      pass
+    else:
+      print("  " + reaction.format_reaction())
 
   outline_rate_rules(model)
 
-def outline_sbml_file(filename):
-  """Parse in a file as an SBML model, extract the outline information
+def outline_sbml_file(filename, ignore_sources, ignore_sinks):
+  """parse in a file as an sbml model, extract the outline information
      and then format that information and print it out"""
   dom = xml.dom.minidom.parse(filename)
-  outline_model(dom.getElementsByTagName("model")[0])
+  model = dom.getElementsByTagName("model")[0]
+  outline_model(model, ignore_sources, ignore_sinks)
   
-
-
 def run():
-  """Perform the banalities of command-line argument processing and
-     then get under way with the proper grunt work of obfuscating the model"""
-  # The command line arguments not including this script itself
-  arguments    = sys.argv 
-  # file names are arguments that don't affect the configuration such
-  # as limit=10 or x=k1
-  filenames = [ x for x in arguments if '=' not in x and
-                  not x.endswith(".py") ]
-  
-  for filename in filenames:
-    outline_sbml_file(filename)
+  """perform the banalities of command-line argument processing and
+     then go ahead and calculate the outline for each model file"""
+  description = "Print out an outline of an SBML file"
+  parser = argparse.ArgumentParser(description=description)
+  # Might want to make the type of this 'FileType('r')'
+  parser.add_argument('filenames', metavar='F', nargs='+',
+                      help="an sbml file to check invariants for")
+  parser.add_argument("--ignore-sources",
+                      action="store_true", default=False)
+  parser.add_argument("--ignore-sinks",
+                      action="store_true", default=False)
+ 
+  arguments = parser.parse_args()
+
+  for filename in arguments.filenames:
+    outline_sbml_file(filename,
+                      arguments.ignore_sources,
+                      arguments.ignore_sinks)
 
 
 if __name__ == "__main__":
