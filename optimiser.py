@@ -114,11 +114,33 @@ class Timeseries:
     return best_row
 
 
-def parse_csv(csv, separator):
+def parse_csv(csv, separator=None):
   """Parse a comma-separated value file into a timeseries"""
-  header_line = csv.next()
-  while not separator in header_line:
-    header_line = csv.next()
+  try:
+    # If a separator is specified then we try to find it in
+    # each line of the file until we do. 
+    if separator:
+      header_line = csv.next()
+      while not separator in header_line: 
+        header_line = csv.next()
+    else:
+      # If no separator is specified then we have the additional
+      # task of finding out what the separator is, hence we just
+      # try all the ones we can think of (currently only comma and
+      # tab). We must be careful not to add too many possibilities here
+      # since in that case it may be found in some comment lines above
+      # the actual header line.
+      separator = ""
+      while not separator:
+        header_line = csv.next()
+        if "," in header_line: separator = ","
+        elif "\t" in header_line: separator = "\t"
+  except StopIteration:
+    logging.error("We could not find a separator in the csv file\n")
+    if not separator:
+      logging.error("We tried: comma and tab")
+    sys.exit(1)
+
   headers = [ x.lstrip().rstrip()
               for x in header_line.split(separator) ]
 
@@ -930,7 +952,7 @@ def get_gold_standard_timeseries(filename):
   """Open the gold standard file and parse in as a comma-separated value
      file. Obtaining a time series which is returned"""
   gold_file = open(filename,  "r")
-  gold_standard = parse_csv(gold_file, ", ")
+  gold_standard = parse_csv(gold_file)
   gold_file.close()
   return gold_standard
 
