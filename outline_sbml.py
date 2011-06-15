@@ -90,7 +90,7 @@ def get_reaction_of_element(reaction_element):
                                               "speciesReference",
                                               name_of_species_reference,
                                               reaction_element)
-  # todo we should add the 
+  # todo we should add the modifiers
 
   for reactant in reactants:
     reaction.add_reactant(ReactionParticipant(reactant))
