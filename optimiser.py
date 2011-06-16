@@ -58,6 +58,12 @@ class Timeseries:
     self.columns = columns
     self.rows = rows
 
+  def get_rows(self):
+    """Return as a set of rows with the first value being the
+       time and the remainder being those of the columns in
+       order of the column names"""
+    return self.rows
+
   def get_column_names(self):
     """Returns the set of columns, however does not include the
        first column because that is the 'Time' column"""
@@ -67,15 +73,28 @@ class Timeseries:
     """Retrieve the data for just a single column"""
     # We should catch the exception (I think ValueError) in case
     # the given column name is not here.
-    column_index = self.columns.index(column_name)
+    column_mapping = self.get_column_as_map(column_name, start, end)
+    return [ y for (x,y) in column_mapping ]
 
-    column_data = []
+  def get_column_as_map(self, column_name, start=None, end=None):
+    """Retrieve the data for just a single column as a mapping
+       from time to value at that time. By mapping it is a list of
+       (key, value) pairs, such that it is still in the order of
+       the time column order. Additionally the above 'get_column_data'
+       depends on this fact"""
+    # We should catch the exception (I think ValueError) in case
+    # the given column name is not here.
+    column_index = self.columns.index(column_name)
+    results = []
     for this_row in self.rows:
       row_time = this_row[0]
       if ( (start == None or row_time >= start) and 
            (end == None or row_time <= end) ):
-        column_data.append(this_row[column_index])
-    return column_data
+        entry = (row_time, this_row[column_index])
+        results.append(entry)
+    return results
+
+
 
   def write_to_file(self, results_file):
     """Format the time series and write it to the given file"""
