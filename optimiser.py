@@ -64,6 +64,11 @@ class Timeseries:
        order of the column names"""
     return self.rows
 
+  def get_final_time(self):
+    """Return the final time from the timeseries"""
+    last_row = self.rows[len(self.rows) - 1]
+    return last_row[0]
+
   def get_column_names(self):
     """Returns the set of columns, however does not include the
        first column because that is the 'Time' column"""
@@ -1021,7 +1026,8 @@ class Configuration:
     self.optimisation = optimisation
     self.num_generations = 5
     self.population_size = 5
-    self.t_final = 1.0
+
+    self.t_final = optimisation.gold_standard.get_final_time()
     self.t_init  = 0.0
 
     home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
