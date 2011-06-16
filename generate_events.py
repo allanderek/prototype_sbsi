@@ -33,8 +33,9 @@ class Event:
     trigger = document.createElement("trigger")
     event.appendChild(trigger)
     math_ns = "http://www.w3.org/1998/Math/MathML"
-    trigger_math = document.createElementNS(math_ns, "math")
+    trigger_math = document.createElement("math")
     trigger.appendChild(trigger_math)
+    trigger_math.setAttribute("xmlns", math_ns)
     trigger_apply = document.createElement("apply")
     trigger_math.appendChild(trigger_apply)
     trigger_gt = document.createElement("gt")
@@ -60,6 +61,7 @@ class Event:
       e_assign.setAttribute("variable", event_assign.species)
       e_math = document.createElementNS(math_ns, "math")
       e_assign.appendChild(e_math)
+      e_math.setAttribute("xmlns", math_ns)
       e_cn = document.createElement("cn")
       e_math.appendChild(e_cn)
       e_cn_text = document.createTextNode(str(event_assign.value)) 
@@ -74,7 +76,7 @@ def events_from_timecourse(timecourse):
   for row in timecourse.get_rows():
     time = row[0]
     event_assigns = []
-    for i in range(1, len(column_names)):
+    for i in range(len(column_names)):
       name = column_names[i]
       value = row[i]
       event_assign = EventAssign(name, value)
@@ -116,7 +118,10 @@ def add_events(filename, events):
     loe_element.appendChild(event.create_element(dom)) 
  
   # pretty should be a command-line option, we mostly won't need it. 
-  print(dom.toprettyxml())
+  # but careful because dom.toprettyxml("UTF-8")) didn't work, so we
+  # obviously need to specify the encoding in a slightly different way
+  # for toprettyxml.
+  print(dom.toxml("UTF-8"))
  
 
 def run():
