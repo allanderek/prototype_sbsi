@@ -499,10 +499,10 @@ class SbmlCvodeSolver:
     # Obviously all of these things should come from the
     # configuration
     max_times    = 100000000000
-    interval     = 0.01
+    interval     = 0.0001
     out_interval = 0.1
     atol         = 1.0e-14
-    reltol       = 1.0e-4
+    reltol       = 1.0e-14
 
     # This could also be run without mpi.
     mpirun_command = [ "mpirun",
@@ -633,7 +633,10 @@ def evaluate_individual(individual, configuration):
   # parameterisation will be ignore with respect to the search for
   # good values. There isn't an awful lot else that we can do.
   if timeseries == None:
+    configuration.monitor.increase_failed_solves()
     return sys.maxint
+  else:
+    configuration.monitor.increase_success_solves()
 
   # If we really did get a timeseries then use the configuration's
   # cost function to obtain the cost for this set of parameters
@@ -977,6 +980,21 @@ def get_init_param_parameters(filename):
   
   return parameters
 
+class Monitor:
+  def __init__(self):
+    self.successful_solves = 0
+    self.failed_solves = 0
+
+  def increase_success_solves(self, amount=1):
+    self.successful_solves += amount
+
+  def increase_failed_solves(self, amount=1):
+    self.failed_solves += amount
+
+  def get_successful_solves(self):
+    return self.successful_solves
+  def get_failed_solves(self):
+    return self.failed_solves
 
 class Configuration:
   """A class to store the configuration in"""
@@ -995,8 +1013,16 @@ class Configuration:
     self.search_algorithm = SimulatedAnnealing()
     self.target_cost = 0
     self.cost_function = None
+    self.monitor = Monitor()
 
-
+  def report_on_solves(self):
+    successes = self.monitor.get_successful_solves()
+    failures = self.monitor.get_failed_solves()
+    ratio = float (successes + failures)
+    success_percentage = int(float(100 * successes) / ratio)
+    logging.info("Successful solves: " + str(successes))
+    logging.info("Failed solves: " + str(failures))
+    logging.info("Success percentage: " + str(success_percentage))
   def set_solver(self, solver_name):
     """Set the solver of the configuration"""
     if solver_name == "biopepa":
@@ -1148,6 +1174,8 @@ def run():
 
   algorithm = configuration.search_algorithm
   best_citizen = algorithm.run_optimisation(optimisation, configuration)
+
+  configuration.report_on_solves()
   
   print("After: " + str(configuration.num_generations) + " generations:")
   
@@ -1170,6 +1198,7 @@ def run():
     print ("Best timeseries written to file: " + best_timeseries_fname)
   else:
     print ("No best time series")
+
 
 if __name__ == "__main__":
   random.seed()
