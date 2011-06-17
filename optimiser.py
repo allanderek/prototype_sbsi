@@ -5,14 +5,12 @@ such that we combining together many smaller applications.
 """
 
 import os
-from subprocess import Popen, PIPE
 import sys
 import random
 import math
 import logging
-import configuration
+# import configuration
 import solve_model
-from timeseries import Timeseries
 import timeseries
 
 def get_options(option_name, arguments):
@@ -80,25 +78,34 @@ class FFTcost:
 
 
   @staticmethod
-  def dft_single(x, k):
+  def dft_single(values, k):
+    """Compute the 'energy' at the given frequency of a signal defined
+       by the time course of given values. The energy is not relative
+       to the energy of the signal as a whole, since it is not compared
+       with energies at other frequencies"""
     inv = -1 
-    N = len(x)
-    Xk = 0
-    for n in xrange(N) :
-      Xk += x[n] * math.e**(inv * 2j * math.pi * k * n / N)
-    Xk = Xk / N
-    return abs(Xk)
+    num_values = len(values)
+    energy = 0
+    for value_index in xrange(num_values) :
+      exponent = inv * 2j * math.pi * k * value_index / num_values
+      energy += values[value_index] * math.e**exponent
+    energy /= num_values
+    return abs(energy)
  
   @staticmethod
-  def dft(x, kman):
-    N = len(x)
+  def dft(values, kman):
+    """Compute the cost using the dft of the signal given as a time
+       course of values. The cost is determined against the energy
+       of the signal at the given frequency (which in turn iss related
+       to the desired period)"""
+    num_values = len(values)
 
     # Rather than find the energy at all frequencies, just
     # figure out the energy at a few selected points 
-    k1_energy = FFTcost.dft_single(x, 1)
-    kman_energy = FFTcost.dft_single(x, kman)
-    khalf_energy = FFTcost.dft_single(x, N / 2)
-    kquarter_energy = FFTcost.dft_single(x, N / 4)
+    k1_energy = FFTcost.dft_single(values, 1)
+    kman_energy = FFTcost.dft_single(values, kman)
+    khalf_energy = FFTcost.dft_single(values, num_values / 2)
+    kquarter_energy = FFTcost.dft_single(values, num_values / 4)
     energies = [ k1_energy, kman_energy, 
                  khalf_energy, kquarter_energy ]
     # energies = [ FFTcost.dft_single(x, n) for n in range(1, N / 2) ]
@@ -236,7 +243,7 @@ class CircadCost:
       # gold standard and just check that all values within that
       # row are within 100 and 500
       for i in range(1, len(candidate_ts.columns)):
-        candidate_column = candidate_ts.columns[i]
+        # candidate_column = candidate_ts.columns[i]
         candidate_value = best_row[i]
         if candidate_value > 100:
           diff = candidate_value - 50
