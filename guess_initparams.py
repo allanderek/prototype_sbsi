@@ -5,14 +5,8 @@ import os
 import xml.dom.minidom
 import outline_sbml
 import argparse
-
-def change_filename_ext(filename, new_ext):
-  """Returns a new file name based on the first but with the extension
-     replaced by the given extension. The new_ext should include the
-     '.' separator if that is desired"""
-  basename = os.path.splitext(filename)[0]
-  return basename + new_ext
-  
+import utils
+ 
 
 class Parameter:
   def __init__(self, identifier, name, value):
@@ -73,7 +67,7 @@ def init_params_model_file(filename, factor):
   arules = get_assignment_rules_from_model(model)
   arule_names = [ arule.variable for arule in arules ]
 
-  output_filename = change_filename_ext(filename, ".initparams")
+  output_filename = utils.change_filename_ext(filename, ".initparams")
   output_file = open (output_filename, "w") 
   for param in params:
     if param.name not in arule_names: 
