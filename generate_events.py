@@ -6,8 +6,8 @@ import os
 import sys
 import argparse
 from subprocess import Popen
-import optimiser
 import xml.dom.minidom
+import timeseries
 
 class EventAssign:
   def __init__(self, species, value):
@@ -86,18 +86,34 @@ def events_from_timecourse(timecourse):
   return events
   
 
-def get_events_for_file(filename):
+
+def get_timecourse_from_file(filename):
   csvfile = open(filename, "r")
-  timecourse = optimiser.parse_csv(csvfile) 
+  timecourse = timeseries.parse_csv(csvfile) 
   csvfile.close()
-  events = events_from_timecourse(timecourse)
-  return events 
+  return timecourse
+
  
 def has_xml_or_sbml_ext(filename):
   extension = os.path.splitext(filename)[1]
   return extension == ".xml" or extension == ".sbml"
 
-def add_events(filename, events):
+def check_constant_false(model, species):
+  """Checks that if the given species is defined in the model as a
+     parameter, then it has its constant attribute set to false.
+     This is because any variable which has its value updated
+     (for example by an event that we've added) must have its constant
+     attribute set to false"""
+  list_of_parameters_lists = model.getElementsByTagName("listOfParameters")
+  if list_of_parameters_lists:
+    for list_of_parameters in list_of_parameters_lists:
+      parameters = list_of_parameters.getElementsByTagName("parameter")
+      for parameter in parameters:
+        name = parameter.getAttribute("id")
+        if name in species:
+          parameter.setAttribute("constant", "false")
+
+def add_events(filename, events, species):
   """Parse in a file as an SBML model, obfuscate it and then print out
      the obfuscated model"""
   dom = xml.dom.minidom.parse(filename)
@@ -116,6 +132,8 @@ def add_events(filename, events):
 
   for event in events:
     loe_element.appendChild(event.create_element(dom)) 
+
+  check_constant_false (model, species)
  
   # pretty should be a command-line option, we mostly won't need it. 
   # but careful because dom.toprettyxml("UTF-8")) didn't work, so we
@@ -143,15 +161,19 @@ def run():
 
  
   events = []
+  species = []
   for filename in timecourse_files:
-    events.extend(get_events_for_file(filename))
+    timecourse = get_timecourse_from_file(filename)
+    species.extend(timecourse.get_column_names())
+    events = events_from_timecourse(timecourse)
+    events.extend(events)
 
   if not sbml_files:
     for event in events:
       print (event.format_event())
   else:
     for filename in sbml_files:
-      add_events(filename, events)
+      add_events(filename, events, species)
 
 
 
