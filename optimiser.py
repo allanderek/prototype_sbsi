@@ -653,19 +653,29 @@ def get_init_param_parameters(filename):
   return parameters
 
 class Monitor:
+  """ A class built to monitor or more rather log the progress of
+      the optimisation routine. This is more than 'logging' in that
+      we are recording actual data, such as the success or otherwise
+      of the simulation runs."""
   def __init__(self):
     self.successful_solves = 0
     self.failed_solves = 0
 
   def increase_success_solves(self, amount=1):
+    """Increase by the given amount (default 1) the number of
+       successfully solved simulation runs"""
     self.successful_solves += amount
 
   def increase_failed_solves(self, amount=1):
+    """Decrease by the given amount (default 1) the number of
+       failed simulation runs""" 
     self.failed_solves += amount
 
   def get_successful_solves(self):
+    """Return the sofar recorded number of successful simulation runs"""
     return self.successful_solves
   def get_failed_solves(self):
+    """Return the sofar recorded number of failed simulation runs"""
     return self.failed_solves
 
 class Configuration:
@@ -689,6 +699,8 @@ class Configuration:
     self.monitor = Monitor()
 
   def report_on_solves(self):
+    """Report to the log, information about the simulation runs,
+       in particular the number which failed and succeeded."""
     successes = self.monitor.get_successful_solves()
     failures = self.monitor.get_failed_solves()
     ratio = float (successes + failures)
