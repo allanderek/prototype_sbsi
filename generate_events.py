@@ -24,6 +24,8 @@ class Event:
     self.event_assigns = event_assigns
 
   def format_event(self):
+    # You need to create the document to which your going to
+    # create elements within. 
     element = self.create_element()
     formatted = element.toprettyxml()
     return formatted
@@ -78,7 +80,10 @@ def events_from_timecourse(timecourse):
     event_assigns = []
     for i in range(len(column_names)):
       name = column_names[i]
-      value = row[i]
+      # Because the column_names don't include the time value
+      # hence the index into the row will be one greater than
+      # the index into the column_names list.
+      value = row[i + 1]
       event_assign = EventAssign(name, value)
       event_assigns.append(event_assign)
     event = Event(time, event_assigns)
@@ -140,6 +145,7 @@ def add_events(filename, events, species):
   # obviously need to specify the encoding in a slightly different way
   # for toprettyxml.
   print(dom.toxml("UTF-8"))
+  # print(dom.toprettyxml())
  
 
 def run():
@@ -165,8 +171,8 @@ def run():
   for filename in timecourse_files:
     timecourse = get_timecourse_from_file(filename)
     species.extend(timecourse.get_column_names())
-    events = events_from_timecourse(timecourse)
-    events.extend(events)
+    these_events = events_from_timecourse(timecourse)
+    events.extend(these_events)
 
   if not sbml_files:
     for event in events:
