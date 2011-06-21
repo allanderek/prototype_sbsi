@@ -349,10 +349,7 @@ class Parameter:
 
   def get_random_value_full_range(self):
     """Return a random value within the full range of the parameter"""
-    if self.should_mutate():
-      return random.uniform(self.low, self.high)
-    else:
-      return self.default_value
+    return random.uniform(self.low, self.high)
     
 class Individual:
   """An individual is essentially a dictionary mapping the
@@ -558,19 +555,23 @@ class SimplestSearch:
        random number within the full range of that parameter"""
     individual_dictionary = dict()
     changed = 0
+    logging.debug("Creating Individual: " + str(number))
     for param in parameters:
       if param.should_mutate():
         new_value = param.get_random_value_full_range()
         individual_dictionary[param.name] = new_value
+        logging.debug(param.name + " = " + str(new_value))
         changed += 1
       else:
         individual_dictionary[param.name] = param.default_value
     # After the for loop we make sure we have changed at least one
     # parameter, otherwise we choose one at random to change.
     if changed == 0:
+      logging.debug("Zero would have been changed, forcing choice")
       param = random.choice(parameters)
       new_value = param.get_random_value_full_range()
       individual_dictionary[param.name] = new_value
+      logging.debug(param.name + " = " + str(new_value))
     return Individual(number, individual_dictionary)
 
 
