@@ -1,3 +1,9 @@
+"""A module implementing a class and utilities for dealing with
+   time course data and results"""
+
+import sys
+import logging
+
 class Timeseries:
   """This class represents a time series, that is the result of a
      numerical evaluation of the given model. It could also be the
@@ -32,7 +38,7 @@ class Timeseries:
     # We should catch the exception (I think ValueError) in case
     # the given column name is not here.
     column_mapping = self.get_column_as_map(column_name, start, end)
-    return [ y for (x,y) in column_mapping ]
+    return [ y for (_, y) in column_mapping ]
 
   def get_column_as_map(self, column_name, start=None, end=None):
     """Retrieve the data for just a single column as a mapping
@@ -110,8 +116,10 @@ def parse_csv(csv, separator=None):
       separator = ""
       while not separator:
         header_line = csv.next()
-        if "," in header_line: separator = ","
-        elif "\t" in header_line: separator = "\t"
+        if "," in header_line: 
+          separator = ","
+        elif "\t" in header_line:
+          separator = "\t"
   except StopIteration:
     logging.error("We could not find a separator in the csv file\n")
     if not separator:
