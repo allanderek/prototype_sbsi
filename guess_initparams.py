@@ -29,17 +29,19 @@ def get_parameter_of_element(param_element):
      parameter sbml element"""
   ident = param_element.getAttribute("id")
   name = param_element.getAttribute("name")
-  value = float(param_element.getAttribute("value") )
-  parameter = Parameter(ident, name, value)
-  
-  return parameter
+  value_str = param_element.getAttribute("value") 
+  if value_str:
+    value = float(value_str)
+    parameter = Parameter(ident, name, value)
+    return parameter
+  return None
 
 def get_parameters_from_model(model):
   params = outline_sbml.get_elements_from_lists_of_list("listOfParameters",
                 "parameter",
                 get_parameter_of_element,
                 model)
-  return params
+  return [ p for p in params if p is not None ]
 
 class AssignmentRule:
   def __init__(self, variable, math):
