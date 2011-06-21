@@ -119,7 +119,7 @@ class SbmlCvodeSolver:
     interval     = 0.0001
     out_interval = 0.1
     atol         = 1.0e-14
-    reltol       = 1.0e-14
+    reltol       = 1.0e-4
 
     # This could also be run without mpi.
     mpirun_command = [ "mpirun",
@@ -248,7 +248,7 @@ def run():
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an sbml file to check invariants for")
+                      help="an sbml file to solve numerically")
 
   arguments = parser.parse_args()
 
