@@ -165,6 +165,9 @@ to produce a final .pdf file.
 The datafile separator can be guessed if it is a comma or tab, otherwise
 it can be specified using the --sep argument.
 
+The x and y range options require the square brackets, for example
+--x_range "[0.5:10.5]"
+
 The '--column' and '--mcolumn' arguments work as follows:
 If neither are specified all columns in all the data files are plotted.
 If any '--column' options are specified then only those specified 
@@ -177,9 +180,6 @@ will plot only the columns E and S, while
 --mcolumn P --mcolumn Q
 will plot all columns except P and Q, so E, S and R are plotted.
 """
-
-
-
 
   parser = argparse.ArgumentParser(description=description,
                                    epilog = epilog_usage_info)
@@ -198,11 +198,21 @@ will plot all columns except P and Q, so E, S and R are plotted.
                       help="The label on the y axis")
   parser.add_argument('--x_range', action='store',
                       help="The range for the x axis")
-  parser.add_argument('--y_range', action='store')
-  parser.add_argument('--key', action='store')
-  parser.add_argument('--linestyle', action='store')
-  parser.add_argument('--column', action='append')
-  parser.add_argument('--mcolumn', action='append')
+  parser.add_argument('--y_range', action='store',
+                      help="The range for the y axis")
+  parser.add_argument('--key', action='store',
+                      help="Set the key option in gnuplot")
+  parser.add_argument('--linestyle', action='store',
+                      help="Set the line style to be used with all lines")
+  parser.add_argument('--column', action='append',
+                      help="Specify a column to be plotted")
+  parser.add_argument('--mcolumn', action='append',
+                      help="Specify a column not to be plotted")
+  parser.add_argument('--no_gnuplot', action='store_true',
+                      help="Just generate the gnuplot script, " +
+                           "do not invoke gnuplot")
+  parser.add_argument('--no_epstopdf', action='store_true',
+                      help="Do not invoke epstopdf after gnuplot")
 
   arguments = parser.parse_args()
 
@@ -219,13 +229,14 @@ will plot all columns except P and Q, so E, S and R are plotted.
                                                    filenames)
 
   # We now also actually run gnuplot
-  gnuplot_command = [ "gnuplot", gnufilename ]
-  gnuplot_process = Popen(gnuplot_command)
-  gnuplot_process.communicate()
-
-  epstopdf_command = [ "epstopdf", epsfilename ]
-  epstopdf_process = Popen(epstopdf_command)
-  epstopdf_process.communicate()
+  if not arguments.no_gnuplot:
+    gnuplot_command = [ "gnuplot", gnufilename ]
+    gnuplot_process = Popen(gnuplot_command)
+    gnuplot_process.communicate()
+    if not arguments.no_epstopdf:
+      epstopdf_command = [ "epstopdf", epsfilename ]
+      epstopdf_process = Popen(epstopdf_command)
+      epstopdf_process.communicate()
 
 
 if __name__ == "__main__":
