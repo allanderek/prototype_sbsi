@@ -3,7 +3,6 @@
    a comma.
 """
 import os
-import sys
 from subprocess import Popen
 import argparse
 
@@ -40,22 +39,24 @@ def obtain_headers(datafile, separator):
   return headers
 
 
+def set_gnuplot_option(gnuplotfile, option_name, option_value, quote=True):
+  """Set a single gnuplot option with the given value"""
+  if option_value:
+    if quote:
+      gnuplotfile.write("set " + option_name + 
+                        " \"" + option_value + "\"\n")
+    else:
+      gnuplotfile.write("set " + option_name + 
+                        " " + option_value + "\n")
+
 def set_gnuplot_options(gnuplotfile, arguments):
   """Set up some of the available options in the gnuplot file"""
-  title = arguments.title
-  if title:
-    gnuplotfile.write("set title \"" + title + "\"\n")
-
-  x_range = arguments.x_range
-  if x_range:
-    gnuplotfile.write("set xrange " + x_range + "\n")
-  y_range = arguments.y_range
-  if y_range:
-    gnuplotfile.write("set yrange " + y_range + "\n")
-  key = arguments.key
-  if key:
-    gnuplotfile.write("set key " + key + "\n")
-
+  set_gnuplot_option(gnuplotfile, "title", arguments.title)
+  set_gnuplot_option(gnuplotfile, "xlabel", arguments.x_label)
+  set_gnuplot_option(gnuplotfile, "ylabel", arguments.y_label)
+  set_gnuplot_option(gnuplotfile, "xrange", arguments.x_range, quote=False)
+  set_gnuplot_option(gnuplotfile, "yrange", arguments.y_range, quote=False)
+  set_gnuplot_option(gnuplotfile, "key", arguments.key)
 
 class NameAliaser:
   """A simple class which effectively ensures we are using unique names.
@@ -66,6 +67,8 @@ class NameAliaser:
     self.dictionary = dict()
 
   def get_unique_name(self, name):
+    """Return a unique name for the given name. Returns the given name
+       if it is already unique, but adds a unique suffix if not"""
     if name in self.dictionary:
       # If the name is already in the dictionary increase the count
       # and make a new name based on the given name plus the current
@@ -90,14 +93,31 @@ def create_gnuplot_file(basename, arguments, datafiles):
   gnuplotfile = open (gnufilename, "w")
 
   epsfilename = basename + ".eps"
-  gnuplotfile.write("set term post eps color\n")
-  gnuplotfile.write("set output \"" + epsfilename + "\"\n")
+  set_gnuplot_option(gnuplotfile, "term",
+                     "post eps color", quote=False)
+  set_gnuplot_option(gnuplotfile, "output", epsfilename)
   # This assumes that all the files have the same separator
+  # It would be nice to allow otherwise, but slightly tricky.
   separator = get_separator(datafiles[0], arguments)
-  gnuplotfile.write("set datafile separator \"" + separator + "\"\n")
+  set_gnuplot_option(gnuplotfile, "datafile separator", separator)
   
   set_gnuplot_options(gnuplotfile, arguments)
 
+  write_gnuplot_plotting_commands(gnuplotfile, 
+                                  arguments, 
+                                  datafiles,
+                                  separator)
+
+  gnuplotfile.write("\n")
+  gnuplotfile.close()
+  return (gnufilename, epsfilename)
+
+def write_gnuplot_plotting_commands(gnuplotfile,
+                                    arguments,
+                                    datafiles,
+                                    separator):
+  """Write the plotting commands for the data files to the given
+     gnuplot file"""
   line_style = arguments.linestyle
   if not line_style:
     line_style = "lp"
@@ -116,13 +136,13 @@ def create_gnuplot_file(basename, arguments, datafiles):
     # the prefix to what it will be for the first line, and then whenever
     # we print one out we just set it to what the prefix should be for
     # any other line (which is to end the previous line and indent).
-    quote_data_file = "\"" + datafile + "\"" 
     for i in range (1, len(headers)):
       header = headers[i].lstrip().rstrip()
       header_title = header_aliaser.get_unique_name(header)
       if header != "Time" and ((not columns or header in columns) and
                                (not mcolumns or header not in mcolumns)):
-        line = (line_prefix + quote_data_file + " using 1:" +
+        line = (line_prefix + "\"" + datafile + "\"" + 
+                " using 1:" +
                 str(i + 1) + " w " + line_style + 
                 " title '" + header_title + "'")
         # If it's not currently the first line then this will simply
@@ -130,22 +150,54 @@ def create_gnuplot_file(basename, arguments, datafiles):
         line_prefix = ", \\\n  "
         gnuplotfile.write(line) 
 
-  gnuplotfile.write("\n")
-  gnuplotfile.close()
-  return (gnufilename, epsfilename)
  
 
 def run ():
   """Simply do all the work"""
   description = "Plot csv files using gnuplot"
-  parser = argparse.ArgumentParser(description=description)
+
+  epilog_usage_info = """
+This program takes in a number of comma-separated value files
+and generates a gnuplot script which it runs to convert the file
+into a .eps file. This is then processed with the epstopdf command
+to produce a final .pdf file.
+
+The datafile separator can be guessed if it is a comma or tab, otherwise
+it can be specified using the --sep argument.
+
+The '--column' and '--mcolumn' arguments work as follows:
+If neither are specified all columns in all the data files are plotted.
+If any '--column' options are specified then only those specified 
+with '--column' are plotted. The '--mcolumn' will suppress plotting of
+any column whether or not the '--column' option is used as well.
+
+If we have a data file with E, S, P, Q and R columns then:
+--column E --column S
+will plot only the columns E and S, while
+--mcolumn P --mcolumn Q
+will plot all columns except P and Q, so E, S and R are plotted.
+"""
+
+
+
+
+  parser = argparse.ArgumentParser(description=description,
+                                   epilog = epilog_usage_info)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="a csv file to plot")
-  parser.add_argument('--sep', action='store')
-  parser.add_argument('--basename', action='store')
-  parser.add_argument('--title', action='store')
-  parser.add_argument('--x_range', action='store')
+  parser.add_argument('--sep', action='store',
+                      help="Specify the datafile separator")
+  parser.add_argument('--basename', action='store',
+                      help="The basename of the output filenames")
+  parser.add_argument('--title', action='store',
+                      help="The title of the gnuplot graph")
+  parser.add_argument('--x_label', action='store',
+                      help="The label on the x axis")
+  parser.add_argument('--y_label', action='store',
+                      help="The label on the y axis")
+  parser.add_argument('--x_range', action='store',
+                      help="The range for the x axis")
   parser.add_argument('--y_range', action='store')
   parser.add_argument('--key', action='store')
   parser.add_argument('--linestyle', action='store')
