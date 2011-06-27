@@ -113,25 +113,17 @@ class SbmlCvodeSolver:
     if os.path.exists(results_file):
       os.remove(results_file)
 
-    # Obviously all of these things should come from the
-    # configuration
-    max_times    = 100000000000
-    interval     = 0.0001
-    out_interval = 0.1
-    atol         = 1.0e-14
-    reltol       = 1.0e-4
-
     # This could also be run without mpi.
     mpirun_command = [ "mpirun",
                        self.model_exec,
                        "model_name", # Could get model name from xml file
-                       str(configuration.t_final),
-                       str(configuration.t_init),
-                       str(max_times),
-                       str(interval),
-                       str(out_interval),
-                       str(atol),
-                       str(reltol),
+                       str(configuration.stop_time),
+                       str(configuration.start_time),
+                       str(configuration.max_times),
+                       str(configuration.interval),
+                       str(configuration.out_interval),
+                       str(configuration.atol),
+                       str(configuration.reltol),
                        results_file_prefix,
                      ]
     mpi_process = Popen(mpirun_command, stdout=PIPE)
@@ -236,11 +228,6 @@ class BioPEPASolver:
     return timecourse
 
 
-class SingleConfiguration:
-  def __init__(self, stop_time):
-    self.t_final = 1.0
-    self.t_init = 0.0
-
 def run():
   """Perform the banalities of command line processing then get on
      with the actual work"""
@@ -249,12 +236,30 @@ def run():
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to solve numerically")
-
+  parser.add_argument('--start_time', action='store',
+                      type=float, default=0.0,
+                      help="Set the initial time of the numerical analysis")
+  parser.add_argument('--stop_time', action='store',
+                      type=float, default=1.0,
+                      help="Set the stop time of the numerical analysis")
+  parser.add_argument('--reltol', action='store',
+                      type=float, default=1.0e-6,
+                      help="Set the solver's relative tolerance")
+  parser.add_argument('--atol', action='store',
+                      type=float, default=1.0e-6,
+                      help="Set the solver's absolute tolerance")
+  parser.add_argument('--interval', action='store',
+                      type=float, default=0.0001,
+                      help="Set the solver's internal time interval")
+  parser.add_argument('--out_interval', action='store',
+                      type=float, default=0.1,
+                      help="Set the interval of the result's timecourse")
+  parser.add_argument('--max_times', action='store',
+                      type=int, default=10000000000,
+                      help="Set the maximum number of computed times")
   arguments = parser.parse_args()
 
-  # The stop time should obviously come from the arguments
-  stop_time = 1.0
-  configuration = SingleConfiguration(stop_time)
+  configuration = arguments
 
   for filename in arguments.filenames:
     extension = os.path.splitext(filename)[1]
@@ -270,11 +275,16 @@ def run():
       print ("Error: unknown filetype, should be: .xml, .sbml or .biopepa")
       sys.exit(1)
 
+    solver.initialise_solver()
     timeseries = solver.solve_model(configuration)
-    results_filename = utils.change_filename_ext(filename, ".csv")
-    results_file = open(results_filename, "w")
-    timeseries.write_to_file(results_file)
-    results_file.close()
+    if timeseries:
+      results_filename = utils.change_filename_ext(filename, ".csv")
+      results_file = open(results_filename, "w")
+      timeseries.write_to_file(results_file)
+      results_file.close()
+    else:
+      print ("Error: solving the model failed, no timeseries to report")
+      sys.exit(1) 
 
 if __name__ == "__main__":
   run()
