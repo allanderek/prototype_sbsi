@@ -627,10 +627,7 @@ class SimplestSearch:
 def get_gold_standard_timeseries(filename):
   """Open the gold standard file and parse in as a comma-separated value
      file. Obtaining a time series which is returned"""
-  gold_file = open(filename,  "r")
-  gold_standard = timeseries.parse_csv(gold_file)
-  gold_file.close()
-  return gold_standard
+  return timeseries.get_timecourse_from_file(filename)
 
 def get_init_param_parameters(filename):
   """Open and parse the initial parameters file into a list of
