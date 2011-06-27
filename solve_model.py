@@ -1,9 +1,12 @@
+"""A module/utility for numerically solving a model. Contains at least
+   a solver using the sundials library converting SBML files into C
+   programs, and also the biopepa command-line client
+   for Bio-PEPA models"""
 import argparse
 import sys
 import os.path
 from subprocess import Popen, PIPE
 import logging
-from timeseries import Timeseries
 import timeseries
 import utils
 
@@ -196,6 +199,11 @@ class BioPEPASolver:
        a parameterised version of the model exists in a file named
        self.paramed_file"""
 
+    start_time = configuration.start_time
+    stop_time = configuration.stop_time
+    data_points = int((stop_time - start_time) / 
+                       configuration.out_interval)
+
     biopepa_command = [ "java",
                         "-jar",
                         "biopepa.jar",
@@ -205,13 +213,13 @@ class BioPEPASolver:
                         "--solver",
                         "dopr-adaptive",
                         "--timeStep",
-                        "0.01",
+                        str(configuration.interval),
                         "--startTime",
-                        str(configuration.t_init),
+                        str(start_time),
                         "--stopTime",
-                        str(configuration.t_final),
+                        str(stop_time),
                         "--dataPoints",
-                        "11"
+                        str(data_points),
                         # "--output-file",
                         # csvfile 
                       ]
@@ -276,11 +284,11 @@ def run():
       sys.exit(1)
 
     solver.initialise_solver()
-    timeseries = solver.solve_model(configuration)
-    if timeseries:
+    timecourse = solver.solve_model(configuration)
+    if timecourse:
       results_filename = utils.change_filename_ext(filename, ".csv")
       results_file = open(results_filename, "w")
-      timeseries.write_to_file(results_file)
+      timecourse.write_to_file(results_file)
       results_file.close()
     else:
       print ("Error: solving the model failed, no timeseries to report")

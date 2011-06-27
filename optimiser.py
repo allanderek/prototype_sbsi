@@ -297,7 +297,7 @@ def evaluate_individual(individual, configuration):
      produced results"""
   solver = configuration.solver
   solver.parameterise_model(individual.dictionary)
-  timecourse = solver.solve_model(configuration)
+  timecourse = solver.solve_model(configuration.solver_config)
   individual.results = timecourse
 
   # So if solving the model didn't actually work then return
@@ -679,6 +679,20 @@ class Monitor:
     """Return the sofar recorded number of failed simulation runs"""
     return self.failed_solves
 
+class SolverConfiguration:
+  """The configuration of the solver, this is a bit generic for now
+     but there should be a single solver configuration class for each
+     kind of solver."""
+  def __init__(self):
+    self.stop_time = 1.0
+    self.start_time = 0.0
+    self.max_times = 1000000000
+    self.interval = 0.001
+    self.out_interval = 0.1
+    self.atol = 1.0e-6
+    self.reltol = 1.0e-4
+     
+
 class Configuration:
   """A class to store the configuration in"""
   def __init__(self, optimisation):
@@ -686,18 +700,23 @@ class Configuration:
     self.num_generations = 5
     self.population_size = 5
 
-    self.t_final = optimisation.gold_standard.get_final_time()
-    self.t_init  = 0.0
+    stop_time = optimisation.gold_standard.get_final_time()
+    self.solver_config = SolverConfiguration()
+    self.solver_config.stop_time = stop_time
 
     home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
     cflags_prefix = os.path.join (home_dir, "Source/svn-git-sbsi/install/")
     model_file = optimisation.model_file
     self.solver = solve_model.SbmlCvodeSolver(model_file, cflags_prefix)
 
-    self.search_algorithm = SimulatedAnnealing()
+    self.search_algorithm = SimplestSearch()
     self.target_cost = 0
     self.cost_function = None
     self.monitor = Monitor()
+
+  def set_stop_time(self, stop_time):
+    """Set the stop time of numerical analyses"""
+    self.solver_config.stop_time = stop_time
 
   def report_on_solves(self):
     """Report to the log, information about the simulation runs,
@@ -779,7 +798,7 @@ def get_configuration(arguments, optimisation):
     configuration.population_size = int(population_size)
   stop_time = get_single_option("stop-time", arguments)
   if stop_time:
-    configuration.t_final = float(stop_time)
+    configuration.set_stop_time(float(stop_time))
   algorithm = get_single_option("algorithm", arguments)
   if algorithm:
     configuration.set_search_agorithm(algorithm)
