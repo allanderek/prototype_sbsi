@@ -142,3 +142,11 @@ def parse_csv(csv, separator=None):
 
   return Timeseries(headers, rows)
  
+def get_timecourse_from_file(filename):
+  """Retrieve a time course from the specified file"""
+  csvfile = open(filename, "r")
+  timecourse = parse_csv(csvfile) 
+  csvfile.close()
+  return timecourse
+
+

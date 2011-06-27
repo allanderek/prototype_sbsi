@@ -3,13 +3,12 @@
     that the events simulate the changing of the population as in
     the time course data."""
 import os
-import sys
 import argparse
-from subprocess import Popen
 import xml.dom.minidom
 import timeseries
 
 class EventAssign:
+  """A simple class representing an event assignment"""
   def __init__(self, species, value):
     self.species = species
     self.value = value
@@ -22,22 +21,44 @@ class Event:
   def __init__(self, time, event_assigns):
     self.time = time
     self.event_assigns = event_assigns
+    self.math_ns = "http://www.w3.org/1998/Math/MathML"
 
   def format_event(self):
-    # You need to create the document to which your going to
+    """A function to return the event as a formatted xml string"""
+    # You need to create the document to which you're going to
     # create elements within. 
-    element = self.create_element()
-    formatted = element.toprettyxml()
+    document = xml.dom.minidom.Document()
+    element = self.create_element(document)
+    formatted = element.toprettyxml(indent="  ", encoding="UTF-8")
     return formatted
 
+  def create_event_assigments(self, document):
+    """Create and return an xml element within the given document
+       which represents the list of event assignments corresponding
+       to those event assignments for this event"""
+    #loea = listOfEventAssignments
+    loea = document.createElement("listOfEventAssignments")
+    for event_assign in self.event_assigns:
+      e_assign = document.createElement("eventAssignment")
+      loea.appendChild(e_assign)
+      e_assign.setAttribute("variable", event_assign.species)
+      e_math = document.createElementNS(self.math_ns, "math")
+      e_assign.appendChild(e_math)
+      e_math.setAttribute("xmlns", self.math_ns)
+      e_cn = document.createElement("cn")
+      e_math.appendChild(e_cn)
+      e_cn_text = document.createTextNode(str(event_assign.value)) 
+      e_cn.appendChild(e_cn_text)
+    return loea
+ 
   def create_element(self, document):
+    """Create an return the xml element representing this event"""
     event = document.createElement("event")
     trigger = document.createElement("trigger")
     event.appendChild(trigger)
-    math_ns = "http://www.w3.org/1998/Math/MathML"
     trigger_math = document.createElement("math")
     trigger.appendChild(trigger_math)
-    trigger_math.setAttribute("xmlns", math_ns)
+    trigger_math.setAttribute("xmlns", self.math_ns)
     trigger_apply = document.createElement("apply")
     trigger_math.appendChild(trigger_apply)
     trigger_gt = document.createElement("gt")
@@ -54,25 +75,15 @@ class Event:
     trigger_cntext = document.createTextNode(str(self.time))
     trigger_cn.appendChild(trigger_cntext)
     
+     
     #loea = listOfEventAssignments
-    loea = document.createElement("listOfEventAssignments")
+    loea = self.create_event_assigments(document)
     event.appendChild(loea)
-    for event_assign in self.event_assigns:
-      e_assign = document.createElement("eventAssignment")
-      loea.appendChild(e_assign)
-      e_assign.setAttribute("variable", event_assign.species)
-      e_math = document.createElementNS(math_ns, "math")
-      e_assign.appendChild(e_math)
-      e_math.setAttribute("xmlns", math_ns)
-      e_cn = document.createElement("cn")
-      e_math.appendChild(e_cn)
-      e_cn_text = document.createTextNode(str(event_assign.value)) 
-      e_cn.appendChild(e_cn_text)
-      
     return event
     
 
 def events_from_timecourse(timecourse):
+  """Create a list of events given a timecourse"""
   events = []
   column_names = timecourse.get_column_names()
   for row in timecourse.get_rows():
@@ -92,14 +103,10 @@ def events_from_timecourse(timecourse):
   
 
 
-def get_timecourse_from_file(filename):
-  csvfile = open(filename, "r")
-  timecourse = timeseries.parse_csv(csvfile) 
-  csvfile.close()
-  return timecourse
-
  
 def has_xml_or_sbml_ext(filename):
+  """Returns true if we believe the file to be an SBML file
+     based on the file's extension"""
   extension = os.path.splitext(filename)[1]
   return extension == ".xml" or extension == ".sbml"
 
@@ -118,7 +125,7 @@ def check_constant_false(model, species):
         if name in species:
           parameter.setAttribute("constant", "false")
 
-def add_events(filename, events, species):
+def add_events(filename, events, species, arguments):
   """Parse in a file as an SBML model, obfuscate it and then print out
      the obfuscated model"""
   dom = xml.dom.minidom.parse(filename)
@@ -140,13 +147,11 @@ def add_events(filename, events, species):
 
   check_constant_false (model, species)
  
-  # pretty should be a command-line option, we mostly won't need it. 
-  # but careful because dom.toprettyxml("UTF-8")) didn't work, so we
-  # obviously need to specify the encoding in a slightly different way
-  # for toprettyxml.
-  print(dom.toxml("UTF-8"))
-  # print(dom.toprettyxml())
- 
+  if arguments.pretty:
+    document = dom.toprettyxml(indent="  ", encoding="UTF-8")
+  else:
+    document = dom.toxml("UTF-8")
+  print(document)
 
 def run():
   """Perform the banalities of command-line argument processing
@@ -156,7 +161,9 @@ def run():
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to check invariants for")
- 
+  parser.add_argument('--pretty', action='store_true',
+                      help="Pretty print the xml")
+   
   arguments = parser.parse_args()
 
   timecourse_files = [ x for x in arguments.filenames 
@@ -169,7 +176,7 @@ def run():
   events = []
   species = []
   for filename in timecourse_files:
-    timecourse = get_timecourse_from_file(filename)
+    timecourse = timeseries.get_timecourse_from_file(filename)
     species.extend(timecourse.get_column_names())
     these_events = events_from_timecourse(timecourse)
     events.extend(these_events)
@@ -179,7 +186,7 @@ def run():
       print (event.format_event())
   else:
     for filename in sbml_files:
-      add_events(filename, events, species)
+      add_events(filename, events, species, arguments)
 
 
 
