@@ -1,7 +1,5 @@
 """A simple script to guess the initparams file for an SBML model
    to be used in an sbsi optimisation"""
-import sys
-import os
 import xml.dom.minidom
 import outline_sbml
 import argparse
@@ -9,6 +7,7 @@ import utils
  
 
 class Parameter:
+  """A simple class to represent a parameter description"""
   def __init__(self, identifier, name, value):
     self.identifier = identifier
     self.name = name
@@ -37,6 +36,7 @@ def get_parameter_of_element(param_element):
   return None
 
 def get_parameters_from_model(model):
+  """Get all the SBML parameters from the model"""
   params = outline_sbml.get_elements_from_lists_of_list("listOfParameters",
                 "parameter",
                 get_parameter_of_element,
@@ -44,19 +44,23 @@ def get_parameters_from_model(model):
   return [ p for p in params if p is not None ]
 
 class AssignmentRule:
+  """A simple class to represent an assignment rule"""
   def __init__(self, variable, math):
     self.variable = variable
     self.math = math
 
-def get_assignment_rule_from_element(arule_element):
+def get_assign_rule_from_element(arule_element):
+  """Return an AssignmentRule instance from the xml element
+     representing the assignment rule"""
   variable = arule_element.getAttribute("variable")
   math = arule_element.getElementsByTagName("math")
   return AssignmentRule(variable, math)
 
 def get_assignment_rules_from_model(model):
+  """Get all the assignment rules from the model"""
   arules = outline_sbml.get_elements_from_lists_of_list("listOfRules",
                "assignmentRule",
-               get_assignment_rule_from_element,
+               get_assign_rule_from_element,
                model)
   return arules
 
