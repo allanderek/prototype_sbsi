@@ -6,47 +6,13 @@ such that we combining together many smaller applications.
 
 import os
 import sys
+import argparse
 import random
 import math
 import logging
 # import configuration
 import solve_model
 import timeseries
-
-def get_options(option_name, arguments):
-  """Gets all options of the form <option_name>=<argument> and returns
-     the argument parts."""
-  option_string = option_name + "="
-  option_offset = len (option_string)
-  options = [ option[option_offset:] for option in arguments
-                if option.startswith(option_string) ]
-  return options
-
-def get_single_option(option_name, arguments):
-  """The same as 'get_options' but insists on their being only one such,
-     if there are no such arguments return the empty string"""
-  options = get_options(option_name, arguments)
-  if not options:
-    return ""
-  elif len(options) > 1:
-    print ("Conflicting " + option_name +
-           " arguments, choose one, exiting")
-    sys.exit(1)
-  else:
-    return options[0]
-
-def get_int_option_with_default(option_name, arguments, default_value):
-  """A further option helper function. This time we are sure that the
-     argument give to the option should be an integer number and we
-     allow a default to be returned in the case that no such option is
-     found."""
-  value_str = get_single_option(option_name, arguments)
-  if not value_str:
-    return default_value
-  else:
-    return int(value_str)
-
-
 
 class MultipleCostFunctions:
   """A cost function class that does no actual costing itself but
@@ -787,34 +753,23 @@ class Configuration:
 def get_configuration(arguments, optimisation):
   """Return a configuration based on the command line arguments"""
   configuration = Configuration(optimisation)
-  generations = get_single_option("generations", arguments)
-  if generations:
-    configuration.num_generations = int(generations)
-  population_size = get_single_option("population", arguments)
-  if population_size:
-    configuration.population_size = int(population_size)
-  stop_time = get_single_option("stop-time", arguments)
-  if stop_time:
-    configuration.set_stop_time(float(stop_time))
-  algorithm = get_single_option("algorithm", arguments)
-  if algorithm:
-    configuration.set_search_agorithm(algorithm)
-  target_cost = get_single_option("target-cost", arguments)
-  if target_cost:
-    configuration.target_cost = float(target_cost)
-  cost_functions = get_options("cost-function", arguments)
-  configuration.set_cost_function(cost_functions,
+
+  configuration.num_generations = arguments.generations
+  configuration.population_size = arguments.population
+  configuration.set_search_agorithm(arguments.algorithm)
+  configuration.target_cost = float(arguments.target_cost)
+
+  configuration.set_cost_function(arguments.cost_function,
                                   optimisation.gold_standard)
-  solver = get_single_option("solver", arguments)
-  if solver:
-    configuration.set_solver(solver)
+  if arguments.solver:
+    configuration.set_solver(arguments.solver)
  
   return configuration
 
 def initialise_logger(arguments):
   """Initialise the logging system, depending on the arguments
      which may set the log level and a log file"""
-  log_level = get_single_option("loglevel", arguments)
+  log_level = arguments.loglevel
   if log_level:
     numeric_level = getattr(logging, log_level.upper(), None)
     if not isinstance(numeric_level, int):
@@ -828,7 +783,7 @@ def initialise_logger(arguments):
   # We could also change the format of the logging messages to
   # something like: format='%(levelname)s:%(message)s'
 
-  log_file = get_single_option("logfile", arguments)
+  log_file = arguments.logfile
   if log_file:
     logging.basicConfig(filename=log_file, level=numeric_level)
   else:
@@ -851,24 +806,59 @@ def get_optimisation_definition(filenames):
   return optimisation
 
 
-
+def create_arguments_parser():
+  """Create the parser for the command-line arguments"""
+  description = "Perform an optimisation for parameter values"
+  parser = argparse.ArgumentParser(description=description)
+  # Might want to make the type of this 'FileType('r')'
+  parser.add_argument('filenames', metavar='F', nargs='+',
+    help="The input files: model gold_standard initparams")
+  parser.add_argument('--logfile', action='store',
+    help="The file to output the log to")
+  log_choices = [ "info", "warning", "error", "critical", "debug" ]
+  parser.add_argument('--loglevel', action='store',
+                      choices=log_choices, default='info',
+    help="Set the level of the logger")
+  parser.add_argument('--solver', action='store',
+                      choices=["biopepa"],
+    help="Set the solver for numerical analysis of individuals")
+  cost_function_choices = ["x2", "fft", "special", "circad" ]
+  parser.add_argument('--cost_function', action='append',
+                      choices=cost_function_choices, 
+    help="Set the cost function(s) to be used to evaluate individuals")
+  parser.add_argument('--target_cost', action='store',
+                      type=int, default=0,
+    help="Set the target cost to meet, default = 0")
+  parser.add_argument('--generations', action='store',
+                      type=int, default=10,
+    help="Set the number of generations to evolve")
+  parser.add_argument('--population', action='store',
+                      type=int, default=5,
+    help="Set the population size of each generation")
+  algorithm_choices = ["sa", "simple"]
+  parser.add_argument('--algorithm', action='store',
+                      choices=algorithm_choices, default="simple",
+    help="Select the genetic algorithm to deploy")
+ 
+  return parser
+ 
 def run():
   """Process all the command line arguments and get going with the
      optimisation""" 
-  # The command line arguments not including this script itself
-  arguments    = [ x for x in sys.argv if not x.endswith(".py") ]
-  filenames    = [ x for x in arguments if not '=' in x ]
+  # Parse in the command-line arguments
+  parser    = create_arguments_parser()
+  arguments = parser.parse_args()
 
   # I really just want to take in one file name which is a configuration
   # file which contains the others, but for now I'll do this:
-  if len(filenames) < 3:
+  if len(arguments.filenames) < 3:
     print ("You must provide three files:")
     print ("   the model file")
     print ("   the gold standard data file")
     print ("   the initial parameter file")
     sys.exit(1)
 
-  optimisation = get_optimisation_definition(filenames)
+  optimisation = get_optimisation_definition(arguments.filenames)
 
   configuration = get_configuration(arguments, optimisation)
   initialise_logger(arguments)
