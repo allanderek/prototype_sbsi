@@ -182,7 +182,8 @@ def run():
     events.extend(these_events)
 
   if not events:
-    print ("Warning: You have no events?")
+    print ("No events to add, doing nothing:")
+    sys.exit(1)
 
   if not sbml_files:
     for event in events:
