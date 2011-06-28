@@ -1,11 +1,13 @@
 """ A simple script to replace the values of parameters within an
     sbml model file"""
-import sys
 import xml.dom.minidom
 import os
+import argparse
 
 
 def parameterise_model(model, dictionary):
+  """Given the model and dictionary of new parameter values,
+     parameterise the model"""
   lists_of_parameters = model.getElementsByTagName("listOfParameters")
   for list_of_params in lists_of_parameters:
     parameter_elements = list_of_params.getElementsByTagName("parameter")
@@ -27,6 +29,7 @@ def parameterise_model_file (filename, dictionary):
   
 
 def parse_param_file(param_filename, dictionary):
+  """Parse a parameter file into the given dictionary"""
   param_file = open(param_filename, "r")
 
   for line in param_file:
@@ -37,23 +40,31 @@ def parse_param_file(param_filename, dictionary):
 
   param_file.close()
 
-def has_extension(filename, extension):
+def has_extension(filename, extensions):
+  """Returns true if the given filename has one of the given
+     list of extensions"""
   file_extension = os.path.splitext(filename)[1]
-  return file_extension == extension
+  return file_extension in extensions
 
 def run():
   """Perform the banalities of command-line argument processing and
      and then get under way in parameterising the model"""
-  # The command line arguments not including this script itself
-  arguments    = sys.argv 
-  # file names are arguments that don't affect the configuration such
-  # as limit=10 or x=k1
-  filenames = [ x for x in arguments if '=' not in x and
-                  not has_extension(x, ".py") ]
-  
-  param_files = [ x for x in filenames if not has_extension(x, ".xml") ] 
-  sbml_files =  [ x for x in filenames if has_extension(x, ".xml") ]
+  description = "Parameterise an SBML model based on a given param file"
+  parser = argparse.ArgumentParser(description=description)
+  # Might want to make the type of this 'FileType('r')'
+  parser.add_argument('filenames', metavar='F', nargs='+',
+                      help="input files, parameters and sbml model files")
+  # parser.add_argument('--pretty', action='store_true',
+  #                     help="Pretty print the xml")
 
+  arguments = parser.parse_args()
+
+  sbml_extentions = [ ".xml", ".sbml" ]
+  param_files = [ x for x in arguments.filenames
+                        if not has_extension(x, sbml_extentions) ]
+
+  sbml_files = [ x for x in arguments.filenames
+                   if has_extension(x, sbml_extentions) ]
 
   dictionary = dict()
   for param_file in param_files:
