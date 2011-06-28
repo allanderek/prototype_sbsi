@@ -87,7 +87,7 @@ def run():
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an sbml file to check invariants for")
+                      help="an sbml file to guess init params for")
  
   arguments = parser.parse_args()
 
