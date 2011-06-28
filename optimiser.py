@@ -642,20 +642,6 @@ class Monitor:
     """Return the sofar recorded number of failed simulation runs"""
     return self.failed_solves
 
-class SolverConfiguration:
-  """The configuration of the solver, this is a bit generic for now
-     but there should be a single solver configuration class for each
-     kind of solver."""
-  def __init__(self, arguments):
-    self.stop_time = 1.0
-    self.start_time = 0.0
-    self.max_times = 1000000000
-    self.interval = 0.001
-    self.out_interval = 0.1
-    self.atol = 1.0e-6
-    self.reltol = 1.0e-4
-     
-
 class Configuration:
   """A class to store the configuration in"""
   def __init__(self, arguments, optimisation):
