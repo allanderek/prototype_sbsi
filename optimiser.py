@@ -646,7 +646,7 @@ class SolverConfiguration:
   """The configuration of the solver, this is a bit generic for now
      but there should be a single solver configuration class for each
      kind of solver."""
-  def __init__(self):
+  def __init__(self, arguments):
     self.stop_time = 1.0
     self.start_time = 0.0
     self.max_times = 1000000000
@@ -658,14 +658,14 @@ class SolverConfiguration:
 
 class Configuration:
   """A class to store the configuration in"""
-  def __init__(self, optimisation):
+  def __init__(self, arguments, optimisation):
     self.optimisation = optimisation
     self.num_generations = 5
     self.population_size = 5
 
-    stop_time = optimisation.gold_standard.get_final_time()
-    self.solver_config = SolverConfiguration()
-    self.solver_config.stop_time = stop_time
+    if not arguments.stop_time:
+      arguments.stop_time = optimisation.gold_standard.get_final_time()
+    self.solver_config = arguments
 
     home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
     cflags_prefix = os.path.join (home_dir, "Source/svn-git-sbsi/install/")
@@ -676,10 +676,6 @@ class Configuration:
     self.target_cost = 0
     self.cost_function = None
     self.monitor = Monitor()
-
-  def set_stop_time(self, stop_time):
-    """Set the stop time of numerical analyses"""
-    self.solver_config.stop_time = stop_time
 
   def report_on_solves(self):
     """Report to the log, information about the simulation runs,
@@ -752,7 +748,7 @@ class Configuration:
 
 def get_configuration(arguments, optimisation):
   """Return a configuration based on the command line arguments"""
-  configuration = Configuration(optimisation)
+  configuration = Configuration(arguments, optimisation)
 
   configuration.num_generations = arguments.generations
   configuration.population_size = arguments.population
@@ -806,13 +802,19 @@ def get_optimisation_definition(filenames):
   return optimisation
 
 
-def create_arguments_parser():
+def create_arguments_parser(add_help):
   """Create the parser for the command-line arguments"""
+  # Create the solve model parser which will give us some arguments
+  # controlling the solver (start/stop_time etc)
+  solve_model_parser = solve_model.create_arguments_parser(False)
+
   description = "Perform an optimisation for parameter values"
-  parser = argparse.ArgumentParser(description=description)
+  parser = argparse.ArgumentParser(add_help=add_help,
+                                   parents=[solve_model_parser],
+                                   description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-    help="The input files: model gold_standard initparams")
+     help="The input files: model gold_standard initparams")
   parser.add_argument('--logfile', action='store',
     help="The file to output the log to")
   log_choices = [ "info", "warning", "error", "critical", "debug" ]
@@ -846,11 +848,12 @@ def run():
   """Process all the command line arguments and get going with the
      optimisation""" 
   # Parse in the command-line arguments
-  parser    = create_arguments_parser()
+  parser    = create_arguments_parser(True)
   arguments = parser.parse_args()
 
   # I really just want to take in one file name which is a configuration
   # file which contains the others, but for now I'll do this:
+  print (arguments)
   if len(arguments.filenames) < 3:
     print ("You must provide three files:")
     print ("   the model file")

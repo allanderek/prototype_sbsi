@@ -236,19 +236,16 @@ class BioPEPASolver:
     return timecourse
 
 
-def run():
-  """Perform the banalities of command line processing then get on
-     with the actual work"""
+def create_arguments_parser(add_help):
+  """Create the command-line arguments parser"""
   description = "Solve a single model one single time"
-  parser = argparse.ArgumentParser(description=description)
-  # Might want to make the type of this 'FileType('r')'
-  parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an sbml file to solve numerically")
+  parser = argparse.ArgumentParser(add_help=add_help, 
+                                   description=description)
   parser.add_argument('--start_time', action='store',
                       type=float, default=0.0,
                       help="Set the initial time of the numerical analysis")
   parser.add_argument('--stop_time', action='store',
-                      type=float, default=1.0,
+                      type=float, # default=1.0,
                       help="Set the stop time of the numerical analysis")
   parser.add_argument('--reltol', action='store',
                       type=float, default=1.0e-6,
@@ -265,7 +262,23 @@ def run():
   parser.add_argument('--max_times', action='store',
                       type=int, default=10000000000,
                       help="Set the maximum number of computed times")
+  return parser
+
+def run():
+  """Perform the banalities of command line processing then get on
+     with the actual work"""
+  parser    = create_arguments_parser(True)
+   # Might want to make the type of this 'FileType('r')'
+  parser.add_argument('filenames', metavar='F', nargs='+',
+                      help="an sbml file to solve numerically")
   arguments = parser.parse_args()
+  # stop_time cannot have a default because the optimiser will assume
+  # that the user has explictly set the stop_time when in fact it has
+  # just assumed the default time. So instead we check if it has been
+  # set and if not we set it:
+  if not arguments.stop_time:
+    arguments.stop_time = 1.0
+  
 
   configuration = arguments
 
