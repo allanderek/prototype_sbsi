@@ -181,6 +181,9 @@ def run():
     these_events = events_from_timecourse(timecourse)
     events.extend(these_events)
 
+  if not events:
+    print ("Warning: You have no events?")
+
   if not sbml_files:
     for event in events:
       print (event.format_event())
