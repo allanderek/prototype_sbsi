@@ -85,6 +85,26 @@ class NameAliaser:
       self.dictionary[name] = 1
       return name
 
+class ColourDict:
+  """A simple class which remembers which column names should have
+     which colours so that comparing files is improved because the
+     same column in different files have the same colour. Clearly
+     the colour for a column should be mapped before its name is
+     aliased to avoid clashes"""
+  def __init__(self):
+    self.dictionary = dict()
+
+  def get_name_colour(self, name):
+    """Return the colour (number) corresponding to the given name.
+       If it isn't already in the dictionary then add it to the dictionary
+       with a new colour"""
+    if name in self.dictionary:
+      return self.dictionary[name]
+    else:
+      value = len(self.dictionary)
+      self.dictionary[name] = value
+      return value
+
 def create_gnuplot_file(basename, arguments, datafiles):
   """From the headers obtained from the csv file, write a
      gnuplot file which will read the csv file and plot a timeseries"""
@@ -112,6 +132,20 @@ def create_gnuplot_file(basename, arguments, datafiles):
   gnuplotfile.close()
   return (gnufilename, epsfilename)
 
+def should_plot_column(arguments, name):
+  """A simple function to determine, based on the command line arguments
+     whether or not a column should be plotted"""
+  columns = arguments.column
+  mcolumns = arguments.mcolumn
+  if name == "Time":
+    return False
+  elif columns and name not in columns:
+    return False
+  elif mcolumns and name in columns:
+    return False
+  else:
+    return True
+
 def write_gnuplot_plotting_commands(gnuplotfile,
                                     arguments,
                                     datafiles,
@@ -124,14 +158,11 @@ def write_gnuplot_plotting_commands(gnuplotfile,
 
   line_prefix = "plot "
   header_aliaser = NameAliaser()
+  colour_dictionary = ColourDict()
+
   for datafile in datafiles:
     headers = obtain_headers(datafile, separator)
-    columns = arguments.column
-    mcolumns = arguments.mcolumn
-
-    # Just a bit of debugging print(column_names)
-  
-    # The first column must be printed out a little differently to
+     # The first column must be printed out a little differently to
     # the others, since we need to separate the lines, so we set
     # the prefix to what it will be for the first line, and then whenever
     # we print one out we just set it to what the prefix should be for
@@ -139,11 +170,15 @@ def write_gnuplot_plotting_commands(gnuplotfile,
     for i in range (1, len(headers)):
       header = headers[i].lstrip().rstrip()
       header_title = header_aliaser.get_unique_name(header)
-      if header != "Time" and ((not columns or header in columns) and
-                               (not mcolumns or header not in mcolumns)):
+      if should_plot_column(arguments, header):
+        # getting the colour comes after we decide whether or not
+        # we're going to actually plot the line. Otherwise we use wide
+        # apart colour numbers.
+        colour = colour_dictionary.get_name_colour(header)
         line = (line_prefix + "\"" + datafile + "\"" + 
                 " using 1:" +
-                str(i + 1) + " w " + line_style + 
+                str(i + 1) + " w " + line_style +
+                " lc " + str(colour) +
                 " title '" + header_title + "'")
         # If it's not currently the first line then this will simply
         # set the prefix to what it already is, so no harm done.
@@ -202,7 +237,7 @@ will plot all columns except P and Q, so E, S and R are plotted.
                       help="The range for the y axis")
   parser.add_argument('--key', action='store',
                       help="Set the key option in gnuplot")
-  parser.add_argument('--linestyle', action='store',
+  parser.add_argument('--linestyle', action='store', default="l lw 4",
                       help="Set the line style to be used with all lines")
   parser.add_argument('--column', action='append',
                       help="Specify a column to be plotted")
