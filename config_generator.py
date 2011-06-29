@@ -1,12 +1,17 @@
 """A script which will generate both an xml schema file for the
    configuration, and a python module to parse and store such a valid
    configuration"""
+import sys
 
 def print_imports(module_file):
+  """Print the module imports at the top of module file"""
   module_file.write("import sys\n")
   module_file.write("import xml.dom.minidom\n\n\n")
 
 def print_exception_definition(module_file):
+  """Print the definition of the configuration error exception.
+     Used when the generated parse function find an error in the
+     configuration"""
   except_def = """
 class ConfigurationError(Exception):
   def __init__(self, value):
@@ -18,6 +23,8 @@ class ConfigurationError(Exception):
   module_file.write("\n\n\n")
 
 def print_numerical_types(schema_file):
+  """Print out the schema definitions of the known numerical types
+     used in the rest of the schema"""
   numerical_schema_types = """
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:sbsi_ofwconfig="http://www.uk.ac.ed.csbe.sbsivisual/ofwconfig/ns/level1" 
 	 targetNamespace="http://www.uk.ac.ed.csbe.sbsivisual/ofwconfig/ns/level1" elementFormDefault="qualified">
@@ -119,17 +126,41 @@ def print_numerical_types(schema_file):
   schema_file.write(numerical_schema_types)
 
 class Element:
+  """A base class to be inherited from by all classes which
+     implement the representation of some element within the
+     configuration schema.
+  """
   def __init__(self, name):
     self.name = name
     self.varname = name.lower()
 
   def has_xml_children(self):
+    """Returns true if this element has any child elements.
+       This method should be overridden by any element kind which
+       can/does have child elements"""
+    # Locally disabling the message that this method could be a
+    # function, because it really makes sense here, in the the
+    # subclasses that override this method they may well make use
+    # of the instance variables so this cannot be a static method
+    # pylint: disable-msg=R0201
     return False
  
   def parse_method_name(self):
+    """Return a string represnting the name of the parse method
+       for this instance's kind of element"""
     return "parse_" + self.name
+
+  def print_parse_function(self, module_file):
+    """This is a virtual function which should be overridden by
+       all subclasses. The overriding function should print out a
+       method to parse in an element of this instance's kind
+    """
+    module_file.write("Error, element kind: " + self.name + "\n")
+    module_file.write("Error: this method should have been overridden\n")
  
   def print_class_definition(self, module_file):
+    """Print the class definition for the class representing this
+       kind of configuration element"""
     module_file.write("class " + self.name + ":\n")
     self.print_parse_function(module_file)
 
@@ -140,6 +171,10 @@ class Element:
 ## We'll build a list element, where actually there is no
 ## actual xml element of that kind, but we fake it here.
 class ListOfElements(Element):
+  """A class for the representation of an element which can have
+     more than one element of the same kind as children. For example
+     <FFT><State> ... </State><State>...</State><State>...</State></FFT>
+  """
   # This should also have a maximum and minimum number
   def __init__(self, item):
     Element.__init__(self, item.name)
@@ -152,6 +187,8 @@ class ListOfElements(Element):
 
    
 class ContainerElement(Element):
+  """A class for the representation of an element which can have
+     several child elements"""
   
   def __init__(self, name, children):
     Element.__init__(self, name)
@@ -159,12 +196,17 @@ class ContainerElement(Element):
 
 
   def has_xml_children(self):
+    """Return true if this element can have at least one kind of
+       child element"""
     return self.children != []
   
   def add_child(self, child):
+    """Add a child element to the representation of this element"""
     self.children.append(child)
 
   def print_parse_function(self, module_file):
+    """print out to the module file a function to parse an element of
+       the kind represented by this Element instance"""
     module_file.write("  def " + self.parse_method_name() +
                       "(self, " + self.varname + "):\n")
     for child in self.children:
@@ -207,11 +249,15 @@ class ContainerElement(Element):
      
 
 class EnumerationElement(Element):
+  """A class representing the structure of an element which can be
+     one of a few choices, such as <OptimiserType>"""
   def __init__(self, name, choices):
     Element.__init__(self, name)
     self.choices = choices
 
   def print_parse_function(self, module_file):
+    """print out to the module file a function to parse an element of
+       the kind represented by this Element instance"""
     arg_name = self.varname
     module_file.write("  def " + self.parse_method_name() +
                       "(self, " + arg_name + "):\n")
@@ -227,11 +273,15 @@ class EnumerationElement(Element):
    
 
 class LiteralElement(Element):
+  """A class representing the definition of an element which is a
+     literal value, such as an integer or float. Generally there might
+     be a few other restrictions such as it must be positive or not zero"""
   def __init__(self, name, simple_type):
     Element.__init__(self, name)
     self.simple_type = simple_type
  
   def get_data_parser(self, argument):
+    """Return the data parser given the type of the literal element"""
     # Obviously for each kind it could do some more checking
     if self.simple_type in [ "xs:int",
                              "nonZeroMultipleOfTwo",
@@ -261,6 +311,8 @@ class LiteralElement(Element):
       sys.exit(1)
 
   def print_parse_function(self, module_file):
+    """print out to the module file a function to parse an element of
+       the kind represented by this Element instance"""
     arg_name = self.varname
     module_file.write("  def " + self.parse_method_name() +
                       "(self, " + arg_name + "):\n")
@@ -274,6 +326,9 @@ class LiteralElement(Element):
     
 
 class OneOfElement(Element):
+  """Similar to EnumerationElement, except that rather than a single
+     string it is a full xml element, which can be one of the given
+     choices"""
   def __init__(self, name, choices):
     Element.__init__(self, name)
     self.choices = choices
@@ -281,6 +336,8 @@ class OneOfElement(Element):
   # Hmm, it is something similar to this, but not quite the
   # same as this.
   def print_parse_function(self, module_file):
+    """print out to the module file a function to parse an element of
+       the kind represented by this Element instance"""
     module_file.write("  def " + self.parse_method_name() +
                       "(self, " + self.varname + "):\n")
     # Not quite right, we need to find out how many children we have.
@@ -308,6 +365,10 @@ class OneOfElement(Element):
 
 
 def simple_element(name, el_type, dictionary):
+  """Return the Element instance representing a simple element with
+     the given type. We store ones that we have used in a dictionary
+     such that we do not output in the xml schema more than one
+     definition for the same simple element kind"""
   if name in dictionary:
     element = dictionary[name]
     if el_type == element.simple_type:
@@ -323,6 +384,8 @@ def simple_element(name, el_type, dictionary):
   return element
 
 def get_cvode_solver_element(element_dictionary): 
+  """Return the Element instance representing a
+     <CVODESolver> element"""
   cvode_children = [ simple_element("TFinal", 
                              "positiveDecimalNotZeroButCanBeMinusOne",
                              element_dictionary),
@@ -343,6 +406,8 @@ def get_cvode_solver_element(element_dictionary):
   return cvode_element
 
 def get_model_cost_function(element_dictionary):
+  """Return the Element instance representing the
+     <ModelCostFunction> element"""
   # dcs = data set config
   dsc_children = [ simple_element("FileName", "nonEmptyString",
                                   element_dictionary)
@@ -364,6 +429,8 @@ def get_model_cost_function(element_dictionary):
   return mcf_element
 
 def get_setup_element(element_dictionary):
+  """Return element instance representing a '<Setup>'
+     configuration element"""
   setup_type_choices = [ "SobolSelect", "SobolUnselect", "ReadinFile" ]
   setup_type_element = EnumerationElement("SetupType", setup_type_choices)
   element_dictionary[setup_type_element.name] = setup_type_element
@@ -394,7 +461,8 @@ def get_setup_element(element_dictionary):
 #        <xs:element ref="sbsi_ofwconfig:MaxRandomNumberGenerator" />
 #        <xs:element ref="sbsi_ofwconfig:SetupType" />
 #        <xs:element ref="sbsi_ofwconfig:CkpointNum" minOccurs="0" />
-#        <xs:element ref="sbsi_ofwconfig:ModelCostFunction" maxOccurs="unbounded"/>
+#        <xs:element ref="sbsi_ofwconfig:ModelCostFunction"
+#                    maxOccurs="unbounded"/>
 #        <xs:element ref="sbsi_ofwconfig:ParameterInitialFile" />
  
 
@@ -422,6 +490,7 @@ def get_element_dictionary():
   
 
 def print_parse_config(module_file):
+  """Print out the method to parse the configuration file"""
   parse_config = """def parse_config_file(filename):
   dom = xml.dom.minidom.parse(filename)
   config_element = dom.getElementsByTagName("OFWConfig")[0]
@@ -432,6 +501,7 @@ def print_parse_config(module_file):
   module_file.write(parse_config)
 
 def print_run_def(module_file):
+  """Print out to the module file the definition of the 'run' method"""
   run_def = """
 def run():
   arguments = [ x for x in sys.argv if not x.endswith(".py") ]
@@ -441,6 +511,7 @@ def run():
   module_file.write(run_def)
 
 def run():
+  """The main function driving all the real work"""
   schema_file = open ("ofwconfig.xsd", "w")
   module_file = open ("configuration.py", "w")
 
