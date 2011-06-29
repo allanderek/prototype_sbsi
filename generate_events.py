@@ -3,6 +3,7 @@
     that the events simulate the changing of the population as in
     the time course data."""
 import os
+import sys
 import argparse
 import xml.dom.minidom
 import timeseries
