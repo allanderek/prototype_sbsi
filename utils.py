@@ -1,3 +1,4 @@
+"""A simple module to put some simple utility functions in"""
 import os.path
 
 def change_filename_ext(filename, new_ext):

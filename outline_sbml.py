@@ -1,26 +1,32 @@
 """a simple script to give a simple outline of an sbml model"""
-import sys
 import xml.dom.minidom
 import argparse
 
 class ReactionParticipant:
+  """A simple class to represent a reaction participant"""
   def __init__(self, name, stoich=1):
     self.name = name
     self.stoich = stoich
 
   def get_name(self):
+    """Return the name of the reaction participant"""
     return self.name
   def get_stoichiometry(self):
+    """Return the stoichiometry of this reaction participant
+       within the reaction"""
     return self.stoich
 
 class Species:
+  """A simple class to represent a species within an sbml model"""
   def __init__(self, name, compartment):
     self.name = name
     self.compartment = compartment
   def get_name(self):
+    """ return the name of the species"""
     return self.name
 
 class Reaction:
+  """A class which represents a reaction"""
   def __init__(self, name):
     """initialise a reaction which has no reactants or products
        these may in turn be added with 'add_reactant' and 'add_product'"""
@@ -29,15 +35,16 @@ class Reaction:
     self.name = name
 
   def get_name(self):
+    """return the name of the reaction"""
     return self.name
   
-  def add_reactant(self, r):
+  def add_reactant(self, reactant):
     """add a reactant into the reaction definition"""
-    self.reactants.append(r)
+    self.reactants.append(reactant)
 
-  def add_product(self, p):
+  def add_product(self, product):
     """add a product to the reaction"""
-    self.products.append(p)
+    self.products.append(product)
 
   def get_reactants(self):
     """return the list of reactant names"""
@@ -53,11 +60,13 @@ class Reaction:
     return self.reactants and not self.products
 
   def is_source(self):
-     """returns true if the reaction is a source reaction,
-        in that it has at least one product and no reactants"""
-     return self.products and not self.reactants
+    """returns true if the reaction is a source reaction,
+       in that it has at least one product and no reactants"""
+    return self.products and not self.reactants
 
   def format_reaction(self):
+    """Return a string representing the reaction in a format 
+       suitable for human consumption"""
     results = self.name + ": "
 
     # so the first reactant has nothing attached to the front of it
@@ -79,6 +88,8 @@ class Reaction:
 
 
 def name_of_species_reference(spec_ref):
+  """Return the name of the species referred to within a
+     speciesReference sbml element"""
   name = spec_ref.getAttribute("species")
   return name
 
@@ -110,6 +121,11 @@ def get_elements_from_lists_of_list(list_element_name,
                                     element_name,
                                     extract_fun,
                                     parent_node):
+  """returns a list of objects from an element which contains a list
+     of elements. Such as 'listOfReactions'. This takes in the name
+     of the list element, the name of the elements which represent the
+     items of the list and a function which creates an object for each
+     item in the list from the item element in the list"""
   lists_of_element = parent_node.getElementsByTagName(list_element_name)
   result_objects = []
   for list_of_element in lists_of_element:
@@ -120,24 +136,30 @@ def get_elements_from_lists_of_list(list_element_name,
   return result_objects
 
 def get_list_of_reactions(model):
+  """Returns a list of reaction objects from an sbml model"""
   return get_elements_from_lists_of_list("listOfReactions",
                                          "reaction",
                                          get_reaction_of_element,
                                          model)
 
 def get_species_of_element(species_element):
+  """Return a species object from a species element, in other words
+     parse a species element"""
   name = species_element.getAttribute("id")
   compartment = species_element.getAttribute("compartment")
   species = Species(name, compartment)
   return species
 
 def get_list_of_species(model):
+  """Return the list of species from an sbml model"""
   return get_elements_from_lists_of_list("listOfSpecies",
                                          "species",
                                          get_species_of_element,
                                          model)
 
 def print_amount(num, singular, plural):
+  """Utility function to print an expression for the number of
+     something. Picks the singular or plural noun appropriately"""
   if num == 0:
     print("no " + plural)
   elif num == 1:
@@ -147,16 +169,22 @@ def print_amount(num, singular, plural):
 
 
 class ExprVisitor: 
+  """A class which descends through SBML math expressions storing
+     a formatted string representing the math expression"""
   def __init__(self):
     self.result = ""
 
   def get_results(self):
+    """Return the string result of visiting the expression"""
     return self.result
 
   def print_str(self, string):
+    """A (private) utility function for printing to the result string"""
     self.result += string
 
   def generic_visit(self, element):
+    """The main entry point, decides on the kind of element we have
+       and calls the appropriate visitor function from below"""
     if element.nodeType == element.ELEMENT_NODE :
       tag_name = element.tagName
       if tag_name == "apply":
@@ -169,9 +197,11 @@ class ExprVisitor:
       return ""
 
   def visit_ci(self, element):
+    """Visit a 'ci' element"""
     self.print_str(element.firstChild.data)
 
   def visit_apply(self, element):
+    """Visit an 'apply' element"""
     children = [ x for x in element.childNodes 
                    if x.nodeType == x.ELEMENT_NODE
                ]
@@ -197,11 +227,13 @@ class ExprVisitor:
       self.print_str (")")
 
   def visit_maths(self, maths):
+    """Visit a 'maths' element"""
     for child in maths.childNodes:
       if maths.nodeType == maths.ELEMENT_NODE:
         self.generic_visit(child)
 
 def format_rate_rule(raterule):
+  """Return a string representing a 'rateRule' element"""
   maths_visitor = ExprVisitor()
   maths = raterule.getElementsByTagName ("math")[0]
   maths_visitor.visit_maths(maths)
@@ -210,12 +242,13 @@ def format_rate_rule(raterule):
 
 
 def outline_rate_rules(model):
+  """Print out an outline for the rate rules of an SBML model"""
   rate_rules = get_elements_from_lists_of_list("listOfRules",
                                                "rateRule",
                                                format_rate_rule,
                                                model)
   no_rate_rules = len(rate_rules)
-  print_amount(len(rate_rules), "rate rule", "rate rules")
+  print_amount(no_rate_rules, "rate rule", "rate rules")
   for rate_rule in rate_rules:
     print("  " + rate_rule)
 
@@ -246,12 +279,7 @@ def run():
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an sbml file to check invariants for")
-  parser.add_argument("--ignore-sources",
-                      action="store_true", default=False)
-  parser.add_argument("--ignore-sinks",
-                      action="store_true", default=False)
- 
+                      help="an sbml file to outline")
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
