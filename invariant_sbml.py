@@ -245,9 +245,11 @@ def run():
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to check invariants for")
   parser.add_argument("--ignore-sources",
-                      action="store_true", default=False)
+                      action="store_true", default=False,
+    help="Ignore source reactions when computing invariants")
   parser.add_argument("--ignore-sinks",
-                      action="store_true", default=False)
+                      action="store_true", default=False,
+    help="Ignore sink reactions when computing invariants")
  
   arguments = parser.parse_args()
 

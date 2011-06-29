@@ -252,25 +252,25 @@ def outline_rate_rules(model):
   for rate_rule in rate_rules:
     print("  " + rate_rule)
 
-def outline_model(model, ignore_sources, ignore_sinks):
+def outline_model(model, arguments):
   """format and print out an outline for the given model"""
   reactions = get_list_of_reactions(model)
   print_amount(len(reactions), "reaction", "reactions")
   for reaction in reactions:
-    if ( (ignore_sources and reaction.is_sources()) or
-         (ignore_sinks and reaction.is_sink()) ):
+    if ( (arguments.ignore_sources and reaction.is_sources()) or
+         (arguments.ignore_sinks and reaction.is_sink()) ):
       pass
     else:
       print("  " + reaction.format_reaction())
 
   outline_rate_rules(model)
 
-def outline_sbml_file(filename, ignore_sources, ignore_sinks):
+def outline_sbml_file(filename, arguments):
   """parse in a file as an sbml model, extract the outline information
      and then format that information and print it out"""
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("model")[0]
-  outline_model(model, ignore_sources, ignore_sinks)
+  outline_model(model, arguments)
   
 def run():
   """perform the banalities of command-line argument processing and
@@ -280,13 +280,16 @@ def run():
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to outline")
+  parser.add_argument("--ignore-sources",
+                      action="store_true", default=False,
+    help="Ingore source reactions when outlining the model")
+  parser.add_argument("--ignore-sinks",
+                      action="store_true", default=False,
+    help="Ignore sink reactions when outlining the model")
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
-    outline_sbml_file(filename,
-                      arguments.ignore_sources,
-                      arguments.ignore_sinks)
-
+    outline_sbml_file(filename, arguments)
 
 if __name__ == "__main__":
   run()
