@@ -77,11 +77,14 @@ def check_parameters(params, best_params, arguments):
       # We should be careful, what if param.lower == 0?
       lower_warn = param.low + (param.low * tolerance)
       value = best_params[param.name]
-      if value < lower_warn:
+      # Importantly using less than or equal to rather than just
+      # less than, because if the lower limit is zero, then the
+      # lower_warn will also be zero and hence we would never warn.
+      if value <= lower_warn:
         print (param.name + " is close to the lower limit")
         print ("   value = " + str(value))
         print ("   limit = " + str(param.low))
-      if value > upper_warn:
+      if value >= upper_warn:
         print (param.name + " is close to the upper limit")
         print ("   value = " + str(value))
         print ("   limit = " + str(param.high))
