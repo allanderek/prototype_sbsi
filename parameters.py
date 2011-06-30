@@ -165,7 +165,7 @@ def run():
   else:
     for fail_result in failed_results:
       param = fail_result.param
-      if fail_result.value:
+      if not fail_result.value:
         print (param.name + " is not in the best params file(s)")
       else:  
         print (param.name + " is too close to its range limits")
