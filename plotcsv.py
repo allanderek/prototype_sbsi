@@ -36,7 +36,7 @@ def obtain_headers(datafile, separator):
   headers = headrow.split(separator)
 
   csvfile.close()
-  return headers
+  return [ x.lstrip().rstrip() for x in headers ]
 
 
 def set_gnuplot_option(gnuplotfile, option_name, option_value, quote=True):
@@ -56,7 +56,7 @@ def set_gnuplot_options(gnuplotfile, arguments):
   set_gnuplot_option(gnuplotfile, "ylabel", arguments.y_label)
   set_gnuplot_option(gnuplotfile, "xrange", arguments.x_range, quote=False)
   set_gnuplot_option(gnuplotfile, "yrange", arguments.y_range, quote=False)
-  set_gnuplot_option(gnuplotfile, "key", arguments.key)
+  set_gnuplot_option(gnuplotfile, "key", arguments.key, quote=False)
 
 class NameAliaser:
   """A simple class which effectively ensures we are using unique names.
@@ -146,38 +146,84 @@ def should_plot_column(arguments, name):
   else:
     return True
 
+def column_in_all(column, plottables):
+  """Returns true if the given column is in all the given plottables'
+     lists of columns
+  """
+  for plottable in plottables:
+    if column not in plottable.columns:
+      return False
+  return True
+
+class PlottableDataFile:
+  """Stores information about a plottable data file, namely its
+     list of headers, plottable columns and its data file name
+  """
+  def __init__(self, datafile, headers):
+    self.datafile = datafile
+    self.headers  = headers
+    self.columns  = headers
+
+def get_datafiles_plottables(datafiles, arguments, separator):
+  """Return a list of plottables from a list of datafiles, where a
+     plottable is just a representation of the data file along with
+     the headers contained within the datafile and the columns which
+     should be plotted
+  """
+  plottables = [ PlottableDataFile(x, obtain_headers(x, separator)) 
+                    for x in datafiles ]
+
+  # Now we filter each plottable file's column list based
+  # on the column and mcolumn arguments as well as getting
+  # rid of the 'Time' column
+  for plottable in plottables:
+    new_columns = [ x for x in plottable.columns 
+                        if should_plot_column(arguments, x) ]
+    plottable.columns = new_columns
+
+  # Now if the option is set to only plot columns in both data files
+  # then we must first find all of the common headers and then set
+  # each plottable's columns to that common set.
+  if plottables and arguments.only_common:
+    first = plottables[0]
+    common = [ x for x in first.columns if column_in_all(x, plottables) ]
+    for plottable in plottables:
+      plottable.columns = common
+
+  return plottables
+
 def write_gnuplot_plotting_commands(gnuplotfile,
                                     arguments,
                                     datafiles,
                                     separator):
   """Write the plotting commands for the data files to the given
      gnuplot file"""
-  line_style = arguments.linestyle
-  if not line_style:
-    line_style = "lp"
+  if not arguments.linestyle:
+    arguments.linestyle = "lp"
 
   line_prefix = "plot "
   header_aliaser = NameAliaser()
   colour_dictionary = ColourDict()
 
-  for datafile in datafiles:
-    headers = obtain_headers(datafile, separator)
-     # The first column must be printed out a little differently to
+  plottables = get_datafiles_plottables(datafiles, arguments, separator)
+  for plottable in plottables:
+    headers = plottable.headers
+    # The first column must be printed out a little differently to
     # the others, since we need to separate the lines, so we set
     # the prefix to what it will be for the first line, and then whenever
     # we print one out we just set it to what the prefix should be for
     # any other line (which is to end the previous line and indent).
     for i in range (1, len(headers)):
-      header = headers[i].lstrip().rstrip()
+      header = headers[i]
       header_title = header_aliaser.get_unique_name(header)
-      if should_plot_column(arguments, header):
+      if header in plottable.columns:
         # getting the colour comes after we decide whether or not
         # we're going to actually plot the line. Otherwise we use wide
         # apart colour numbers.
         colour = colour_dictionary.get_name_colour(header)
-        line = (line_prefix + "\"" + datafile + "\"" + 
+        line = (line_prefix + "\"" + plottable.datafile + "\"" + 
                 " using 1:" +
-                str(i + 1) + " w " + line_style +
+                str(i + 1) + " w " + arguments.linestyle +
                 " lc " + str(colour) +
                 " title '" + header_title + "'")
         # If it's not currently the first line then this will simply
@@ -239,6 +285,8 @@ will plot all columns except P and Q, so E, S and R are plotted.
                       help="Set the key option in gnuplot")
   parser.add_argument('--linestyle', action='store', default="l lw 4",
                       help="Set the line style to be used with all lines")
+  parser.add_argument('--only_common', action='store_true',
+                      help="Only plot columns common to all data files")
   parser.add_argument('--column', action='append',
                       help="Specify a column to be plotted")
   parser.add_argument('--mcolumn', action='append',
