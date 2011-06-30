@@ -307,18 +307,7 @@ def create_default_individual(number, params):
   return Individual(number, individual_dictionary)
 
 
-class Optimisation:
-  """A class holding a single optimisation problem, essentially
-     this just stores the data we have gained from the files for
-     the model, parameters and the gold standard"""
-  def __init__(self, model_file, gold_standard, params):
-    self.model_file = model_file
-    self.gold_standard = gold_standard
-    self.parameters = params
-  def initialise(self):
-    """Initialise the optimisation process"""
-    pass
-  
+ 
 
 
 def update_default_parameters(params, best_citizen):
@@ -592,6 +581,19 @@ class Monitor:
     """Return the sofar recorded number of failed simulation runs"""
     return self.failed_solves
 
+
+class Optimisation:
+  """A class holding a single optimisation problem, essentially
+     this just stores the data we have gained from the files for
+     the model, parameters and the gold standard"""
+  def __init__(self, model_file, gold_standard, params):
+    self.model_file = model_file
+    self.gold_standard = gold_standard
+    self.parameters = params
+  def initialise(self):
+    """Initialise the optimisation process"""
+    pass
+ 
 class Configuration:
   """A class to store the configuration in"""
   def __init__(self, arguments, optimisation):
@@ -623,6 +625,49 @@ class Configuration:
     logging.info("Successful solves: " + str(successes))
     logging.info("Failed solves: " + str(failures))
     logging.info("Success percentage: " + str(success_percentage))
+
+  def report_on_best_params(self, best_params):
+    """Report to the log information about the best parameters found.
+       Essentially reporting on whether or not any of the parameters
+       seem too close to their range limits or if any of them have
+       not been changed from their initial values
+    """
+    class Arguments:
+      """A dummy class just to provide the required arguments to
+         the parameters.check_parameters method.
+      """
+      def __init__(self):
+        self.tolerance = 0.01
+    arguments = Arguments()
+    params = self.optimisation.parameters
+    failed_results = parameters.check_parameters(params, 
+                                                 best_params, 
+                                                 arguments)
+    # This is bad, I've basically copy and pasted this from parameters.py
+    # what I should do is have a 'report_on_parameters' in parameters.py
+    # which also using the logging module.
+    if len(failed_results) == 1:
+      logging.info ("No parameters were too close to their range limits")
+    else:
+      for fail_result in failed_results:
+        param = fail_result.param
+        if not fail_result.value:
+          logging.warning (param.name + 
+                           " is not in the best params file(s)")
+        elif fail_result.unchanged:
+          logging.warning (param.name + 
+                           " has not changed from the initial value")
+        else:  
+          logging.warning (param.name + 
+                           " is too close to its range limits")
+          logging.warning ("   high limit: " + str(param.high))
+          logging.warning ("   low  limit: " + str(param.low))
+          logging.warning ("   value     : " + str(fail_result.value))
+          logging.warning ("   too high  : " + str(fail_result.too_high))
+          logging.warning ("   too low   : " + str(fail_result.too_low))
+
+
+
   def set_solver(self, solver_name):
     """Set the solver of the configuration"""
     if solver_name == "biopepa":
@@ -806,6 +851,7 @@ def run():
   best_citizen = algorithm.run_optimisation(optimisation, configuration)
 
   configuration.report_on_solves()
+  configuration.report_on_best_params(best_citizen.dictionary)
   
   print("After: " + str(configuration.num_generations) + " generations:")
   
