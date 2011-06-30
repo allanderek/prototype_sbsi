@@ -71,12 +71,11 @@ def check_parameter(param, value, arguments):
      parameter is fine.
   """
   tolerance = arguments.tolerance
-  upper_warn = param.high - (param.high * tolerance)
-  # We should be careful, what if param.lower == 0?
-  lower_warn = param.low + (param.low * tolerance)
-  # Importantly using less than or equal to rather than just
-  # less than, because if the lower limit is zero, then the
-  # lower_warn will also be zero and hence we would never warn.
+  range_size = param.high - param.low
+  too_close  = range_size * tolerance
+  upper_warn = param.high - too_close
+  lower_warn = param.low + too_close
+
   if value <= lower_warn:
     result = FailedCheckResult(param, value)
     result.too_low = True

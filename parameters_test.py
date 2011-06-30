@@ -32,7 +32,7 @@ class TestCheckParameters(unittest.TestCase):
     p2_result = parameters.check_parameter(param_p2, 0.00001,
                                            self.arguments)
     self.assertIsNotNone(p2_result)
-    self.assertIsTrue(p2_result.too_low)
+    self.assertTrue(p2_result.too_low)
 
 if __name__ == '__main__':
   unittest.main()
