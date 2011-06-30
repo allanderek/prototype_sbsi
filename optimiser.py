@@ -789,7 +789,6 @@ def run():
 
   # I really just want to take in one file name which is a configuration
   # file which contains the others, but for now I'll do this:
-  print (arguments)
   if len(arguments.filenames) < 3:
     print ("You must provide three files:")
     print ("   the model file")
