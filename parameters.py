@@ -19,6 +19,11 @@ class Parameter:
     self.high = high
     self.mutation_probability = 0.5
     self.default_value = default_value
+    # The search algorithm may change the 'default_value', however
+    # it should never change initial_value, in this way we can check
+    # the best params eventually reached with those of the initial
+    # value settings.
+    self.initial_value = default_value
 
   def set_mutation_probability(self, mut_prob):
     """Set the mutation probability to a new value"""
@@ -71,10 +76,31 @@ def check_parameter(param, value, arguments):
      parameter is fine.
   """
   tolerance = arguments.tolerance
-  range_size = param.high - param.low
-  too_close  = range_size * tolerance
-  upper_warn = param.high - too_close
-  lower_warn = param.low + too_close
+  # The set of acceptable values is everything not too close to
+  # the lower limit and also not too close to the upper limit.
+  # However it's difficult to define 'too close', especially when
+  # the upper and lower limits might be orders of magnitude apart.
+  # So we take the range of values that are low enough, to be everything
+  # below the initial value. Then we take the difference between the
+  # initial value and the upper range and multiply that by the tolerance.
+  # So let's say 1% is the tolerance. So we warn about values chosen
+  # within the top 1% of everything between the initial value and the
+  # upper limit. We do the similar thing for the lower limit. 
+  # Notice that this means we might have different allowances for the
+  # upper and lower limits (so a value might be allowed to be closer to
+  # one than the other). This makes sense, since 1 away from 1000 is quite
+  # close, whereas 1 away from 1 is pretty far away.
+  # As an example consider:
+  # x 10.0 100.0 1.0
+  # If our tolerance is 1% then we can be as close as
+  # (10.0 - 1.0) * 0.01 = 0.09 to the lower limit 1.0
+  # but we must be at least (100.0 - 10.0) * 0.01 = 0.9 away from the
+  # upper limit 100.0, so our range of exceptable values would be:
+  # 1.09 - 99.1 not inclusive.
+  upper_range = param.high - param.initial_value
+  upper_warn  = param.high - (upper_range * tolerance)
+  lower_range = param.initial_value - param.low
+  lower_warn  = param.low + (lower_range * tolerance)
 
   if value <= lower_warn:
     result = FailedCheckResult(param, value)
@@ -172,6 +198,8 @@ def run():
         print ("   high limit: " + str(param.high))
         print ("   low  limit: " + str(param.low))
         print ("   value     : " + str(fail_result.value))
+        print ("   too high  : " + str(fail_result.too_high))
+        print ("   too low   : " + str(fail_result.too_low))
 
 if __name__ == "__main__":
   run()
