@@ -13,6 +13,7 @@ import logging
 # import configuration
 import solve_model
 import timeseries
+import parameters
 
 class MultipleCostFunctions:
   """A cost function class that does no actual costing itself but
@@ -286,37 +287,7 @@ def evaluate_individual(individual, configuration):
 
  
 
-class Parameter:
-  """The parameter class describes the description of a parameter
-     to be optimised by the framework"""
-  def __init__(self, name, default_value, low, high):
-    self.name = name
-    self.low = low
-    self.high = high
-    self.mutation_probability = 0.5
-    self.default_value = default_value
-
-  def set_mutation_probability(self, mut_prob):
-    """Set the mutation probability to a new value"""
-    self.mutation_probability = mut_prob
-
-  def should_mutate(self):
-    """Returns true if we should mutate this value of this parameter.
-       This involves choosing a random number and comparing that to
-       the mutation probability. In other words this is not something
-       intrinsic to the parameter itself."""
-    coin = random.random() 
-    return coin < self.mutation_probability
-
-  def get_value_range_size(self):
-    """Return the size of the range from the lowest to the highest
-       value in the allowed for this parameter"""
-    return self.high - self.low
-
-  def get_random_value_full_range(self):
-    """Return a random value within the full range of the parameter"""
-    return random.uniform(self.low, self.high)
-    
+   
 class Individual:
   """An individual is essentially a dictionary mapping the
      optimisable parameters to their chosen values. We also
@@ -327,11 +298,11 @@ class Individual:
     # These should be filled in when the individual is evaluated.
     self.results = None
 
-def create_default_individual(number, parameters):
+def create_default_individual(number, params):
   """Create a default individual with all parameters set to their
      default values"""
   individual_dictionary = dict()
-  for param in parameters:
+  for param in params:
     individual_dictionary[param.name] = param.default_value
   return Individual(number, individual_dictionary)
 
@@ -340,22 +311,22 @@ class Optimisation:
   """A class holding a single optimisation problem, essentially
      this just stores the data we have gained from the files for
      the model, parameters and the gold standard"""
-  def __init__(self, model_file, gold_standard, parameters):
+  def __init__(self, model_file, gold_standard, params):
     self.model_file = model_file
     self.gold_standard = gold_standard
-    self.parameters = parameters
+    self.parameters = params
   def initialise(self):
     """Initialise the optimisation process"""
     pass
   
 
 
-def update_default_parameters(parameters, best_citizen):
+def update_default_parameters(params, best_citizen):
   """When we find a new individual that has the best cost,
      we generally wish to update the parameters' default values to
      reflect the new best fit. This affects the way in which new
      values will be chosen"""
-  for param in parameters:
+  for param in params:
     param.default_value = best_citizen.dictionary[param.name]
  
 class SimulatedAnnealing:
@@ -423,7 +394,7 @@ class SimulatedAnnealing:
     new_value = random.uniform(lowest, highest)
     return new_value
 
-  def get_neighbour(self, parameters, 
+  def get_neighbour(self, params, 
                     current_individual,
                     num_evals,
                     temperature):
@@ -437,16 +408,16 @@ class SimulatedAnnealing:
     individual_dictionary = dict()
 
     # essentially copy over the entire current dictionary
-    for param in parameters:
+    for param in params:
       individual_dictionary[param.name] = current_dictionary[param.name]
 
     # Decide how many parameters we should modify,
-    num_to_change = self.get_number_to_change(len(parameters))
+    num_to_change = self.get_number_to_change(len(params))
 
     # Now we know how many parameters to change so we simply
     # select a random sample of that many parameters and change
     # them.
-    change_parameters = random.sample(parameters, num_to_change)
+    change_parameters = random.sample(params, num_to_change)
     for change_param in change_parameters:
       # Note that this does not make reference to the parameter's
       # default value, because the default value is that of the
@@ -462,9 +433,9 @@ class SimulatedAnnealing:
 
   def run_optimisation(self, optimisation, configuration):
     """Run the optimisation algorithm using simulated annealing"""
-    parameters = optimisation.parameters
+    params = optimisation.parameters
     # The initial state is the default individual
-    current_individual = create_default_individual(1, parameters)
+    current_individual = create_default_individual(1, params)
     current_cost = evaluate_individual(current_individual, 
                                        configuration)
     # The initial bests then are the default:
@@ -477,7 +448,7 @@ class SimulatedAnnealing:
   
     while num_evals < max_evals and target_cost < best_cost:
       temperature = float(num_evals)/float(max_evals)
-      new_individual = self.get_neighbour(parameters,
+      new_individual = self.get_neighbour(params,
                                           current_individual,
                                           num_evals,
                                           temperature)   
@@ -515,14 +486,14 @@ class SimplestSearch:
     self.algorithm_name = "simple"
 
   @staticmethod 
-  def create_individual(number, parameters):
+  def create_individual(number, params):
     """Create an individual with each optimisable parameter
        either kept as the current default value or given a new
        random number within the full range of that parameter"""
     individual_dictionary = dict()
     changed = 0
     logging.debug("Creating Individual: " + str(number))
-    for param in parameters:
+    for param in params:
       if param.should_mutate():
         new_value = param.get_random_value_full_range()
         individual_dictionary[param.name] = new_value
@@ -534,7 +505,7 @@ class SimplestSearch:
     # parameter, otherwise we choose one at random to change.
     if changed == 0:
       logging.debug("Zero would have been changed, forcing choice")
-      param = random.choice(parameters)
+      param = random.choice(params)
       new_value = param.get_random_value_full_range()
       individual_dictionary[param.name] = new_value
       logging.debug(param.name + " = " + str(new_value))
@@ -594,27 +565,6 @@ def get_gold_standard_timeseries(filename):
   """Open the gold standard file and parse in as a comma-separated value
      file. Obtaining a time series which is returned"""
   return timeseries.get_timecourse_from_file(filename)
-
-def get_init_param_parameters(filename):
-  """Open and parse the initial parameters file into a list of
-     optimisable parameter definitions"""
-  paramfile = open(filename, "r")
-  # This needs to be somewhat more forgiving
-  parameters = []
-  for line in paramfile:
-    columns  = line.split("\t")
-    name     = columns[0]
-    low      = float(columns[1])
-    high     = float(columns[2])
-    begin    = float(columns[3])
-    param    = Parameter(name, begin, low, high)
-    parameters.append(param)
-
-  mut_prob = 1.0 / float(len(parameters))
-  for param in parameters:
-    param.set_mutation_probability(mut_prob)
-  
-  return parameters
 
 class Monitor:
   """ A class built to monitor or more rather log the progress of
@@ -781,9 +731,9 @@ def get_optimisation_definition(filenames):
   init_param_file = filenames[2]
  
   gold_standard = get_gold_standard_timeseries(gold_standard_file)
-  parameters    = get_init_param_parameters(init_param_file) 
+  params    = parameters.get_init_param_parameters(init_param_file) 
   
-  optimisation = Optimisation(model_file, gold_standard, parameters)
+  optimisation = Optimisation(model_file, gold_standard, params)
   optimisation.initialise()
   return optimisation
 
