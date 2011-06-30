@@ -64,30 +64,60 @@ def get_init_param_parameters(filename):
   return parameters
 
 
+def check_parameter(param, value, arguments):
+  """Checks a single parameter against the value assigned to it.
+     Response with a FailedCheckResult if the parameter is too close
+     to either of the two range limits. Responds with None if the
+     parameter is fine.
+  """
+  tolerance = arguments.tolerance
+  upper_warn = param.high - (param.high * tolerance)
+  # We should be careful, what if param.lower == 0?
+  lower_warn = param.low + (param.low * tolerance)
+  # Importantly using less than or equal to rather than just
+  # less than, because if the lower limit is zero, then the
+  # lower_warn will also be zero and hence we would never warn.
+  if value <= lower_warn:
+    result = FailedCheckResult(param, value)
+    result.too_low = True
+    return result
+  # Note because we return when the value is too low, this means that
+  # the value cannot be both too high and too low, this seems like an
+  # acceptable deficiency since in that case either the tolerance is
+  # too large or the range is too small.
+  if value >= upper_warn:
+    result = FailedCheckResult(param, value)
+    result.too_high = True
+    return result
+
+class FailedCheckResult:
+  """A class for representing the result of failing a parameter check.
+     self.value should be none if the parameter is not mentioned in
+     the best params file.
+  """
+  def __init__(self, param, value):
+    self.param = param
+    # value might be none to indicate that it is not in the
+    # best parameter dictionary.
+    self.value = value
+    self.too_high = False
+    self.too_low = False
+
 def check_parameters(params, best_params, arguments):
   """Checks initial parameter set up with the final best_params
      (see check_param_files) for more
   """
-  tolerance = arguments.tolerance
+  failed_results = []
   for param in params:
     if param.name not in best_params:
-      print (param.name + " not in the best params definition") 
+      fail_result = FailedCheckResult(param, None)
+      failed_results.append(fail_result)
     else:
-      upper_warn = param.high - (param.high * tolerance)
-      # We should be careful, what if param.lower == 0?
-      lower_warn = param.low + (param.low * tolerance)
       value = best_params[param.name]
-      # Importantly using less than or equal to rather than just
-      # less than, because if the lower limit is zero, then the
-      # lower_warn will also be zero and hence we would never warn.
-      if value <= lower_warn:
-        print (param.name + " is close to the lower limit")
-        print ("   value = " + str(value))
-        print ("   limit = " + str(param.low))
-      if value >= upper_warn:
-        print (param.name + " is close to the upper limit")
-        print ("   value = " + str(value))
-        print ("   limit = " + str(param.high))
+      fail_result = check_parameter(param, value, arguments)
+      if fail_result:
+        failed_results.append(fail_result)
+  return failed_results
  
 def check_param_files(initparam_filename, 
                       bestparams_filename, 
@@ -102,7 +132,7 @@ def check_param_files(initparam_filename,
   params = get_init_param_parameters(initparam_filename)
   best_dict = dict()
   sbml_parametiser.parse_param_file(bestparams_filename, best_dict)
-  check_parameters(params, best_dict, arguments)
+  return check_parameters(params, best_dict, arguments)
   
 def run():
   """perform the banalities of command-line argument processing and
@@ -128,9 +158,21 @@ def run():
   initparams_filename = arguments.filenames[0]
   bestparams_filename = arguments.filenames[1]
 
-  check_param_files(initparams_filename, 
-                    bestparams_filename, 
-                    arguments)
+  failed_results = check_param_files(initparams_filename, 
+                                     bestparams_filename, 
+                                     arguments)
+  if len(failed_results) == 1:
+    print ("No parameters were too close to their range limits")
+  else:
+    for fail_result in failed_results:
+      param = fail_result.param
+      if fail_result.value:
+        print (param.name + " is not in the best params file(s)")
+      else:  
+        print (param.name + " is too close to its range limits")
+        print ("   high limit: " + str(param.high))
+        print ("   low  limit: " + str(param.low))
+        print ("   value     : " + str(fail_result.value))
 
 if __name__ == "__main__":
   run()
