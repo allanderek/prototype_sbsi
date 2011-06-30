@@ -115,6 +115,18 @@ def check_parameter(param, value, arguments):
     result.too_high = True
     return result
 
+  # Finally we check if a value is unchanged from its initial value
+  # this is not so much to be considered a failure, since it might simply
+  # be that the default value is one found in the literature and it
+  # happens to be quite on the money.
+  if value == param.initial_value:
+    result = FailedCheckResult(param, value)
+    result.unchanged = True
+    return result
+
+  # If everything is okay we return the None.
+  return None
+
 class FailedCheckResult:
   """A class for representing the result of failing a parameter check.
      self.value should be none if the parameter is not mentioned in
@@ -127,6 +139,7 @@ class FailedCheckResult:
     self.value = value
     self.too_high = False
     self.too_low = False
+    self.unchanged = False
 
 def check_parameters(params, best_params, arguments):
   """Checks initial parameter set up with the final best_params
@@ -193,6 +206,8 @@ def run():
       param = fail_result.param
       if not fail_result.value:
         print (param.name + " is not in the best params file(s)")
+      elif fail_result.unchanged:
+        print (param.name + " has not changed from the initial value")
       else:  
         print (param.name + " is too close to its range limits")
         print ("   high limit: " + str(param.high))
