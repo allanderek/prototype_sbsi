@@ -22,26 +22,60 @@ class SbmlCvodeSolver:
   """A solver which uses translation of the sbml into a
      C program which, first reads in the parameter overrides
      and then calls the Sundials-cvodes solver to obtain
-     the results."""
+     the results. Additionally this also accepts as input a biopepa
+     file, in which case we will first run the command to export the
+     biopepa file to an SBML file.
+  """
   def __init__(self, model_file, cflags_prefix):
     self.model_file = model_file
     self.model_exec = "model.exe"
     self.param_filename = os.path.join("UserModel", "param_overrides")
     self.cflags_prefix = cflags_prefix
 
+  def convert_biopepa(self):
+    """Perform the conversion from biopepa to sbml if necessary """
+    basename, extension = os.path.splitext(self.model_file)
+    if extension == ".biopepa":
+      new_model_file = basename + ".xml"
+      biopepa_command = [ "java",
+                          "-jar",
+                          "biopepa.jar",
+                          "export-sbml",
+                          self.model_file,
+                          "--output-file",
+                          new_model_file,
+                          "--no-warnings", 
+                        ]
+      biopepa_process = Popen(biopepa_command)
+      biopepa_process.communicate()
+      if biopepa_process.returncode != 0:
+        logging.error("biopepa conversion to xml failed, command was:")
+        logging.error(biopepa_command)
+      self.model_file = new_model_file
+ 
   # This should actually check if the model file is newer than
   # the model executable and if not then we needn't recompile it.
   def initialise_solver(self):
     """Initialise the sbml solver, for this we require the translation
        of the SBML model into a C program, and the compilation of that
-       C program."""
+       C program. Additionally if the model is a biopepa model file,
+       then we must convert the biopepa into xml first.
+    """
+    self.convert_biopepa()
+     
     sbml2c_command = [ "SBML2C", self.model_file]
     sbml2c_process = Popen(sbml2c_command)
     sbml2c_process.communicate()
+
     if sbml2c_process.returncode != 0:
       logging.error ("SBML2C command has failed")
       sys.exit(1)
  
+    # Obtain the directory in which the model file is, this is
+    # necessary since we assume other files such as the main_RHS_Model.C
+    # file are in the same directory.
+    model_dir = os.path.dirname(self.model_file)
+
     base_include = os.path.join(self.cflags_prefix, "include") 
     include_flags = [ "-I" + base_include,
                       "-I" + os.path.join(base_include, "libxml2"),
@@ -50,18 +84,24 @@ class SbmlCvodeSolver:
     lib_flags = [ "-L" + os.path.join(self.cflags_prefix, "lib") ]
     extra_flags = [ "-DWL=32", "-DNO_UCF", ] 
     c_compiler = "mpic++"
-    first_c_command = [ c_compiler, "-o", "main_RHS_Model.o",
-                        "-c", "main_RHS_Model.C"
+
+    first_c_command = [ c_compiler, "-o", 
+                        os.path.join(model_dir, "main_RHS_Model.o"),
+                        "-c",
+                        os.path.join(model_dir, "main_RHS_Model.C"),
                       ] + include_flags + lib_flags + extra_flags
     first_c_process = Popen(first_c_command)
     first_c_process.communicate()
+
     if first_c_process.returncode != 0:
       logging.error ("Failed to compile main_RHS_Model.C: ")
       logging.error (" ".join(first_c_command))
       sys.exit(1)
 
-    snd_c_command = [ c_compiler, "-o", "UserModel/UserModel.o",
-                      "-c", "UserModel/UserModel.C"
+    snd_c_command = [ c_compiler, "-o",
+                      os.path.join(model_dir, "UserModel/UserModel.o"),
+                      "-c",
+                      os.path.join(model_dir, "UserModel/UserModel.C"),
                     ] + include_flags + lib_flags + extra_flags
     snd_c_process = Popen(snd_c_command)
     snd_c_process.communicate()
@@ -70,8 +110,10 @@ class SbmlCvodeSolver:
       logging.error (" ".join(snd_c_command))
       sys.exit(1)
 
+    self.model_exec = os.path.join(model_dir, self.model_exec)
     trd_c_command = [ c_compiler, "-o", self.model_exec,
-                      "./main_RHS_Model.o", "UserModel/UserModel.o",
+                      os.path.join(model_dir, "main_RHS_Model.o"),
+                      os.path.join(model_dir, "UserModel/UserModel.o"),
                       "-lsbsi_numeric", "-lsbml", "-lpgapack",
                       "-lfftw3", "-lsundials_kinsol",
                       "-lsundials_nvecserial", "-lsundials_cvode",
@@ -111,7 +153,8 @@ class SbmlCvodeSolver:
     # We have updated this with the user of subprocess, but I'm leaving
     # it in for now since it seems quite robust, but it would certainly
     # be a slight optimistation to avoid doing this.
-    results_file_prefix = "model"
+    model_dir = os.path.dirname(self.model_exec)
+    results_file_prefix = os.path.join(model_dir, "model")
     results_file = results_file_prefix + "_RHS.dat"
     if os.path.exists(results_file):
       os.remove(results_file)
@@ -235,15 +278,47 @@ class BioPEPASolver:
 
     return timecourse
 
+def initialise_logger(arguments):
+  """Initialise the logging system, depending on the arguments
+     which may set the log level and a log file"""
+  log_level = arguments.loglevel
+  if log_level:
+    numeric_level = getattr(logging, log_level.upper(), None)
+    if not isinstance(numeric_level, int):
+      print ("The log level must be one of the following:")
+      print ("    debug, info, warning, error, critical")
+      print ("Exiting")
+      sys.exit(1) 
+  else:
+    numeric_level = logging.INFO
+
+  # We could also change the format of the logging messages to
+  # something like: format='%(levelname)s:%(message)s'
+
+  log_file = arguments.logfile
+  if log_file:
+    logging.basicConfig(filename=log_file, level=numeric_level)
+  else:
+    logging.basicConfig(level=numeric_level)
+
 
 def create_arguments_parser(add_help):
   """Create the command-line arguments parser"""
   description = "Solve a single model one single time"
   parser = argparse.ArgumentParser(add_help=add_help, 
                                    description=description)
+
+  parser.add_argument('--solver', action='store',
+                      choices=["cvodes", "biopepa"],
+                      help="Set the solver for numerical analysis")
+
   parser.add_argument('--start_time', action='store',
                       type=float, default=0.0,
                       help="Set the initial time of the numerical analysis")
+  # Stop time cannot have a default value since the optimiser would
+  # assume that the user has explictly set the stop time. We don't want
+  # this because the optimiser should use the last data point as the
+  # stop_time unless this is overridden by the user.
   parser.add_argument('--stop_time', action='store',
                       type=float, # default=1.0,
                       help="Set the stop time of the numerical analysis")
@@ -262,7 +337,43 @@ def create_arguments_parser(add_help):
   parser.add_argument('--max_times', action='store',
                       type=int, default=10000000000,
                       help="Set the maximum number of computed times")
+  log_choices = [ "info", "warning", "error", "critical", "debug" ]
+  parser.add_argument('--loglevel', action='store',
+                      choices=log_choices, default='info',
+                      help="Set the level of the logger")
+  parser.add_argument('--logfile', action='store',
+                      help="The file to output the log to")
   return parser
+
+
+def get_solver(filename, arguments):
+  """Return the solver to be used based on the --solver flag given
+     or, if that is not around, then the extension of the model file"""
+  solver_name = arguments.solver
+  if not solver_name:
+    extension = os.path.splitext(filename)[1]
+    if extension == ".xml" or extension == ".sbml":
+      solver_name = "cvodes"
+    elif extension == ".biopepa":
+      solver_name = "biopepa"
+    else:
+      logging.error ("Unknown filetype, should be: .xml, .sbml or .biopepa")
+      sys.exit(1)
+ 
+  if solver_name == "cvodes":
+    # Clearly this bit should not be so specific to me.
+    home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
+    cflags_prefix = os.path.join (home_dir,
+                                  "Source/svn-git-sbsi/install/")
+    solver = SbmlCvodeSolver(filename, cflags_prefix)
+    return solver
+  elif solver_name == "biopepa":
+    biopepajar = "biopepa.jar"
+    solver = BioPEPASolver(filename, biopepajar)
+    return solver
+  else:
+    logging.error("Unknown solver name: " + solver_name)
+    sys.exit(1)
 
 def run():
   """Perform the banalities of command line processing then get on
@@ -272,30 +383,19 @@ def run():
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to solve numerically")
   arguments = parser.parse_args()
-  # stop_time cannot have a default because the optimiser will assume
-  # that the user has explictly set the stop_time when in fact it has
-  # just assumed the default time. So instead we check if it has been
+  # stop_time cannot have a default because the optimiser needs to know
+  # if the user has explicitly set the stop time or not, see the
+  # add_argument call for 'stop_time' in create_arguments_parser.
+  # So instead of a default value we check if it has been
   # set and if not we set it:
   if not arguments.stop_time:
     arguments.stop_time = 1.0
-  
 
+  initialise_logger(arguments)
   configuration = arguments
 
   for filename in arguments.filenames:
-    extension = os.path.splitext(filename)[1]
-    if extension == ".xml" or extension == ".sbml":
-      home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
-      cflags_prefix = os.path.join (home_dir,
-                                    "Source/svn-git-sbsi/install/")
-      solver = SbmlCvodeSolver(filename, cflags_prefix)
-    elif extension == ".biopepa":
-      biopepajar = "biopepa.jar"
-      solver = BioPEPASolver(filename, biopepajar)
-    else:
-      print ("Error: unknown filetype, should be: .xml, .sbml or .biopepa")
-      sys.exit(1)
-
+    solver = get_solver(filename, arguments)
     solver.initialise_solver()
     timecourse = solver.solve_model(configuration)
     if timecourse:

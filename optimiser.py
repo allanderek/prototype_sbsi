@@ -3,8 +3,6 @@ This is a prototype of a new version of the sbsi optimisation
 framework. The idea being that we are less coupled within the code
 such that we combining together many smaller applications.
 """
-
-import os
 import sys
 import argparse
 import random
@@ -307,9 +305,6 @@ def create_default_individual(number, params):
   return Individual(number, individual_dictionary)
 
 
- 
-
-
 def update_default_parameters(params, best_citizen):
   """When we find a new individual that has the best cost,
      we generally wish to update the parameters' default values to
@@ -603,12 +598,9 @@ class Configuration:
 
     if not arguments.stop_time:
       arguments.stop_time = optimisation.gold_standard.get_final_time()
-    self.solver_config = arguments
 
-    home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
-    cflags_prefix = os.path.join (home_dir, "Source/svn-git-sbsi/install/")
-    model_file = optimisation.model_file
-    self.solver = solve_model.SbmlCvodeSolver(model_file, cflags_prefix)
+    self.solver_config = arguments
+    self.solver = solve_model.get_solver(optimisation.model_file, arguments)
 
     self.search_algorithm = SimplestSearch()
     self.target_cost = 0
@@ -665,20 +657,6 @@ class Configuration:
           logging.warning ("   value     : " + str(fail_result.value))
           logging.warning ("   too high  : " + str(fail_result.too_high))
           logging.warning ("   too low   : " + str(fail_result.too_low))
-
-
-
-  def set_solver(self, solver_name):
-    """Set the solver of the configuration"""
-    if solver_name == "biopepa":
-      model_file = self.optimisation.model_file
-      biopepajar = "biopepa.jar"
-      self.solver = solve_model.BioPEPASolver(model_file, biopepajar)
-    else:
-      print("Unrecognised solver name: " + solver_name)
-      print("Please choose from: biopepa")
-      print("Or nothing for the default sbml cvode solver")
-      sys.exit(1)
 
   def set_search_agorithm(self, algorithm):
     """Set the search algorithm of the configuration"""
@@ -738,34 +716,8 @@ def get_configuration(arguments, optimisation):
 
   configuration.set_cost_function(arguments.cost_function,
                                   optimisation.gold_standard)
-  if arguments.solver:
-    configuration.set_solver(arguments.solver)
  
   return configuration
-
-def initialise_logger(arguments):
-  """Initialise the logging system, depending on the arguments
-     which may set the log level and a log file"""
-  log_level = arguments.loglevel
-  if log_level:
-    numeric_level = getattr(logging, log_level.upper(), None)
-    if not isinstance(numeric_level, int):
-      print ("The log level must be one of the following:")
-      print ("    debug, info, warning, error, critical")
-      print ("Exiting")
-      sys.exit(1) 
-  else:
-    numeric_level = logging.INFO
-
-  # We could also change the format of the logging messages to
-  # something like: format='%(levelname)s:%(message)s'
-
-  log_file = arguments.logfile
-  if log_file:
-    logging.basicConfig(filename=log_file, level=numeric_level)
-  else:
-    logging.basicConfig(level=numeric_level)
-
 
 
 def get_optimisation_definition(filenames):
@@ -795,16 +747,7 @@ def create_arguments_parser(add_help):
                                    description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-     help="The input files: model gold_standard initparams")
-  parser.add_argument('--logfile', action='store',
-    help="The file to output the log to")
-  log_choices = [ "info", "warning", "error", "critical", "debug" ]
-  parser.add_argument('--loglevel', action='store',
-                      choices=log_choices, default='info',
-    help="Set the level of the logger")
-  parser.add_argument('--solver', action='store',
-                      choices=["biopepa"],
-    help="Set the solver for numerical analysis of individuals")
+    help="The input files: model gold_standard initparams")
   cost_function_choices = ["x2", "fft", "special", "circad" ]
   parser.add_argument('--cost_function', action='append',
                       choices=cost_function_choices, 
@@ -844,7 +787,7 @@ def run():
   optimisation = get_optimisation_definition(arguments.filenames)
 
   configuration = get_configuration(arguments, optimisation)
-  initialise_logger(arguments)
+  solve_model.initialise_logger(arguments)
   configuration.solver.initialise_solver()
 
   algorithm = configuration.search_algorithm
@@ -879,6 +822,4 @@ def run():
 if __name__ == "__main__":
   random.seed()
   run()
-
-
 
