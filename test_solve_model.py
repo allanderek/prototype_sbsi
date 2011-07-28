@@ -11,8 +11,7 @@ class Arguments:
 
 
 class TestCheckSolveModel(unittest.TestCase):
-  """ A class designed to test the  function of
-      the parameters module
+  """ A class designed to test the  function of solve_model module
   """
   # Okay we can't do much about the unittest.TestCase having
   # some 45 public methods.k

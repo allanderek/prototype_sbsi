@@ -303,7 +303,11 @@ def initialise_logger(arguments):
 
 
 def create_arguments_parser(add_help):
-  """Create the command-line arguments parser"""
+  """Create the command-line arguments parser, takes in a single argument
+     which is true if the created parser should add the --help flag. This
+     should essentially only be true for a command that does not wish
+     to add this parser as a parent parser (ie. if you do not wish to add
+     further arguments)"""
   description = "Solve a single model one single time"
   parser = argparse.ArgumentParser(add_help=add_help, 
                                    description=description)
