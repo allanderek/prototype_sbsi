@@ -29,9 +29,13 @@ class Reaction:
   """A class which represents a reaction"""
   def __init__(self, name):
     """initialise a reaction which has no reactants or products
-       these may in turn be added with 'add_reactant' and 'add_product'"""
+       these may in turn be added with 'add_reactant' and 'add_product'
+       Similarly there are initially no modifiers which can be added with
+       'add_modifier'
+    """
     self.reactants = []
     self.products = []
+    self.modifiers = []
     self.name = name
 
   def get_name(self):
@@ -45,6 +49,10 @@ class Reaction:
   def add_product(self, product):
     """add a product to the reaction"""
     self.products.append(product)
+
+  def add_modifier(self, modifier):
+    """Add a modifier to the reaction"""
+    self.modifiers.append(modifier)
 
   def get_reactants(self):
     """return the list of reactant names"""
@@ -77,6 +85,15 @@ class Reaction:
       # hence, every reactant other than the first will have ", "
       # prefixed to the front of it, separating it from the previous one
       prefix = ", "
+
+    for modifier in self.modifiers:
+      results += prefix
+      results += "(.)" + modifier.get_name()
+      # Same trick as above, we still play it here because there may be
+      # no reactants so this might still be the first to set the prefix
+      # and hence it might still be empty.
+      prefix = ", "
+
     results += " --> "
     prefix = ""
     for product in self.products:
@@ -89,7 +106,9 @@ class Reaction:
 
 def name_of_species_reference(spec_ref):
   """Return the name of the species referred to within a
-     speciesReference sbml element"""
+     speciesReference sbml element. This is also used for 
+     the modifierSpeciesReference elements
+  """
   name = spec_ref.getAttribute("species")
   return name
 
@@ -113,6 +132,16 @@ def get_reaction_of_element(reaction_element):
                                              reaction_element)
   for product in products:
     reaction.add_product(ReactionParticipant(product))
+
+
+  # And also for the modifiers
+  modifiers = get_elements_from_lists_of_list("listOfModifiers",
+                                             "modifierSpeciesReference",
+                                             name_of_species_reference,
+                                             reaction_element)
+  for modifier in modifiers:
+    reaction.add_modifier(ReactionParticipant(modifier))
+
 
   return reaction
    
