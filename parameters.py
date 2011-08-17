@@ -24,6 +24,11 @@ class Parameter:
     # the best params eventually reached with those of the initial
     # value settings.
     self.initial_value = default_value
+    # If we are doing a structured experiment then we will need a
+    # step size, this will by default be one tenth of the range from
+    # low to high value. But can be overridden by a 5th column in the
+    # init params file.
+    self.step_size = (high - low) / 10.0
 
   def set_mutation_probability(self, mut_prob):
     """Set the mutation probability to a new value"""
@@ -54,13 +59,22 @@ def get_init_param_parameters(filename):
   parameters = []
   for line in paramfile:
     columns  = line.split("\t")
+    # You can have an empty line or one which has no column data
+    if len(columns) < 2:
+      continue
     name     = columns[0]
     low      = float(columns[1])
     high     = float(columns[2])
     begin    = float(columns[3])
     param    = Parameter(name, begin, low, high)
-    parameters.append(param)
 
+    # The fifth column is optional so we only interpret if it is there.
+    if len(columns) >= 5:
+      param.step_size = float(columns[4])
+
+    # Add this parameter to the list of returned parameters
+    parameters.append(param)
+ 
   mut_prob = 1.0 / float(len(parameters))
   for param in parameters:
     param.set_mutation_probability(mut_prob)

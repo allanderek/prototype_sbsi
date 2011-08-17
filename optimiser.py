@@ -5,6 +5,7 @@ such that we combining together many smaller applications.
 """
 import sys
 import argparse
+import os.path
 import random
 import math
 import logging
@@ -12,6 +13,8 @@ import logging
 import solve_model
 import timeseries
 import parameters
+import utils
+import shutil
 
 class MultipleCostFunctions:
   """A cost function class that does no actual costing itself but
@@ -296,6 +299,15 @@ class Individual:
     # These should be filled in when the individual is evaluated.
     self.results = None
 
+  def defined_parameter_names(self):
+    """Return the parameter names held within the
+       individual's dictionary"""
+    return self.dictionary.keys()
+
+  def get_param_value(self, name):
+    """Returns the value of a parameter within this individual"""
+    return self.dictionary[name] 
+
 def create_default_individual(number, params):
   """Create a default individual with all parameters set to their
      default values"""
@@ -450,7 +462,7 @@ class SimulatedAnnealing:
         best_cost = new_cost
 
     logging.info("Best cost = " + str(best_cost))
-    return best_individual
+    return OptimiserResults(best_individual, best_cost)
     
     
 class SimplestSearch:
@@ -503,7 +515,14 @@ class SimplestSearch:
        individuals and select the best. We return the best citizen
        and its cost"""
     generation = []
-    for i in range (0, configuration.population_size):
+    # Now if the user has specified the population size then
+    # we respect that, otherwise we take a default equal to the
+    # number of parameters we are trying to optimise for.
+    if configuration.population_size != None:
+      population_size = configuration.population_size
+    else:
+      population_size = len(optimisation.parameters)
+    for i in range (0, population_size):
       individual = self.create_individual(i, optimisation.parameters)
       generation.append(individual)
 
@@ -541,9 +560,94 @@ class SimplestSearch:
       if this_cost < lowest_cost:
         lowest_cost = this_cost
         best_citizen = this_mayor
-    return best_citizen
+    return OptimiserResults (best_citizen, lowest_cost)
 
 
+class StructuredExperiment:
+  """Instead of running an optimisation in order to attempt to find
+     the 'best' citizen we instead run a grid of experiments and
+     report all the results. (We could also return the best_citizen).
+  """
+  def __init__(self):
+    self.algorithm_name = "experiment"
+    # We keep a count of how many individuals we have evaluated.
+    self.num_individuals = 0
+    # The results database will map from 'individuals' to results
+    # where results is an evaluation, that is a score/cost.
+    self.results_database = dict()
+
+  # The standard library insists that 'range' arguments are integers.
+  # This somewhat makes sense because of the rounding issues with floats.
+  # Should range(0.0,2.2,1.1) return [0.0,1.1] or [0.0,1.1,2.199999999]?
+  # There's no way to be certain. But since we really want this behaviour
+  # we just write our own range function.
+  @staticmethod
+  def float_range(start, stop, step):
+    value = start
+    while True:
+      if value >= stop:
+        return
+      yield value
+      value += step
+  # range parameter is a recursive function which must range over
+  # the curent parameters range, plus recursively range over all
+  # other parameters.
+
+  def range_parameter(self, ind_dict, params, configuration):
+    # Nothing to do if the list of parameters is empty
+    if not params:
+      return
+    param = params[0]
+    other_params = params[1:]
+    values = self.float_range(param.low, param.high, param.step_size)
+    if other_params:
+      for value in values:
+        # Note that I don't actually need to copy the dictionary
+        # I only need to do that for the leaf nodes.
+        this_ind_dict = ind_dict # ind_dict.copy()
+        this_ind_dict[param.name] = value
+        self.range_parameter(this_ind_dict, other_params, configuration)
+    else:
+      for value in values:
+        this_ind_dict = ind_dict.copy()
+        this_ind_dict[param.name] = value
+        self.num_individuals += 1
+        individual = Individual(self.num_individuals, this_ind_dict)
+        cost = evaluate_individual(individual, configuration)
+        # This has a bit of a bad code smell to it, I'm comparing
+        # against a value used to indicate that no timeseries was
+        # obtained (probably because the solver failed)
+        if cost != sys.maxint:
+          self.results_database[individual] = cost
+  
+      
+
+  def run_optimisation(self, optimisation, configuration):
+    results_filename = "results_db.csv"
+    self.range_parameter(dict(), optimisation.parameters, configuration)
+    results_file = open (results_filename,  "w")
+    write_results_database_file(self.results_database, results_file)
+    results_file.close()
+    return ExperimentResults(results_filename)
+
+def write_results_database_file(results_db, results_file):
+  """Format the results database and write to file"""
+  # This depends on all of the individuals' having the same parameter
+  # names in their dictionaries.
+  result_items = results_db.items()
+  first_ind = result_items[0][0]
+
+  first_columns = first_ind.defined_parameter_names()
+  results_file.write("# cost") 
+  for name in first_columns:
+    results_file.write(", " + name)
+  results_file.write("\n")
+  for individual, cost in result_items:
+    results_file.write(str(cost))
+    for name in first_columns:
+      results_file.write(", " + str(individual.get_param_value(name)))
+    results_file.write("\n")
+ 
 
 def get_gold_standard_timeseries(filename):
   """Open the gold standard file and parse in as a comma-separated value
@@ -581,10 +685,13 @@ class Optimisation:
   """A class holding a single optimisation problem, essentially
      this just stores the data we have gained from the files for
      the model, parameters and the gold standard"""
-  def __init__(self, model_file, gold_standard, params):
+  def __init__(self, model_file, gold_standard_file, params_file):
     self.model_file = model_file
-    self.gold_standard = gold_standard
-    self.parameters = params
+    self.gold_standard_file = gold_standard_file
+    self.gold_standard = get_gold_standard_timeseries(gold_standard_file)
+    self.params_file = params_file
+    self.parameters = parameters.get_init_param_parameters(params_file)
+
   def initialise(self):
     """Initialise the optimisation process"""
     pass
@@ -594,7 +701,7 @@ class Configuration:
   def __init__(self, arguments, optimisation):
     self.optimisation = optimisation
     self.num_generations = 5
-    self.population_size = 5
+    self.population_size = "default"
 
     if not arguments.stop_time:
       arguments.stop_time = optimisation.gold_standard.get_final_time()
@@ -667,6 +774,8 @@ class Configuration:
       self.search_algorithm = SimplestSearch()
     elif algorithm == "sa" :
       self.search_algorithm = SimulatedAnnealing()
+    elif algorithm == "experiment":
+      self.search_algorithm = StructuredExperiment()
     # elif pga, particleswarm
     else:
       print ("Unrecognised algorithm name: " + algorithm)
@@ -725,12 +834,9 @@ def get_optimisation_definition(filenames):
      filenames given in the command line arguments"""
   model_file = filenames[0]
   gold_standard_file = filenames[1]
-  init_param_file = filenames[2]
- 
-  gold_standard = get_gold_standard_timeseries(gold_standard_file)
-  params    = parameters.get_init_param_parameters(init_param_file) 
+  params_file = filenames[2]
   
-  optimisation = Optimisation(model_file, gold_standard, params)
+  optimisation = Optimisation(model_file, gold_standard_file, params_file)
   optimisation.initialise()
   return optimisation
 
@@ -759,15 +865,81 @@ def create_arguments_parser(add_help):
                       type=int, default=10,
     help="Set the number of generations to evolve")
   parser.add_argument('--population', action='store',
-                      type=int, default=5,
+                      type=int, # no default, None signals default
     help="Set the population size of each generation")
-  algorithm_choices = ["sa", "simple"]
+  algorithm_choices = ["sa", "simple", "experiment"]
   parser.add_argument('--algorithm', action='store',
                       choices=algorithm_choices, default="simple",
     help="Select the genetic algorithm to deploy")
+  parser.add_argument('--results_dir', action='store',
+    help="Select a directory in which to store the results")
+               
  
   return parser
- 
+
+
+class OptimiserResults:
+  def __init__(self, best_citizen, best_cost):
+    self.best_citizen = best_citizen
+    self.best_cost = best_cost
+
+  def report_results(self, configuration, results_dir):
+    optimisation = configuration.optimisation
+    configuration.report_on_best_params(self.best_citizen.dictionary)
+    
+    print("After: " + str(configuration.num_generations) + " generations:")
+
+    if not results_dir:
+      results_dir = utils.get_new_directory("results")
+  
+    best_params_base = "best_params" 
+    best_parameters_fname = os.path.join(results_dir, best_params_base)
+    best_parameters_file = open(best_parameters_fname, "w") 
+    for param in optimisation.parameters:
+      value = self.best_citizen.dictionary[param.name]
+      line = param.name + ": " + str(value)
+      print (line)
+      best_parameters_file.write(line)
+      best_parameters_file.write("\n")
+
+    best_parameters_file.close()
+
+    best_cost_fname = os.path.join(results_dir, "best_cost")
+    best_cost_file = open(best_cost_fname, "w")
+    best_cost_file.write(str(self.best_cost))
+    best_cost_file.close()
+
+    if self.best_citizen.results:
+      basename = "best_timeseries.csv"
+      best_timeseries_fname = os.path.join(results_dir, basename)
+      best_timeseries_file = open(best_timeseries_fname, "w")
+      best_timeseries = self.best_citizen.results
+      best_timeseries.write_to_file(best_timeseries_file)
+      best_timeseries_file.close()
+      print ("Best timeseries written to file: " + best_timeseries_fname)
+    else:
+      print ("No best time series")
+
+
+class ExperimentResults:
+  def __init__(self, results_file):
+    self.results_file = results_file
+
+  def report_results(self, configuration, results_dir):
+    print ("Results data base written to: " + self.results_file)
+    self.bundle_result(configuration, results_dir)
+
+  def bundle_result(self, configuration, results_directory):
+    if not results_directory:
+      results_directory = utils.get_new_directory("results")
+    shutil.copy2(self.results_file, results_directory)
+    optimisation = configuration.optimisation
+    shutil.copy2(optimisation.model_file, results_directory)
+    shutil.copy2(optimisation.gold_standard_file, results_directory)
+    shutil.copy2(optimisation.params_file, results_directory)
+    print ("Find the results in: " + results_directory)
+   
+
 def run():
   """Process all the command line arguments and get going with the
      optimisation""" 
@@ -791,33 +963,10 @@ def run():
   configuration.solver.initialise_solver()
 
   algorithm = configuration.search_algorithm
-  best_citizen = algorithm.run_optimisation(optimisation, configuration)
+  results = algorithm.run_optimisation(optimisation, configuration)
 
   configuration.report_on_solves()
-  configuration.report_on_best_params(best_citizen.dictionary)
-  
-  print("After: " + str(configuration.num_generations) + " generations:")
-  
-  best_parameters_fname = "best_params"
-  best_parameters_file = open(best_parameters_fname, "w") 
-  for param in optimisation.parameters:
-    line = param.name + ": " + str(best_citizen.dictionary[param.name])
-    print (line)
-    best_parameters_file.write(line)
-    best_parameters_file.write("\n")
-
-  best_parameters_file.close()
-
-  if best_citizen.results:
-    best_timeseries_fname = "best_timeseries.csv"
-    best_timeseries_file = open(best_timeseries_fname, "w")
-    best_timeseries = best_citizen.results
-    best_timeseries.write_to_file(best_timeseries_file)
-    best_timeseries_file.close()
-    print ("Best timeseries written to file: " + best_timeseries_fname)
-  else:
-    print ("No best time series")
-
+  results.report_results(configuration, arguments.results_dir) 
 
 if __name__ == "__main__":
   random.seed()

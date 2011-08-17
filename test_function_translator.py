@@ -23,10 +23,8 @@ class TestCheckFunctionTranslator(unittest.TestCase):
 
   def test_check_function_parser(self):
     """Simply check the parsing of a function definition file"""
-    my_source = """
-        f a b = a + b;
-        g x y = x + f(x,y);
-        """
+    my_source = """f a b = a + b ; g x y = x + y ;
+                """
     parse_results = function_translator.parse_function_list(my_source)
 
     expected_number_fund_defs = 2

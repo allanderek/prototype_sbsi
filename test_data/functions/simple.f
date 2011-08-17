@@ -1,1 +1,1 @@
-f a b = a + a ;
+f a b = a + a;

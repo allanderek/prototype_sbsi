@@ -8,3 +8,15 @@ def change_filename_ext(filename, new_ext):
   basename = os.path.splitext(filename)[0]
   return basename + new_ext
  
+def get_new_directory(desired_name):
+  """Returns a newly created directory with the desired name. If that
+     directory already exists it appends a number on to the name"""
+  dir_name = desired_name
+  number = 0
+  while os.path.exists(dir_name):
+    number += 1
+    dir_name = desired_name + "_" + str(number)  
+    
+  # create directory and return path
+  os.makedirs(dir_name)
+  return dir_name
