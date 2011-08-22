@@ -130,6 +130,9 @@ def get_candidate_indexes(gold_ts, candidate_ts):
       if candidate_column == gold_column:
         candidate_indexes.append(j)
         break
+    else:
+      print ("gold column: " + gold_column + "not found in candidate ts")
+      raise StandardError
   return candidate_indexes
 
 
@@ -248,45 +251,72 @@ class X2cost:
 
       # Now that we've found the best row, we should compare the 
       # two rows. We go from '1' because we are skipping over 'time'
+      assert (len(gold_row) <= len(candidate_indexes))
       for i in range(1, len(gold_row)):
         gold_value      = gold_row[i]
         c_index = candidate_indexes[i]
         candidate_value = best_row[c_index]
         diff = gold_value - candidate_value
         cost += diff * diff
-    return cost
+    number_of_data_points = gold_ts.number_of_data_points()
+    normalised = cost / number_of_data_points
+    return normalised
 
 
+class Results:
+  def __init__(self, model_data, timecourse):
+    self.timecourse = timecourse
+    self.model_data = model_data
 
+  def results_filename (self):
+    """Return a suitable filename for the results contained here in"""
+    model_file = self.model_data.model_file
+    basename = os.path.basename(model_file)
+    result_filename = utils.change_filename_ext(basename, ".csv")
+    return result_filename
+
+  def write_to_file(self, csvfile):
+    """Writes the time course results to the given csv file,
+       note that the file should already be open for writing"""
+    if self.timecourse:
+      self.timecourse.write_to_file(csvfile)
+
+# It still seems strange that this method is orphanless in the 
+# middle of the optimiser, perhaps it should go in ModelData?
 def evaluate_individual(individual, configuration):
   """Evaluate an individual by first parameterising the model
      and then numerically evaluating it to produce a time series.
      Finally we run the configuration's cost function over the
      produced results"""
-  solver = configuration.solver
-  solver.parameterise_model(individual.dictionary)
-  timecourse = solver.solve_model(configuration.solver_config)
-  individual.results = timecourse
+  optimisation = configuration.optimisation
+  individual.results = []
+  total_cost = 0
+  for model_data in optimisation.model_datas:
+    solver = model_data.solver
+    solver.parameterise_model(individual.dictionary)
+    timecourse = solver.solve_model(model_data.solver_config)
+    result = Results(model_data, timecourse)
+    individual.results.append(result)
 
-  # So if solving the model didn't actually work then return
-  # the maximum integer as the cost, this will just mean that this
-  # parameterisation will be ignore with respect to the search for
-  # good values. There isn't an awful lot else that we can do.
-  if timecourse == None:
-    configuration.monitor.increase_failed_solves()
-    return sys.maxint
-  else:
-    configuration.monitor.increase_success_solves()
+    # So if solving the model didn't actually work then return
+    # the maximum integer as the cost, this will just mean that this
+    # parameterisation will be ignore with respect to the search for
+    # good values. There isn't an awful lot else that we can do.
+    if timecourse == None:
+      configuration.monitor.increase_failed_solves()
+      return sys.maxint
+    else:
+      configuration.monitor.increase_success_solves()
 
-  # If we really did get a timeseries then use the configuration's
-  # cost function to obtain the cost for this set of parameters
-  cost_function = configuration.cost_function
-  cost = cost_function.compare_timeseries(timecourse)
+    # If we really did get a timeseries then use the configuration's
+    # cost function to obtain the cost for this set of parameters
+    cost_function = model_data.cost_function
+    cost = cost_function.compare_timeseries(timecourse)
+    total_cost += cost
+
   logging.info("Individual " + str(individual.number) +
-               " Cost: " + str(cost))
+               " Cost: " + str(total_cost))
   return cost
-
- 
 
    
 class Individual:
@@ -297,7 +327,7 @@ class Individual:
     self.number = number
     self.dictionary = dictionary
     # These should be filled in when the individual is evaluated.
-    self.results = None
+    self.results = []
 
   def defined_parameter_names(self):
     """Return the parameter names held within the
@@ -681,33 +711,92 @@ class Monitor:
     return self.failed_solves
 
 
+class ModelData:
+  """A class holding the experimental data for the given model.
+     Essentially this just olds a model file and a gold standard file"""
+  def __init__(self, model_file, gold_standard_file, arguments):
+    self.model_file = model_file
+    self.gold_standard_file = gold_standard_file
+    self.gold_standard = get_gold_standard_timeseries(gold_standard_file)
+    self.solver_config = arguments
+    self.solver = solve_model.get_solver(model_file, arguments)
+    self.cost_function = None
+
+  def initialise_solver(self):
+    """Initialise the solver associated with the model data"""
+    self.solver.initialise_solver()
+
+  @staticmethod
+  def cost_function_of_name(function_name, gold_standard):
+    """Return a cost function corresponding to the given name"""
+    if function_name == "x2":
+      return X2cost(gold_standard)
+    elif function_name == "fft":
+      return FFTcost(gold_standard)
+    elif function_name == "special":
+      return SpecialCost(gold_standard)
+    elif function_name == "circad":
+      return CircadCost(gold_standard)
+    else:
+      print ("Unrecognised cost function name: " + function_name)
+      print ("Choose from: x2 fft")
+      sys.exit(1)
+
+  def set_cost_function(self, function_names):
+    """Set the cost function depending on the given list
+       of function names"""
+    if not function_names:
+      # The default of a chi squared cost function
+      self.cost_function = X2cost(self.gold_standard)
+    elif len(function_names) == 1:
+      self.cost_function = self.cost_function_of_name(function_names[0],
+                                                      self.gold_standard)
+    else:
+      multiple_costs = MultipleCostFunctions()
+      for fname in function_names:
+        cost_function = self.cost_function_of_name(fname,
+                                                   self.gold_standard)
+        multiple_costs.add_cost_function(cost_function)
+      self.cost_function = multiple_costs
+
+
+
 class Optimisation:
   """A class holding a single optimisation problem, essentially
      this just stores the data we have gained from the files for
      the model, parameters and the gold standard"""
-  def __init__(self, model_file, gold_standard_file, params_file):
-    self.model_file = model_file
-    self.gold_standard_file = gold_standard_file
-    self.gold_standard = get_gold_standard_timeseries(gold_standard_file)
+  def __init__(self, params_file, model_datas):
     self.params_file = params_file
     self.parameters = parameters.get_init_param_parameters(params_file)
+    self.model_datas = model_datas
+
+  def get_final_gold_standard_time(self):
+    final_time = 0.0
+    for model_data in self.model_datas:
+      model_final_time = model_data.gold_standard.get_final_time()
+      final_time = max(model_final_time, final_time)
+    return final_time
+
 
   def initialise(self):
     """Initialise the optimisation process"""
     pass
+
+  def initialise_solvers(self):
+    """Initialise all of the solvers associated with each of the
+       model datas we have"""
+    for model_data in self.model_datas:
+      model_data.initialise_solver()
  
 class Configuration:
   """A class to store the configuration in"""
   def __init__(self, arguments, optimisation):
     self.optimisation = optimisation
     self.num_generations = 5
-    self.population_size = "default"
 
     if not arguments.stop_time:
-      arguments.stop_time = optimisation.gold_standard.get_final_time()
+      arguments.stop_time = optimisation.get_final_gold_standard_time()
 
-    self.solver_config = arguments
-    self.solver = solve_model.get_solver(optimisation.model_file, arguments)
 
     self.search_algorithm = SimplestSearch()
     self.target_cost = 0
@@ -782,38 +871,6 @@ class Configuration:
       print ("Choose from 'sa' or 'simple'")
       sys.exit(1)
 
-  @staticmethod
-  def cost_function_of_name(function_name, gold_standard):
-    """Return a cost function corresponding to the given name"""
-    if function_name == "x2":
-      return X2cost(gold_standard)
-    elif function_name == "fft":
-      return FFTcost(gold_standard)
-    elif function_name == "special":
-      return SpecialCost(gold_standard)
-    elif function_name == "circad":
-      return CircadCost(gold_standard)
-    else:
-      print ("Unrecognised cost function name: " + function_name)
-      print ("Choose from: x2 fft")
-      sys.exit(1)
-
-  def set_cost_function(self, function_names, gold_standard):
-    """Set the cost function depending on the given list
-       of function names"""
-    if not function_names:
-      # The default of a chi squared cost function
-      self.cost_function = X2cost(gold_standard)
-    elif len(function_names) == 1:
-      self.cost_function = self.cost_function_of_name(function_names[0],
-                                                      gold_standard)
-    else:
-      multiple_costs = MultipleCostFunctions()
-      for fname in function_names:
-        cost_function = self.cost_function_of_name(fname, gold_standard)
-        multiple_costs.add_cost_function(cost_function)
-      self.cost_function = multiple_costs
-
 def get_configuration(arguments, optimisation):
   """Return a configuration based on the command line arguments"""
   configuration = Configuration(arguments, optimisation)
@@ -822,21 +879,28 @@ def get_configuration(arguments, optimisation):
   configuration.population_size = arguments.population
   configuration.set_search_agorithm(arguments.algorithm)
   configuration.target_cost = float(arguments.target_cost)
-
-  configuration.set_cost_function(arguments.cost_function,
-                                  optimisation.gold_standard)
  
   return configuration
 
 
-def get_optimisation_definition(filenames):
+def get_optimisation_definition(arguments):
   """Return the definition of the optimisation based on the
      filenames given in the command line arguments"""
-  model_file = filenames[0]
-  gold_standard_file = filenames[1]
-  params_file = filenames[2]
+  filenames = arguments.filenames
+  params_file = filenames[0]
+  model_datas = [] 
+  # -1 for the params file, and step two because we will get
+  # two at a time. Note that we should check if the number of
+  # file names is odd, it should be since it should be the
+  # params file, plus a list of pairs. 
+  for index in range(1, len(filenames) - 1, 2):
+    model_file = filenames[index]
+    gold_file = filenames[index + 1]
+    model_data = ModelData(model_file, gold_file, arguments)
+    model_data.set_cost_function(arguments.cost_function)
+    model_datas.append(model_data)
   
-  optimisation = Optimisation(model_file, gold_standard_file, params_file)
+  optimisation = Optimisation(params_file, model_datas)
   optimisation.initialise()
   return optimisation
 
@@ -864,6 +928,11 @@ def create_arguments_parser(add_help):
   parser.add_argument('--generations', action='store',
                       type=int, default=10,
     help="Set the number of generations to evolve")
+  # There is no default for the population size, this is such that
+  # the algorithms may distinguish between a population size set by
+  # the user and the default. Hence the each algorithm can make its own
+  # mind up about what the default should be, for example in simple it
+  # is equal to the number of parameters.
   parser.add_argument('--population', action='store',
                       type=int, # no default, None signals default
     help="Set the population size of each generation")
@@ -910,14 +979,15 @@ class OptimiserResults:
     best_cost_file.close()
 
     if self.best_citizen.results:
-      basename = "best_timeseries.csv"
-      best_timeseries_fname = os.path.join(results_dir, basename)
-      best_timeseries_file = open(best_timeseries_fname, "w")
-      best_timeseries = self.best_citizen.results
-      best_timeseries.write_to_file(best_timeseries_file)
-      best_timeseries_file.close()
-      print ("Best timeseries written to file: " + best_timeseries_fname)
-    else:
+      for results in self.best_citizen.results:
+        basename = results.results_filename()
+        best_timeseries_fname = os.path.join(results_dir, basename)
+        best_timeseries_file = open(best_timeseries_fname, "w")
+        results.write_to_file(best_timeseries_file)
+        best_timeseries_file.close()
+        print ("Best timeseries written to file: " + 
+                best_timeseries_fname)
+    else: 
       print ("No best time series")
 
 
@@ -934,6 +1004,8 @@ class ExperimentResults:
       results_directory = utils.get_new_directory("results")
     shutil.copy2(self.results_file, results_directory)
     optimisation = configuration.optimisation
+    # These mostly won't work now, what with our use of ModelData
+    # rather than a single model file/goldstandard file.
     shutil.copy2(optimisation.model_file, results_directory)
     shutil.copy2(optimisation.gold_standard_file, results_directory)
     shutil.copy2(optimisation.params_file, results_directory)
@@ -950,17 +1022,16 @@ def run():
   # I really just want to take in one file name which is a configuration
   # file which contains the others, but for now I'll do this:
   if len(arguments.filenames) < 3:
-    print ("You must provide three files:")
+    print ("You must provide at least three files:")
+    print ("   the initial parameter file")
     print ("   the model file")
     print ("   the gold standard data file")
-    print ("   the initial parameter file")
     sys.exit(1)
 
-  optimisation = get_optimisation_definition(arguments.filenames)
-
+  optimisation = get_optimisation_definition(arguments)
   configuration = get_configuration(arguments, optimisation)
   solve_model.initialise_logger(arguments)
-  configuration.solver.initialise_solver()
+  optimisation.initialise_solvers()
 
   algorithm = configuration.search_algorithm
   results = algorithm.run_optimisation(optimisation, configuration)

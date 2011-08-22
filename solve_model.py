@@ -28,7 +28,7 @@ class SbmlCvodeSolver:
   """
   def __init__(self, model_file, cflags_prefix):
     self.model_file = model_file
-    self.model_exec = "model.exe"
+    self.model_exec = utils.change_filename_ext(model_file, ".exe")
     self.param_filename = os.path.join("UserModel", "param_overrides")
     self.cflags_prefix = cflags_prefix
 
@@ -346,6 +346,8 @@ def create_arguments_parser(add_help):
   parser.add_argument('--max_times', action='store',
                       type=int, default=10000000000,
                       help="Set the maximum number of computed times")
+  parser.add_argument('--column', action='append',
+                      help="Specify a column to be plotted")
   log_choices = [ "info", "warning", "error", "critical", "debug" ]
   parser.add_argument('--loglevel', action='store',
                       choices=log_choices, default='info',
@@ -408,6 +410,12 @@ def run():
     solver.initialise_solver()
     timecourse = solver.solve_model(configuration)
     if timecourse:
+      if arguments.column:
+        tc_columns = timecourse.get_column_names()
+        for tc_column in tc_columns:
+          if tc_column not in arguments.column:
+            timecourse.remove_column(tc_column)
+
       results_filename = utils.change_filename_ext(filename, ".csv")
       results_file = open(results_filename, "w")
       timecourse.write_to_file(results_file)
