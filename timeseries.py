@@ -23,6 +23,10 @@ class Timeseries:
        order of the column names"""
     return self.rows
 
+  def get_times(self):
+    """Return a list of all times"""
+    return [ row[0] for row in self.rows ]
+
   def get_final_time(self):
     """Return the final time from the timeseries"""
     last_row = self.rows[len(self.rows) - 1]
@@ -58,7 +62,33 @@ class Timeseries:
         results.append(entry)
     return results
 
+  def remove_column(self, column_name):
+    """Remove the column with the given name from the timeseries"""
+    index = self.columns.index(column_name)
+    del self.columns[index]
+    for row in self.rows:
+      del row[index]
 
+  def add_timeseries(self, other_timecourse):
+    these_times = self.get_times()
+    those_times = other_timecourse.get_times()
+    if these_times == those_times:
+      self.columns += other_timecourse.get_column_names()
+      for index in range(len(self.rows)):
+        other_row = other_timecourse.rows[index]
+        self.rows[index] += other_row[1:]
+    else:
+      print (these_times)
+      print ("-------------------")
+      print (those_times)
+      raise StandardError
+
+  def number_of_data_points (self):
+    """Returns the number of data points within a timecourse. Does not
+       include the time data points, so this is essentially the number
+       of rows multiplied by the number of columns which are not the
+       time columns"""
+    return len(self.rows) * (len(self.columns) - 1)
 
   def write_to_file(self, results_file):
     """Format the time series and write it to the given file"""
