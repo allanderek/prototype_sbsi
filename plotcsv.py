@@ -141,7 +141,7 @@ def should_plot_column(arguments, name):
     return False
   elif columns and name not in columns:
     return False
-  elif mcolumns and name in columns:
+  elif mcolumns and name in mcolumns:
     return False
   else:
     return True
