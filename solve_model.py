@@ -186,7 +186,7 @@ class SbmlCvodeSolver:
     # We should remove the parameter overrides file here in case
     # we wish to simply solve the model on its own later.
     if os.path.exists(self.param_filename):
-     os.remove(self.param_filename)
+      os.remove(self.param_filename)
 
     csv_file = open(results_file,  "r")
     timecourse = timeseries.parse_csv(csv_file, "\t")

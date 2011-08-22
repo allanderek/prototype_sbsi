@@ -264,6 +264,8 @@ class X2cost:
 
 
 class Results:
+  """A class to hold a single set of results associated with a given
+     gold standard and model file"""
   def __init__(self, model_data, timecourse):
     self.timecourse = timecourse
     self.model_data = model_data
@@ -613,17 +615,22 @@ class StructuredExperiment:
   # we just write our own range function.
   @staticmethod
   def float_range(start, stop, step):
+    """The same as the standard library 'range' function except that
+       it works over floating point numbers rather than simply integers.
+    """
     value = start
     while True:
       if value >= stop:
         return
       yield value
       value += step
-  # range parameter is a recursive function which must range over
-  # the curent parameters range, plus recursively range over all
-  # other parameters.
 
   def range_parameter(self, ind_dict, params, configuration):
+    """ A recursive function which must range over
+        the curent parameter's range, plus recursively range over all
+        other parameters. This function actually returns the evaluated
+        model results via placing them in this object's results database
+    """
     # Nothing to do if the list of parameters is empty
     if not params:
       return
@@ -649,10 +656,11 @@ class StructuredExperiment:
         # obtained (probably because the solver failed)
         if cost != sys.maxint:
           self.results_database[individual] = cost
-  
+
       
 
   def run_optimisation(self, optimisation, configuration):
+    """The main entry point of the StructuredExperiment algorithm. """
     results_filename = "results_db.csv"
     self.range_parameter(dict(), optimisation.parameters, configuration)
     results_file = open (results_filename,  "w")
@@ -771,6 +779,10 @@ class Optimisation:
     self.model_datas = model_datas
 
   def get_final_gold_standard_time(self):
+    """Returns the final time of any gold standard data file within
+       this optimisation. This is generally useful for deciding how
+       long the model should be solved for (how long in simulation time)
+    """
     final_time = 0.0
     for model_data in self.model_datas:
       model_final_time = model_data.gold_standard.get_final_time()
@@ -793,10 +805,10 @@ class Configuration:
   def __init__(self, arguments, optimisation):
     self.optimisation = optimisation
     self.num_generations = 5
+    self.population_size = None
 
     if not arguments.stop_time:
       arguments.stop_time = optimisation.get_final_gold_standard_time()
-
 
     self.search_algorithm = SimplestSearch()
     self.target_cost = 0
@@ -948,11 +960,14 @@ def create_arguments_parser(add_help):
 
 
 class OptimiserResults:
+  """A class for the reporting of results of a run of an optimisation
+     as distinct from reporting of the results of a flat experiment"""
   def __init__(self, best_citizen, best_cost):
     self.best_citizen = best_citizen
     self.best_cost = best_cost
 
   def report_results(self, configuration, results_dir):
+    """Report on the results of a run of the optimisation"""
     optimisation = configuration.optimisation
     configuration.report_on_best_params(self.best_citizen.dictionary)
     
@@ -961,8 +976,7 @@ class OptimiserResults:
     if not results_dir:
       results_dir = utils.get_new_directory("results")
   
-    best_params_base = "best_params" 
-    best_parameters_fname = os.path.join(results_dir, best_params_base)
+    best_parameters_fname = os.path.join(results_dir, "best_params")
     best_parameters_file = open(best_parameters_fname, "w") 
     for param in optimisation.parameters:
       value = self.best_citizen.dictionary[param.name]
@@ -988,27 +1002,34 @@ class OptimiserResults:
         print ("Best timeseries written to file: " + 
                 best_timeseries_fname)
     else: 
-      print ("No best time series")
+      print ("No best candidate found")
 
 
 class ExperimentResults:
+  """A class representing what we should do with the results of an
+     a flat experiments (as opposed to an optimisation report)"""
   def __init__(self, results_file):
     self.results_file = results_file
 
   def report_results(self, configuration, results_dir):
+    """Report on the results of the experiment to the user"""
     print ("Results data base written to: " + self.results_file)
     self.bundle_result(configuration, results_dir)
 
   def bundle_result(self, configuration, results_directory):
+    """A simple function to bundle the results into the results
+       directory."""
     if not results_directory:
       results_directory = utils.get_new_directory("results")
     shutil.copy2(self.results_file, results_directory)
     optimisation = configuration.optimisation
-    # These mostly won't work now, what with our use of ModelData
-    # rather than a single model file/goldstandard file.
-    shutil.copy2(optimisation.model_file, results_directory)
-    shutil.copy2(optimisation.gold_standard_file, results_directory)
     shutil.copy2(optimisation.params_file, results_directory)
+    # These are untested since I updated optimisation to hold
+    # multiple model_datas rather than a single model file and
+    # gold standard file.
+    for model_data in optimisation.model_datas:
+      shutil.copy2(model_data.model_file, results_directory)
+      shutil.copy2(model_data.gold_standard_file, results_directory)
     print ("Find the results in: " + results_directory)
    
 

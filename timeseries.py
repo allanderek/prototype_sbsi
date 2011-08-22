@@ -70,6 +70,12 @@ class Timeseries:
       del row[index]
 
   def add_timeseries(self, other_timecourse):
+    """Add the columns of data from one another time course into this
+       one. Currently we require that the times in both timecourses are
+       the same. We should at least allow one to be a subset of the others.
+       In particular it should be simple enough to allow the additional
+       timecourse to have more times, so long as it has all the times in
+       this timecourse"""
     these_times = self.get_times()
     those_times = other_timecourse.get_times()
     if these_times == those_times:
