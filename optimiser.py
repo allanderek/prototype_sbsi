@@ -581,6 +581,7 @@ class SimplestSearch:
     (lowest_cost, best_citizen) = self.run_generation(1, optimisation,
                                                       configuration)
 
+    record_frequency = configuration.record_frequency
     for i in range (2, configuration.num_generations + 1):
       # Modify the default values of all the parameters to be the
       # current best.
@@ -592,6 +593,11 @@ class SimplestSearch:
       if this_cost < lowest_cost:
         lowest_cost = this_cost
         best_citizen = this_mayor
+
+      if record_frequency and (i % record_frequency) == 0:
+        optim_results = OptimiserResults (best_citizen, lowest_cost)
+        results_dir = "ckpoint_" + str(i)
+        optim_results.report_results(configuration,  results_dir)
     return OptimiserResults (best_citizen, lowest_cost)
 
 
@@ -814,6 +820,7 @@ class Configuration:
     self.target_cost = 0
     self.cost_function = None
     self.monitor = Monitor()
+    self.record_frequency = None
 
   def report_on_solves(self):
     """Report to the log, information about the simulation runs,
@@ -891,6 +898,7 @@ def get_configuration(arguments, optimisation):
   configuration.population_size = arguments.population
   configuration.set_search_agorithm(arguments.algorithm)
   configuration.target_cost = float(arguments.target_cost)
+  configuration.record_frequency = arguments.record_freq
  
   return configuration
 
@@ -954,6 +962,9 @@ def create_arguments_parser(add_help):
     help="Select the genetic algorithm to deploy")
   parser.add_argument('--results_dir', action='store',
     help="Select a directory in which to store the results")
+  parser.add_argument('--record_freq', action='store',
+                      type=int, # no default, None signals no freq
+    help="Specify how often results should be recorded")
                
  
   return parser
@@ -974,7 +985,8 @@ class OptimiserResults:
     print("After: " + str(configuration.num_generations) + " generations:")
 
     if not results_dir:
-      results_dir = utils.get_new_directory("results")
+      results_dir = "results"
+    results_dir = utils.get_new_directory(results_dir)
   
     best_parameters_fname = os.path.join(results_dir, "best_params")
     best_parameters_file = open(best_parameters_fname, "w") 
