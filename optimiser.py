@@ -898,7 +898,8 @@ def get_configuration(arguments, optimisation):
   configuration.population_size = arguments.population
   configuration.set_search_agorithm(arguments.algorithm)
   configuration.target_cost = float(arguments.target_cost)
-  configuration.record_frequency = arguments.record_freq
+  if arguments.record_freq and arguments.record_freq != 0:
+    configuration.record_frequency = arguments.record_freq
  
   return configuration
 
