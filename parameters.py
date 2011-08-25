@@ -68,9 +68,11 @@ def get_init_param_parameters(filename):
     begin    = float(columns[3])
     param    = Parameter(name, begin, low, high)
 
-    # The fifth column is optional so we only interpret if it is there.
+    # The fifth column is optional so we only interpret it if it is there.
     if len(columns) >= 5:
-      param.step_size = float(columns[4])
+      column_4 = columns[4].lstrip()
+      if column_4:
+        param.step_size = float(column_4)
 
     # Add this parameter to the list of returned parameters
     parameters.append(param)

@@ -29,7 +29,9 @@ class SbmlCvodeSolver:
   def __init__(self, model_file, cflags_prefix):
     self.model_file = model_file
     self.model_exec = utils.change_filename_ext(model_file, ".exe")
-    self.param_filename = os.path.join("UserModel", "param_overrides")
+    model_dir  = os.path.dirname(self.model_exec)
+    self.param_filename = os.path.join(model_dir,
+                           os.path.join("UserModel", "param_overrides"))
     self.cflags_prefix = cflags_prefix
 
   def convert_biopepa(self):
@@ -109,8 +111,11 @@ class SbmlCvodeSolver:
       logging.error ("Failed to compile user model: ")
       logging.error (" ".join(snd_c_command))
       sys.exit(1)
-
-    self.model_exec = os.path.join(model_dir, self.model_exec)
+ 
+    # This is wrong because the model_exec should already have the
+    # model_dir as it is simply calculated by changing the extension on
+    # the model file
+    # self.model_exec = os.path.join(model_dir, self.model_exec)
     trd_c_command = [ c_compiler, "-o", self.model_exec,
                       os.path.join(model_dir, "main_RHS_Model.o"),
                       os.path.join(model_dir, "UserModel/UserModel.o"),
@@ -372,10 +377,19 @@ def get_solver(filename, arguments):
       sys.exit(1)
  
   if solver_name == "cvodes":
-    # Clearly this bit should not be so specific to me.
-    home_dir = "/afs/inf.ed.ac.uk/user/a/aclark6/" 
-    cflags_prefix = os.path.join (home_dir,
-                                  "Source/svn-git-sbsi/install/")
+    # I've at least taken out the specificity to me, but now we are
+    # a bit specific to Linux
+    which_command = [ "which", "SBML2C" ]
+    which_process = Popen(which_command, stdout=PIPE)
+    which_output = which_process.communicate()[0]
+
+    if which_process.returncode != 0:
+      logging.error ("biopepa process failed to return")
+      raise StandardError
+
+    bin_dir = os.path.dirname(which_output)
+    install_dir = os.path.dirname(bin_dir)
+    cflags_prefix = install_dir 
     solver = SbmlCvodeSolver(filename, cflags_prefix)
     return solver
   elif solver_name == "biopepa":

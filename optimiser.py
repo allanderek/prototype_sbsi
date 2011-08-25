@@ -986,7 +986,8 @@ class OptimiserResults:
     print("After: " + str(configuration.num_generations) + " generations:")
 
     if not results_dir:
-      results_dir = "results"
+      params_dir = os.path.dirname(optimisation.params_file)
+      results_dir = os.path.join(params_dir, "results")
     results_dir = utils.get_new_directory(results_dir)
   
     best_parameters_fname = os.path.join(results_dir, "best_params")
