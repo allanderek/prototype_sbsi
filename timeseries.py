@@ -62,6 +62,14 @@ class Timeseries:
         results.append(entry)
     return results
 
+  def apply_noise_function(self, noise_function):
+    """Apply a given noise function to a timeseries. This could actually
+       be any function double->double applied to change the data in
+       a timecourse file"""
+    for row in self.rows:
+      for index in range(1, len(row)):
+        row[index] = noise_function(row[index])
+
   def remove_column(self, column_name):
     """Remove the column with the given name from the timeseries"""
     index = self.columns.index(column_name)
