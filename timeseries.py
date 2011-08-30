@@ -77,6 +77,24 @@ class Timeseries:
     for row in self.rows:
       del row[index]
 
+  def is_zero_column(self, column_name):
+    """Returns true if all of the given column's data is zero"""
+    values = self.get_column_data(column_name)
+    return all([value == 0.0 for value in values])
+
+  def remove_zero_columns(self):
+    """Sometimes timecourse data is given in a format such that for
+       a given species if there is no data for that species then the
+       column is filled with zeroes. Hence it is occasionally useful
+       to remove any column for which all of the values are zero"""
+    # Note that this could be done faster from first principles but 
+    # is more maintainable using the methods provided above.
+
+    zero_columns = [x for x in self.columns if self.is_zero_column(x) ]
+    for column_name in zero_columns:
+      self.remove_column(column_name)
+   
+
   def add_timeseries(self, other_timecourse):
     """Add the columns of data from one another time course into this
        one. Currently we require that the times in both timecourses are
