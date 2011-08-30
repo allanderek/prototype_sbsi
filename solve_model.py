@@ -29,9 +29,7 @@ class SbmlCvodeSolver:
   def __init__(self, model_file, cflags_prefix):
     self.model_file = model_file
     self.model_exec = utils.change_filename_ext(model_file, ".exe")
-    model_dir  = os.path.dirname(self.model_exec)
-    self.param_filename = os.path.join(model_dir,
-                           os.path.join("UserModel", "param_overrides"))
+    self.param_filename = None
     self.cflags_prefix = cflags_prefix
 
   def convert_biopepa(self):
@@ -54,6 +52,25 @@ class SbmlCvodeSolver:
         logging.error("biopepa conversion to xml failed, command was:")
         logging.error(biopepa_command)
       self.model_file = new_model_file
+
+  def run_sbml2c(self):
+    """As part of the initialisation of the model we must run the
+       sbml2c program over the model file
+    """
+    sbml2c_command = [ "SBML2C", self.model_file]
+    sbml2c_process = Popen(sbml2c_command)
+    sbml2c_process.communicate()
+
+    if sbml2c_process.returncode != 0:
+      logging.error ("SBML2C command has failed")
+      # TODO: We should really have a SolverError exception which
+      # we raise, and this utility catches it an exits nicely, but
+      # the optimiser can catch the exception and continue. Careful
+      # though as we often might not wish to blindly continue running
+      # in the face of an error. Some errors will be local to a given
+      # individual but some, like here, would be catastrophic for the
+      # optimisation and should mean that we error nicely and exit.
+      sys.exit(1)
  
   # This should actually check if the model file is newer than
   # the model executable and if not then we needn't recompile it.
@@ -64,15 +81,9 @@ class SbmlCvodeSolver:
        then we must convert the biopepa into xml first.
     """
     self.convert_biopepa()
+    self.run_sbml2c()
      
-    sbml2c_command = [ "SBML2C", self.model_file]
-    sbml2c_process = Popen(sbml2c_command)
-    sbml2c_process.communicate()
 
-    if sbml2c_process.returncode != 0:
-      logging.error ("SBML2C command has failed")
-      sys.exit(1)
- 
     # Obtain the directory in which the model file is, this is
     # necessary since we assume other files such as the main_RHS_Model.C
     # file are in the same directory.
@@ -87,10 +98,17 @@ class SbmlCvodeSolver:
     extra_flags = [ "-DWL=32", "-DNO_UCF", ] 
     c_compiler = "mpic++"
 
+    # Create the simple default main model C file
+    main_rhs_model_cpath = os.path.join(model_dir, "main_RHS_Model.C")
+    main_rhs_model_file = open(main_rhs_model_cpath, "w")
+    main_rhs_model_file.write("#include \"UserModel/UserModel.h\"\n")
+    main_rhs_model_file.write("#include <MainRHSTemplate.h>\n")
+    main_rhs_model_file.close()
+
     first_c_command = [ c_compiler, "-o", 
                         os.path.join(model_dir, "main_RHS_Model.o"),
                         "-c",
-                        os.path.join(model_dir, "main_RHS_Model.C"),
+                        main_rhs_model_cpath, 
                       ] + include_flags + lib_flags + extra_flags
     first_c_process = Popen(first_c_command)
     first_c_process.communicate()
@@ -131,6 +149,12 @@ class SbmlCvodeSolver:
       logging.error (" ".join(trd_c_command))
       sys.exit(1)
 
+  def set_parameter_file(self, param_filename):
+    """Set the parameter file name, this allows us to use a parameter
+       filename without going through the 'parameterise_model' method.
+    """
+    self.param_filename = param_filename
+
   def parameterise_model(self, dictionary):
     """Creates a param_overrides file from the given dictionary.
        The param_overrides file can be read by the main program
@@ -138,6 +162,10 @@ class SbmlCvodeSolver:
        the parameter values used in the model. This is the way in
        which we can parameterise the model, rather than changing the
        SBML model file and thus incurring the cost of a C compilation"""
+    model_dir  = os.path.dirname(self.model_file)
+    self.param_filename = os.path.join(model_dir,
+                          os.path.join("UserModel", "param_overrides"))
+
     param_file = open(self.param_filename, "w")
     for (name, value) in dictionary.items():
       param_file.write(name + "\t" + str(value) + "\n")
@@ -162,7 +190,13 @@ class SbmlCvodeSolver:
     results_file_prefix = os.path.join(model_dir, "model")
     results_file = results_file_prefix + "_RHS.dat"
     if os.path.exists(results_file):
-      os.remove(results_file)
+      # I'm not sure about this try-except block, I'm trying to
+      # overcome what appears to be a bug in sbsi-numerics which creates
+      # these weird files with nothing in them and setuid's with ????
+      try:
+        os.remove(results_file)
+      except OSError:
+        pass
 
     # This could also be run without mpi.
     mpirun_command = [ "mpirun",
@@ -177,6 +211,8 @@ class SbmlCvodeSolver:
                        str(configuration.reltol),
                        results_file_prefix,
                      ]
+    if self.param_filename:
+      mpirun_command.append(self.param_filename)
     mpi_process = Popen(mpirun_command, stdout=PIPE)
     mpi_output = mpi_process.communicate()[0]
     logging.debug(mpi_output)
@@ -190,8 +226,12 @@ class SbmlCvodeSolver:
 
     # We should remove the parameter overrides file here in case
     # we wish to simply solve the model on its own later.
-    if os.path.exists(self.param_filename):
-      os.remove(self.param_filename)
+    # This is actually solved because we have updated the solver file
+    # such that it doesn't simply look to see if UserModel/param_overrides
+    # file is there, but instead demands that it is specified on the
+    # command-line if one is to be used.
+    # if os.path.exists(self.param_filename):
+    #   os.remove(self.param_filename)
 
     csv_file = open(results_file,  "r")
     timecourse = timeseries.parse_csv(csv_file, "\t")
@@ -213,6 +253,19 @@ class BioPEPASolver:
   def initialise_solver(self):
     """Initialise the Bio-PEPA solver, nothing special required here"""
     pass
+
+  def set_parameter_file(self, param_file):
+    """This method is here to conform with the solver api, but cannot
+       actually be used with anything but 'None' and hence will never
+       have an effect.
+    """
+    # Ideally we should be able to parse in the param file and then
+    # simply call parameterise_model
+    if param_file:
+      logging.error("Cannot use a parameter file with the Bio-PEPA solver")
+      logging.info ("Model file : " + self.model_file)
+      logging.error("Try --solver cvodes")
+      raise ValueError
 
   def parameterise_model(self, dictionary):
     """A simple and obviously broken method for parameterising a
@@ -384,7 +437,7 @@ def get_solver(filename, arguments):
     which_output = which_process.communicate()[0]
 
     if which_process.returncode != 0:
-      logging.error ("biopepa process failed to return")
+      logging.error ("which(SBML2C) process failed to return")
       raise StandardError
 
     bin_dir = os.path.dirname(which_output)
@@ -407,6 +460,8 @@ def run():
    # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to solve numerically")
+  parser.add_argument('--param-file', action='store',
+    help="Provide a parameter file to override parameters in the sbml file")
   arguments = parser.parse_args()
   # stop_time cannot have a default because the optimiser needs to know
   # if the user has explicitly set the stop time or not, see the
@@ -422,6 +477,7 @@ def run():
   for filename in arguments.filenames:
     solver = get_solver(filename, arguments)
     solver.initialise_solver()
+    solver.set_parameter_file(arguments.param_file)
     timecourse = solver.solve_model(configuration)
     if timecourse:
       if arguments.column:
