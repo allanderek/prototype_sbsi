@@ -33,7 +33,10 @@ def parse_param_file(param_filename, dictionary):
   param_file = open(param_filename, "r")
 
   for line in param_file:
-    (name, value_string) = line.split(":", 1)
+    separator = "\t"
+    if not separator in line and ":" in line:
+      separator = ":"
+    (name, value_string) = line.split(separator, 1)
     value = float(value_string.lstrip().rstrip())
     # We should also check if the name already exists in the dictionary
     dictionary[name] = value
