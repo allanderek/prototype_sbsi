@@ -231,7 +231,29 @@ def write_gnuplot_plotting_commands(gnuplotfile,
         line_prefix = ", \\\n  "
         gnuplotfile.write(line) 
 
- 
+class ListArgumentAction(argparse.Action):
+  """ A simple argument action to allow a list of arguments to be
+      separated by a comma. This allows slightly more concise command
+      lines. For example --column p1 --column p2 --column p3 can be
+      reduced to --column p1,p2,p3
+  """
+  def __call__(self, parser, namespace, values, option_string=None):
+    """The action called when the parser encounters the associated
+       command-line argument.
+    """
+    # First of all get the list of values specified as this argument
+    list_values = values.split(",")
+    # Then get the current list already specified, this allows for
+    # example: --column p1,p2,p3 --column p4,p5,p6 or more likely just
+    # that some user does not know about the comma separator and does
+    # --column p1 --column p2 --column p3 ... etc
+    current = getattr(namespace, self.dest)
+    if current:
+      # If there are values there already extend the list
+      current.extend(list_values)
+    else: 
+      # otherwise set the list to the current set of values
+      setattr(namespace, self.dest, list_values)
 
 def run ():
   """Simply do all the work"""
@@ -273,28 +295,28 @@ will plot all columns except P and Q, so E, S and R are plotted.
                       help="The basename of the output filenames")
   parser.add_argument('--title', action='store',
                       help="The title of the gnuplot graph")
-  parser.add_argument('--x_label', action='store',
+  parser.add_argument('--x-label', action='store',
                       help="The label on the x axis")
-  parser.add_argument('--y_label', action='store',
+  parser.add_argument('--y-label', action='store',
                       help="The label on the y axis")
-  parser.add_argument('--x_range', action='store',
+  parser.add_argument('--x-range', action='store',
                       help="The range for the x axis")
-  parser.add_argument('--y_range', action='store',
+  parser.add_argument('--y-range', action='store',
                       help="The range for the y axis")
   parser.add_argument('--key', action='store',
                       help="Set the key option in gnuplot")
   parser.add_argument('--linestyle', action='store', default="l lw 4",
                       help="Set the line style to be used with all lines")
-  parser.add_argument('--only_common', action='store_true',
+  parser.add_argument('--only-common', action='store_true',
                       help="Only plot columns common to all data files")
-  parser.add_argument('--column', action='append',
+  parser.add_argument('--column', action=ListArgumentAction,
                       help="Specify a column to be plotted")
-  parser.add_argument('--mcolumn', action='append',
+  parser.add_argument('--mcolumn', action=ListArgumentAction,
                       help="Specify a column not to be plotted")
-  parser.add_argument('--no_gnuplot', action='store_true',
+  parser.add_argument('--no-gnuplot', action='store_true',
                       help="Just generate the gnuplot script, " +
                            "do not invoke gnuplot")
-  parser.add_argument('--no_epstopdf', action='store_true',
+  parser.add_argument('--no-epstopdf', action='store_true',
                       help="Do not invoke epstopdf after gnuplot")
 
   arguments = parser.parse_args()
