@@ -122,14 +122,16 @@ class Timeseries:
        time columns"""
     return len(self.rows) * (len(self.columns) - 1)
 
-  def write_to_file(self, results_file):
+  def write_to_file(self, results_file, separator=None):
     """Format the time series and write it to the given file"""
+    if not separator:
+      separator = ", "
     results_file.write("# ")
     prefix = ""
     for column in self.columns:
       results_file.write(prefix)
       results_file.write(column)
-      prefix = ", "
+      prefix = separator
   
     results_file.write("\n")
 
@@ -138,7 +140,7 @@ class Timeseries:
       for value in row:
         results_file.write(prefix)
         results_file.write(str(value))
-        prefix = ", "
+        prefix = separator
       results_file.write("\n")
 
   def get_best_matching_time_row(self, gold_time):
