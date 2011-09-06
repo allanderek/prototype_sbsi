@@ -379,14 +379,14 @@ def create_arguments_parser(add_help):
                       choices=["cvodes", "biopepa"],
                       help="Set the solver for numerical analysis")
 
-  parser.add_argument('--start_time', action='store',
+  parser.add_argument('--start-time', action='store',
                       type=float, default=0.0,
                       help="Set the initial time of the numerical analysis")
   # Stop time cannot have a default value since the optimiser would
   # assume that the user has explictly set the stop time. We don't want
   # this because the optimiser should use the last data point as the
   # stop_time unless this is overridden by the user.
-  parser.add_argument('--stop_time', action='store',
+  parser.add_argument('--stop-time', action='store',
                       type=float, # default=1.0,
                       help="Set the stop time of the numerical analysis")
   parser.add_argument('--reltol', action='store',
@@ -398,10 +398,10 @@ def create_arguments_parser(add_help):
   parser.add_argument('--interval', action='store',
                       type=float, default=0.0001,
                       help="Set the solver's internal time interval")
-  parser.add_argument('--out_interval', action='store',
+  parser.add_argument('--out-interval', action='store',
                       type=float, default=0.1,
                       help="Set the interval of the result's timecourse")
-  parser.add_argument('--max_times', action='store',
+  parser.add_argument('--max-times', action='store',
                       type=int, default=10000000000,
                       help="Set the maximum number of computed times")
   parser.add_argument('--column', action='append',
