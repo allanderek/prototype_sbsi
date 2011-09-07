@@ -10,6 +10,20 @@ import logging
 import timeseries
 import utils
 
+
+def run_command(command):
+  process = Popen(command, stdout=PIPE, stderr=PIPE)
+  output, errorout = process.communicate()
+
+  if output:
+    logging.debug(output)
+  if errorout:
+    logging.warning("The following command produced output on stderr")
+    logging.warning(" ".join(command))
+    logging.warning(errorout)
+
+  return process.returncode
+
 # A solver should have the following protocol illustrated with
 # the sundials cvodes solver as an example:
 # initialise: translate sbml model to C and compile the C program
@@ -58,10 +72,8 @@ class SbmlCvodeSolver:
        sbml2c program over the model file
     """
     sbml2c_command = [ "SBML2C", self.model_file]
-    sbml2c_process = Popen(sbml2c_command)
-    sbml2c_process.communicate()
-
-    if sbml2c_process.returncode != 0:
+    sbml2c_returncode = run_command(sbml2c_command)
+    if sbml2c_returncode != 0:
       logging.error ("SBML2C command has failed")
       # TODO: We should really have a SolverError exception which
       # we raise, and this utility catches it an exits nicely, but
@@ -110,10 +122,8 @@ class SbmlCvodeSolver:
                         "-c",
                         main_rhs_model_cpath, 
                       ] + include_flags + lib_flags + extra_flags
-    first_c_process = Popen(first_c_command)
-    first_c_process.communicate()
-
-    if first_c_process.returncode != 0:
+    first_c_returncode = run_command(first_c_command)
+    if first_c_returncode != 0:
       logging.error ("Failed to compile main_RHS_Model.C: ")
       logging.error (" ".join(first_c_command))
       sys.exit(1)
@@ -123,16 +133,15 @@ class SbmlCvodeSolver:
                       "-c",
                       os.path.join(model_dir, "UserModel/UserModel.C"),
                     ] + include_flags + lib_flags + extra_flags
-    snd_c_process = Popen(snd_c_command)
-    snd_c_process.communicate()
-    if snd_c_process.returncode != 0:
+    snd_c_returncode = run_command(snd_c_command)
+    if snd_c_returncode != 0:
       logging.error ("Failed to compile user model: ")
       logging.error (" ".join(snd_c_command))
       sys.exit(1)
  
-    # This is wrong because the model_exec should already have the
-    # model_dir as it is simply calculated by changing the extension on
-    # the model file
+    # This (commented out line) is wrong because the model_exec
+    # should already have the model_dir as it is simply calculated
+    # by changing the extension on the model file.
     # self.model_exec = os.path.join(model_dir, self.model_exec)
     trd_c_command = [ c_compiler, "-o", self.model_exec,
                       os.path.join(model_dir, "main_RHS_Model.o"),
@@ -142,9 +151,8 @@ class SbmlCvodeSolver:
                       "-lsundials_nvecserial", "-lsundials_cvode",
                       "-lxml2"
                     ] + lib_flags + extra_flags
-    trd_c_process = Popen(trd_c_command)
-    trd_c_process.communicate()
-    if trd_c_process.returncode != 0:
+    trd_c_returncode = run_command(trd_c_command) 
+    if trd_c_returncode != 0:
       logging.error ("Failed to compile user model: ")
       logging.error (" ".join(trd_c_command))
       sys.exit(1)
@@ -213,14 +221,12 @@ class SbmlCvodeSolver:
                      ]
     if self.param_filename:
       mpirun_command.append(self.param_filename)
-    mpi_process = Popen(mpirun_command, stdout=PIPE)
-    mpi_output = mpi_process.communicate()[0]
-    logging.debug(mpi_output)
+    mpi_returncode = run_command(mpirun_command)
                     
     # So we check if the results file actually exists and if
     # not we assume it failed. Also now I can actually check
     # the return code
-    if not os.path.exists(results_file) or mpi_process.returncode != 0:
+    if not os.path.exists(results_file) or mpi_returncode != 0:
       logging.warning("Model solving failed")
       return None 
 
@@ -330,10 +336,9 @@ class BioPEPASolver:
                         # csvfile 
                       ]
     # print (biopepa_command)
-    biopepa_process = Popen(biopepa_command, stdout=PIPE)
-    output = biopepa_process.communicate()[0]
+    biopepa_returncode = run_command(biopepa_command)
 
-    if biopepa_process.returncode != 0:
+    if biopepa_returncode != 0:
       logging.error ("biopepa process failed to return")
       sys.exit(1)
     output_lines = output.split("\n")
