@@ -114,7 +114,7 @@ def create_gnuplot_file(basename, arguments, datafiles):
 
   epsfilename = basename + ".eps"
   set_gnuplot_option(gnuplotfile, "term",
-                     "post eps color", quote=False)
+                     "post eps color enhanced", quote=False)
   set_gnuplot_option(gnuplotfile, "output", epsfilename)
   # This assumes that all the files have the same separator
   # It would be nice to allow otherwise, but slightly tricky.
