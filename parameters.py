@@ -8,8 +8,6 @@ import sys
 import argparse
 import random
 
-import sbml_parametiser
-
 class Parameter:
   """The parameter class describes the description of a parameter
      to be optimised by the framework"""
@@ -172,7 +170,30 @@ def check_parameters(params, best_params, arguments):
       if fail_result:
         failed_results.append(fail_result)
   return failed_results
- 
+
+def parse_param_file(param_filename, dictionary=None):
+  """Parse a parameter file into the given dictionary. Note this is
+     a parameter file which maps parameter names to distinct parameter
+     values. In other words a simple dictionary, it is not the parsing
+     of the initparams file which has information on ranges etc.
+  """
+  if not dictionary:
+    dictionary = dict()
+  param_file = open(param_filename, "r")
+
+  for line in param_file:
+    separator = "\t"
+    if not separator in line and ":" in line:
+      separator = ":"
+    (name, value_string) = line.split(separator, 1)
+    value = float(value_string.lstrip().rstrip())
+    # We should also check if the name already exists in the dictionary
+    dictionary[name] = value
+
+  param_file.close()
+  return dictionary
+
+
 def check_param_files(initparam_filename, 
                       bestparams_filename, 
                       arguments):
@@ -184,8 +205,7 @@ def check_param_files(initparam_filename,
      setup
   """
   params = get_init_param_parameters(initparam_filename)
-  best_dict = dict()
-  sbml_parametiser.parse_param_file(bestparams_filename, best_dict)
+  best_dict = parse_param_file(bestparams_filename)
   return check_parameters(params, best_dict, arguments)
   
 def run():
@@ -193,7 +213,7 @@ def run():
      then go ahead and compare the parameter results to the
      initial parameter settings
   """ 
-  description = "Print out an outline of an SBML file"
+  description = "Check the results of optimisation against the initparams"
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',

@@ -3,6 +3,7 @@
 import xml.dom.minidom
 import os
 import argparse
+import parameters
 
 
 def parameterise_model(model, dictionary):
@@ -27,21 +28,6 @@ def parameterise_model_file (filename, dictionary):
   # Print out the modified dom model.
   print(dom.toxml("UTF-8"))
   
-
-def parse_param_file(param_filename, dictionary):
-  """Parse a parameter file into the given dictionary"""
-  param_file = open(param_filename, "r")
-
-  for line in param_file:
-    separator = "\t"
-    if not separator in line and ":" in line:
-      separator = ":"
-    (name, value_string) = line.split(separator, 1)
-    value = float(value_string.lstrip().rstrip())
-    # We should also check if the name already exists in the dictionary
-    dictionary[name] = value
-
-  param_file.close()
 
 def has_extension(filename, extensions):
   """Returns true if the given filename has one of the given
@@ -71,7 +57,7 @@ def run():
 
   dictionary = dict()
   for param_file in param_files:
-    parse_param_file(param_file, dictionary)
+    parameters.parse_param_file(param_file, dictionary=dictionary)
   for sbml_file in sbml_files:
     parameterise_model_file(sbml_file, dictionary)
 
