@@ -12,6 +12,10 @@ import utils
 
 
 def run_command(command):
+  """ A utility function to run a given command, log any ouput
+      to standard out as debugging information, and any output to
+      stderr as warning and return the returncode of the process.
+  """
   process = Popen(command, stdout=PIPE, stderr=PIPE)
   output, errorout = process.communicate()
 
@@ -335,12 +339,23 @@ class BioPEPASolver:
                         # "--output-file",
                         # csvfile 
                       ]
-    # print (biopepa_command)
+
+
     biopepa_returncode = run_command(biopepa_command)
+    biopepa_process = Popen(biopepa_command, stdout=PIPE, stderr=PIPE)
+    output, errorout = biopepa_process.communicate()
+ 
+    if errorout:
+      logging.error ("The biopepa process produced output on stderr")
+      logging.error (errorout)
+      logging.error ("The biopepa command was: ")
+      logging.error (" ".join(biopepa_command))
 
     if biopepa_returncode != 0:
       logging.error ("biopepa process failed to return")
       sys.exit(1)
+    # A bug in pylint causes it to complain about this, it incorrectly
+    # thinks that 'output' is of type list, but it is of type string.
     output_lines = output.split("\n")
     timecourse = timeseries.parse_csv(output_lines.__iter__(), ", ")
 
@@ -480,6 +495,9 @@ def run():
   configuration = arguments
 
   for filename in arguments.filenames:
+    if not os.path.exists(filename):
+      logging.error("Model file: " + filename + " does not exist")
+      continue
     solver = get_solver(filename, arguments)
     solver.initialise_solver()
     solver.set_parameter_file(arguments.param_file)
