@@ -199,7 +199,7 @@ def parse_csv(csv, separator=None):
     while 1: 
       line = csv.next()
       if line:
-        values = [ float(x.rstrip()) for x in line.split(separator) ]
+        values = [ float(x.rstrip().lstrip()) for x in line.split(separator) ]
         rows.append(values)
   except StopIteration:
     pass
