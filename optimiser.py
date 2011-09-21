@@ -940,10 +940,10 @@ def create_arguments_parser(add_help):
   parser.add_argument('filenames', metavar='F', nargs='+',
     help="The input files: model gold_standard initparams")
   cost_function_choices = ["x2", "fft", "special", "circad" ]
-  parser.add_argument('--cost_function', action='append',
+  parser.add_argument('--cost-function', action='append',
                       choices=cost_function_choices, 
     help="Set the cost function(s) to be used to evaluate individuals")
-  parser.add_argument('--target_cost', action='store',
+  parser.add_argument('--target-cost', action='store',
                       type=int, default=0,
     help="Set the target cost to meet, default = 0")
   parser.add_argument('--generations', action='store',
@@ -961,9 +961,9 @@ def create_arguments_parser(add_help):
   parser.add_argument('--algorithm', action='store',
                       choices=algorithm_choices, default="simple",
     help="Select the genetic algorithm to deploy")
-  parser.add_argument('--results_dir', action='store',
+  parser.add_argument('--results-dir', action='store',
     help="Select a directory in which to store the results")
-  parser.add_argument('--record_freq', action='store',
+  parser.add_argument('--record-freq', action='store',
                       type=int, # no default, None signals no freq
     help="Specify how often results should be recorded")
                
