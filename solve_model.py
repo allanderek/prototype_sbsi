@@ -9,6 +9,38 @@ from subprocess import Popen, PIPE
 import logging
 import timeseries
 import utils
+import plotcsv
+
+
+
+class SolverError(Exception):
+  """A simple exception to be raised when we recognise that the model
+     cannot be solved successfully. This allows callers, such as the
+     optimisation routine, to catch this kind of error rather than
+     fail completely. Note that this should be used to indicate an
+     error in the actual solving of a particular instance of a model,
+     not that the model itself cannot be solved. See SolverModelError
+     for that.
+  """
+  def __init__(self, message):
+    Exception.__init__(self)
+    self.message = message
+
+  def get_message(self):
+    """Return the stored message"""
+    return self.message
+
+class SolverModelError(SolverError):
+  """A simple subclass of SolverError defined above. Essentially,
+     for the purposes of implementing many solves of a particular
+     model we wish to distinguish between errors which mean that the
+     model cannot be solved with the particular parameters, meaning
+     for example if you change the parameters it might then be solvable
+     and one in which it will never be solvable, for example in the
+     Cvodes solver if we fail to be able to convert from SBML to C then
+     we will never be able to solve that particular model.
+  """
+  pass
 
 
 def run_command(command):
@@ -27,6 +59,17 @@ def run_command(command):
     logging.warning(errorout)
 
   return process.returncode
+
+def run_command_with_error(command, exception):
+  """Runs the given command as in 'run_command' however, raises
+     the given exception if the return code indicates an error
+     in running the given command.
+  """
+  return_code = run_command(command)
+  if return_code != 0:
+    logging.error(exception.get_message())
+    logging.error(" ".join(command))
+    raise exception
 
 # A solver should have the following protocol illustrated with
 # the sundials cvodes solver as an example:
@@ -64,11 +107,9 @@ class SbmlCvodeSolver:
                           new_model_file,
                           "--no-warnings", 
                         ]
-      biopepa_process = Popen(biopepa_command)
-      biopepa_process.communicate()
-      if biopepa_process.returncode != 0:
-        logging.error("biopepa conversion to xml failed, command was:")
-        logging.error(biopepa_command)
+      error_message = "biopepa conversion to xml failed, command was:"
+      error_exception = SolverModelError(error_message)
+      run_command_with_error(biopepa_command, error_exception)
       self.model_file = new_model_file
 
   def run_sbml2c(self):
@@ -79,15 +120,9 @@ class SbmlCvodeSolver:
     sbml2c_returncode = run_command(sbml2c_command)
     if sbml2c_returncode != 0:
       logging.error ("SBML2C command has failed")
-      # TODO: We should really have a SolverError exception which
-      # we raise, and this utility catches it an exits nicely, but
-      # the optimiser can catch the exception and continue. Careful
-      # though as we often might not wish to blindly continue running
-      # in the face of an error. Some errors will be local to a given
-      # individual but some, like here, would be catastrophic for the
-      # optimisation and should mean that we error nicely and exit.
-      sys.exit(1)
- 
+      exception = SolverModelError("SBML2C command has failed")
+      raise exception
+
   # This should actually check if the model file is newer than
   # the model executable and if not then we needn't recompile it.
   def initialise_solver(self):
@@ -121,32 +156,30 @@ class SbmlCvodeSolver:
     main_rhs_model_file.write("#include <MainRHSTemplate.h>\n")
     main_rhs_model_file.close()
 
+
+    # Run the first C Command
     first_c_command = [ c_compiler, "-o", 
                         os.path.join(model_dir, "main_RHS_Model.o"),
                         "-c",
                         main_rhs_model_cpath, 
                       ] + include_flags + lib_flags + extra_flags
-    first_c_returncode = run_command(first_c_command)
-    if first_c_returncode != 0:
-      logging.error ("Failed to compile main_RHS_Model.C: ")
-      logging.error (" ".join(first_c_command))
-      sys.exit(1)
 
+    error_exception = SolverModelError("Failed to compile main_RHS_Model.C")
+    run_command_with_error(first_c_command, error_exception)
+
+ 
+    # Run the Second C command
     snd_c_command = [ c_compiler, "-o",
                       os.path.join(model_dir, "UserModel/UserModel.o"),
                       "-c",
                       os.path.join(model_dir, "UserModel/UserModel.C"),
                     ] + include_flags + lib_flags + extra_flags
-    snd_c_returncode = run_command(snd_c_command)
-    if snd_c_returncode != 0:
-      logging.error ("Failed to compile user model: ")
-      logging.error (" ".join(snd_c_command))
-      sys.exit(1)
- 
-    # This (commented out line) is wrong because the model_exec
-    # should already have the model_dir as it is simply calculated
-    # by changing the extension on the model file.
-    # self.model_exec = os.path.join(model_dir, self.model_exec)
+
+    error_exception = SolverModelError("Failed to compile user model: ")
+    run_command_with_error(snd_c_command, error_exception)
+
+   
+    # Run the final C command to link together the executable
     trd_c_command = [ c_compiler, "-o", self.model_exec,
                       os.path.join(model_dir, "main_RHS_Model.o"),
                       os.path.join(model_dir, "UserModel/UserModel.o"),
@@ -155,11 +188,8 @@ class SbmlCvodeSolver:
                       "-lsundials_nvecserial", "-lsundials_cvode",
                       "-lxml2"
                     ] + lib_flags + extra_flags
-    trd_c_returncode = run_command(trd_c_command) 
-    if trd_c_returncode != 0:
-      logging.error ("Failed to compile user model: ")
-      logging.error (" ".join(trd_c_command))
-      sys.exit(1)
+    error_exception = SolverModelError("Failed to compile user model: ") 
+    run_command_with_error(trd_c_command, error_exception)
 
   def set_parameter_file(self, param_filename):
     """Set the parameter file name, this allows us to use a parameter
@@ -231,8 +261,9 @@ class SbmlCvodeSolver:
     # not we assume it failed. Also now I can actually check
     # the return code
     if not os.path.exists(results_file) or mpi_returncode != 0:
-      logging.warning("Model solving failed")
-      return None 
+      message = "Model solving failed"
+      logging.warning(message)
+      raise SolverError(message)
 
     # We should remove the parameter overrides file here in case
     # we wish to simply solve the model on its own later.
@@ -426,6 +457,8 @@ def create_arguments_parser(add_help):
                       help="Set the maximum number of computed times")
   parser.add_argument('--column', action='append',
                       help="Specify a column to be plotted")
+  parser.add_argument('--plot-results', action='store_true',
+                      help="Plot the resulting timeseries to a pdf file")
   log_choices = [ "info", "warning", "error", "critical", "debug" ]
   parser.add_argument('--loglevel', action='store',
                       choices=log_choices, default='info',
@@ -446,8 +479,9 @@ def get_solver(filename, arguments):
     elif extension == ".biopepa":
       solver_name = "biopepa"
     else:
-      logging.error ("Unknown filetype, should be: .xml, .sbml or .biopepa")
-      sys.exit(1)
+      message = "Unknown filetype, should be: .xml, .sbml or .biopepa"
+      logging.error (message)
+      raise SolverError(message)
  
   if solver_name == "cvodes":
     # I've at least taken out the specificity to me, but now we are
@@ -457,8 +491,9 @@ def get_solver(filename, arguments):
     which_output = which_process.communicate()[0]
 
     if which_process.returncode != 0:
-      logging.error ("which(SBML2C) process failed to return")
-      raise StandardError
+      message = "which(SBML2C) process failed to return"
+      logging.error (message)
+      raise SolverModelError(message)
 
     bin_dir = os.path.dirname(which_output)
     install_dir = os.path.dirname(bin_dir)
@@ -495,27 +530,36 @@ def run():
   configuration = arguments
 
   for filename in arguments.filenames:
-    if not os.path.exists(filename):
-      logging.error("Model file: " + filename + " does not exist")
-      continue
-    solver = get_solver(filename, arguments)
-    solver.initialise_solver()
-    solver.set_parameter_file(arguments.param_file)
-    timecourse = solver.solve_model(configuration)
-    if timecourse:
-      if arguments.column:
-        tc_columns = timecourse.get_column_names()
-        for tc_column in tc_columns:
-          if tc_column not in arguments.column:
-            timecourse.remove_column(tc_column)
+    try:
+      if not os.path.exists(filename):
+        logging.error("Model file: " + filename + " does not exist")
+        continue
+      solver = get_solver(filename, arguments)
+      solver.initialise_solver()
+      solver.set_parameter_file(arguments.param_file)
+      timecourse = solver.solve_model(configuration)
+      if timecourse:
+        if arguments.column:
+          tc_columns = timecourse.get_column_names()
+          for tc_column in tc_columns:
+            if tc_column not in arguments.column:
+              timecourse.remove_column(tc_column)
 
-      results_filename = utils.change_filename_ext(filename, ".csv")
-      results_file = open(results_filename, "w")
-      timecourse.write_to_file(results_file)
-      results_file.close()
-    else:
-      print ("Error: solving the model failed, no timeseries to report")
-      sys.exit(1) 
+        results_filename = utils.change_filename_ext(filename, ".csv")
+        results_file = open(results_filename, "w")
+        timecourse.write_to_file(results_file)
+        results_file.close()
+
+        if arguments.plot_results:
+          plotcsv.run(argument_strings=[results_filename])  
+
+      else:
+        logging.error ("solving the model failed, no timeseries to report")
+        continue
+    except SolverError:
+      # We should have already logged the error, now we just wish to
+      # allow ourselves to continue and solve the remaining models
+      continue
 
 if __name__ == "__main__":
   run()

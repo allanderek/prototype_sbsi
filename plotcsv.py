@@ -232,8 +232,14 @@ def write_gnuplot_plotting_commands(gnuplotfile,
         line_prefix = ", \\\n  "
         gnuplotfile.write(line) 
 
-def run ():
-  """Simply do all the work"""
+
+def create_argument_parser():
+  """Define and create the parser for the command-line arguments.
+     It is always useful to have this as a separate method, since
+     then it can be called from another module, and in particular you
+     can make this argument parser a parent of another.
+  """
+
   description = "Plot csv files using gnuplot"
 
   epilog_usage_info = """
@@ -295,8 +301,20 @@ will plot all columns except P and Q, so E, S and R are plotted.
                            "do not invoke gnuplot")
   parser.add_argument('--no-epstopdf', action='store_true',
                       help="Do not invoke epstopdf after gnuplot")
+  return parser
 
-  arguments = parser.parse_args()
+def run (argument_strings=None):
+  """Simply do all the work. The given argument works pretty much the
+     same way as the 'args' argument to 'parse_args', that is if it is
+     given as a list of strings then it is used, otherwise the command
+     line arguments are given. This allows us to call this from other
+     modules.
+  """
+  parser = create_argument_parser()
+  if argument_strings:
+    arguments = parser.parse_args(args=argument_strings)
+  else:
+    arguments = parser.parse_args()
 
   filenames    = arguments.filenames
   datafile     = filenames[0] 
