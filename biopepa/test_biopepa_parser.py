@@ -40,7 +40,7 @@ class TestCheckBiopepaParser(unittest.TestCase):
     parse_results = biopepa_parser.parse_model(my_source)
 
     expected_number_var_defs = 9
-    var_defs = [ x for x in parse_results
+    var_defs = [ x for x in parse_results.definitions
                    if isinstance(x, biopepa_parser.VariableDeclaration)
                ]
     actual_number_var_defs = len(var_defs)
@@ -49,7 +49,7 @@ class TestCheckBiopepaParser(unittest.TestCase):
 
 
     expected_number_of_comp_defs = 2
-    comp_defs = [ x for x in parse_results 
+    comp_defs = [ x for x in parse_results.definitions
                     if isinstance(x, biopepa_parser.ComponentDefinition)
                 ]
     actual_number_of_component_defs = len(comp_defs)

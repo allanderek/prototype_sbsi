@@ -1,3 +1,6 @@
+"""
+A module that implements a parser for the Bio-PEPA language
+"""
 import argparse
 import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
@@ -7,11 +10,20 @@ from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
 # somethings, separated by something elses.
 # Note here that the separator_parser should return None
 def create_separated_by(element_parser, separator_parser):
+  """A utility to create a parser for a list of elements which are
+     separated by a given parser. This is useful for writing things
+     such as a comma-separated list of arguments
+  """
   def create_list_result(parse_result):
+    """Simple generator function to create a list from a parser result
+       of the list_syntax
+    """
     first_item = parse_result[0]
     rest_items = parse_result[1]
     rest_items.insert(0, first_item)
     return rest_items
+  # Could call 'parcon.Discard' on the separator parser to ensure that
+  # it returns None.
   following_parser = separator_parser + element_parser  
   list_syntax = element_parser + Optional(ZeroOrMore(following_parser))
   return Translate(list_syntax, create_list_result)
@@ -53,6 +65,8 @@ class NumExpression(Expression):
     return cn_element
 
 def create_number_expression(number_str):
+  """Simple utility to create a number expression from the parse result
+     of parsing a simple number"""
   return NumExpression(float(number_str))
  
 
@@ -80,9 +94,8 @@ class NameExpression(Expression):
 
  
 def make_name_expression(parse_result):
+  """Simple post parsing creation method for NameExpression"""
   return NameExpression(parse_result)
-
-
 
 class ApplyExpression(Expression):
   """A class to represent the AST of an apply expression, applying a
@@ -125,33 +138,29 @@ class ApplyExpression(Expression):
 
 
 def make_apply_expression(parse_result):
+  """simple post-parsing creation method for apply expressions"""
   return ApplyExpression(parse_result[0], parse_result[1])
-
 def make_plus_expression(left, right):
+  """simple post-parsing creation method for add expressions"""
   return ApplyExpression("plus", [left, right])
 def make_minus_expression(left, right):
+  """simple post-parsing creation method for subtract expressions"""
   return ApplyExpression("minus", [left, right])
 def make_times_expression(left, right):
+  """simple post-parsing creation method for multiply expressions"""
   return ApplyExpression("times", [left, right])
 def make_divide_expression(left, right):
+  """simple post-parsing creation method for divide expressions"""
   return ApplyExpression("divide", [left, right])
 
 
 expr = Forward()
 
-expr_list = Optional(expr + Optional(ZeroOrMore(", " + expr)))
-
-def make_argument_list(exprs):
-  if not exprs:
-    return []
-  else:
-    return [ exprs[0] ] + exprs[1]
-
-argument_list = Translate(expr_list, make_argument_list)
+argument_list = create_separated_by(expr, ",")
 
 
 # This way seems to work, provided in 'term' we have apply_expr
-# before name_expr. We could also try it something like:
+# before name_expr. We could also try something like:
 # apply_expr = parcon.alpha_word + Optional("(" + argument_list + "))
 # provided we can then interpret the result correctly, in particular
 # we must make sure that "h()" is different from "h", the former being
@@ -171,7 +180,7 @@ term = InfixExpr(term, [("*", make_times_expression),
                         ("/", make_divide_expression)])
 term = InfixExpr(term, [("+", make_plus_expression), 
                         ("-", make_minus_expression)])
-expr << term(name="expr")
+expr.set(term(name="expr"))
 
 
 class VariableDeclaration:
@@ -186,7 +195,7 @@ class VariableDeclaration:
        'value' attribute to the parameter element"""
     value_att = ""
     if isinstance(self.expression, NumExpression):
-      value_att = "value=\"" + self.expression.show_number() + "\""
+      value_att = "value=\"" + self.expression.show_expr() + "\""
     return "<parameter id=\"" + self.variable + "\" " + value_att + "/>"
 
   def show_initial_assignment(self):
@@ -265,21 +274,31 @@ any_definition = parcon.First(variable_definition,
 definition_list = parcon.OneOrMore(any_definition)
 
 class ComponentPopulation:
-  def __init__(self, name, expr):
+  """A class to hold the representation of a system_equation component.
+     This is essentially a name and initial population
+  """
+  def __init__(self, name, population_expr):
     self.name = name
-    self.population_expr = expr
+    self.population_expr = population_expr
+
 def create_component_population(parse_result):
+  """A post-parsing function to create a component population"""
   return ComponentPopulation(parse_result[0], parse_result[1])
 
 component_population = Translate(variable_name + "[" + expr + "]",
                                  create_component_population)
-system_equation = create_separated_by(component_population, "<*>")
+system_equation_parser = create_separated_by(component_population, "<*>")
 
-# This is clearly pretty temporary and just returning the
-# definition list.
+class BioPEPAModel:
+  """A simple class to hold the representation of a Bio-PEPA model"""
+  def __init__(self, definitions, system_equation):
+    self.definitions = definitions
+    self.system_equation = system_equation
+
 def make_model(parse_result):
-  return parse_result[0]
-model_syntax = definition_list + system_equation + parcon.End()
+  """Simple post-parsing creation function for the model parser"""
+  return BioPEPAModel(parse_result[0], parse_result[1])
+model_syntax = definition_list + system_equation_parser + parcon.End()
 model_parser = Translate(model_syntax, make_model)
 
 
@@ -298,7 +317,9 @@ def process_file(filename):
   # I'm not exactly sure how to do this, there is no parseFile
   # in parcon, I think we just need to open the file and pass in
   # the file handle but I haven't tried that yet. 
-  parse_result = model_parser.parseFile(filename)
+  model_file = open(filename, "r")
+  parse_result = model_parser.parse_string(model_file.read())
+  model_file.close()
 
   # print (parse_result.asXML())
 
