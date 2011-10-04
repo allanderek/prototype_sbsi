@@ -33,8 +33,9 @@ class TestCheckBiopepaParser(unittest.TestCase):
         g = g(1.0);
         h = h(1.0, 2.0);
         i = k(h(1.0));
-        A = x >>;
+        A = x >> ;
         B = y >> + x << ;
+        A[0] <*> B[x + y]
         """
     parse_results = biopepa_parser.parse_model(my_source)
 
