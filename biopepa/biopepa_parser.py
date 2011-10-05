@@ -1,9 +1,11 @@
 """
 A module that implements a parser for the Bio-PEPA language
 """
+import sys
 import argparse
 import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
+import xml.dom.minidom as minidom
 
 
 # A simply utility for creating parsers which accept a list of
@@ -229,6 +231,12 @@ class ComponentDefinition:
     self.name = name
     self.behaviours = behaviours
 
+  def get_name(self):
+    return self.name
+
+  def get_behaviours(self):
+    return self.behaviours
+
   def show_definition(self):
     """Prints out the component definition in Bio-PEPA format"""
     behaviour_strings = [ x.show_behaviour() for x in self.behaviours ]
@@ -241,6 +249,9 @@ class Behaviour:
     self.reaction_name = reaction
     self.operator = operator
     self.stoichiometry = 1
+
+  def get_name(self):
+    return self.reaction_name
 
   def show_behaviour(self):
     """Print out the behaviour as a string in Bio-PEPA format"""
@@ -309,7 +320,89 @@ def parse_model(model_source):
   """
   return model_parser.parse_string(model_source)
 
+class ReactionParticipant:
+  def __init__(self, name):
+    self.name = name
+    self.stoichiometry = 1
 
+  def get_name(self):
+    return self.name
+
+  def set_stoichiometry(self, stoichiometry):
+    self.stoichiometry = stoichiometry
+
+class Reaction:
+  """ A class representing a Bio-PEPA reaction"""
+  def __init__(self, name):
+    self.name = name
+    # The user should not be forced into providing a rate
+    # they may only wish to perform invariant analysis for example.
+    self.rate = None
+    self.reactants = []
+    self.products = []
+    self.modifiers = []
+
+  def define_rate(self, rate):
+    self.rate = rate
+
+  def add_behaviour(self, comp_name, behaviour):
+    participant = ReactionParticipant(comp_name)
+    participant.set_stoichiometry(behaviour.stoichiometry)
+    if behaviour.operator == ">>":
+      self.products.append(participant)
+    elif behaviour.operator == "<<":
+      self.reactants.append(participant)
+    elif behaviour.operator == "(+)":
+      self.modifiers.append(participant)
+    elif behaviour.operator == "(-)":
+      self.modifiers.append(participant)
+    else: # behaviour.operator == "(.)"
+      self.modifiers.append(modifier)
+
+  def create_element(self, document):
+    reaction_element = document.createElement("reaction")
+    reaction_element.setAttribute("id", self.name)
+    if self.reactants:
+      list_of_reactants = document.createElement("listOfReactants")
+      reaction_element.appendChild(list_of_reactants)
+      for reactant in self.reactants:
+        spec_ref = document.createElement("speciesReference")
+        spec_ref.setAttribute("id", reactant.name)
+        list_of_reactants.appendChild(spec_ref)
+    if self.products:
+      list_of_products = document.createElement("listOfProducts")
+      reaction_element.appendChild(list_of_products)
+      for product in self.products:
+        spec_ref = document.createElement("speciesReference")
+        spec_ref.setAttribute("id", product.name)
+        list_of_products.appendChild(spec_ref)
+    if self.modifiers:
+      list_of_modifiers = document.createElement("listOfModifiers")
+      reaction_element.appendChild(list_of_modifiers)
+      for modifier in self.modifiers:
+        spec_ref = document.createElement("speciesReference")
+        spec_ref.setAttribute("id", modifier.name)
+        list_of_products.appendChild(spec_ref)
+       
+        
+    return reaction_element
+
+  def convert_to_sbml(self):
+    result = "<reaction id=\"" + self.name + "\" >"
+    if self.reactants:
+      result += "<listOfReactants>"
+      for reactant in self.reactants:
+        result += "<speciesReference id=\"" + reactant.get_name()
+        result += "\" />"
+      result += "</listOfReactants>"
+    if self.products:
+      result+= "<listOfProducts>"
+      for product in self.products:
+        result += "<speciesReference id=\"" + reactant.get_name()
+        result += "\" />"
+      result += "</listOfProducts>"
+    result += "</reaction>"
+    return result
 
 def process_file(filename):
   """A simple method to process a Bio-PEPA model file and print
@@ -323,20 +416,48 @@ def process_file(filename):
 
   # print (parse_result.asXML())
 
-  for mvd in parse_result:
-    if isinstance(mvd, VariableDeclaration):
-      print(mvd.convert_to_sbml())
-  for mvd in parse_result:
-    if isinstance(mvd, VariableDeclaration):
-      print(mvd.show_initial_assignment())
+  # for mvd in parse_result.definitions:
+  #   if isinstance(mvd, VariableDeclaration):
+  #     print(mvd.convert_to_sbml())
+  # for mvd in parse_result.definitions:
+  #   if isinstance(mvd, VariableDeclaration):
+  #     print(mvd.show_initial_assignment())
 
-  components = [ x for x in parse_result 
+  components = [ x for x in parse_result.definitions
                        if isinstance(x, ComponentDefinition) ]
 
+  # for component_def in components:
+  #   print(component_def.show_definition())
+
+  reaction_dictionary = dict()
   for component_def in components:
-    print(component_def.show_definition())
-  # When you have something for a whole biopepafile you can use
-  # parser.parseFile(source_file)
+    for behaviour in component_def.get_behaviours():
+      b_name = behaviour.get_name() 
+      if b_name in reaction_dictionary:
+        reaction = reaction_dictionary[b_name]
+      else:
+        reaction = Reaction(b_name)
+        reaction_dictionary[b_name] = reaction
+      reaction.add_behaviour(component_def.get_name(), behaviour)
+
+  # for reaction in reaction_dictionary.values():
+  #  print(reaction.convert_to_sbml())
+  xml_implementation = minidom.getDOMImplementation()
+  document = xml_implementation.createDocument(None, "sbml", None)
+  top_element = document.documentElement 
+
+  list_of_reactions = document.createElement("listOfReactions")
+  top_element.appendChild(list_of_reactions)
+
+  for reaction in reaction_dictionary.values():
+    reaction_element = reaction.create_element(document)
+    list_of_reactions.appendChild(reaction_element)
+     
+
+  # top_element.writexml(sys.stdout, indent="  ")
+  # print ("")
+  formatted = document.toprettyxml(indent="  ", encoding="UTF-8")
+  print (formatted)
 
 def main():
   """A simple main function to parse in the arguments as
