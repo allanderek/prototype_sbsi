@@ -120,8 +120,6 @@ def get_reaction_of_element(reaction_element):
                                               "speciesReference",
                                               name_of_species_reference,
                                               reaction_element)
-  # todo we should add the modifiers
-
   for reactant in reactants:
     reaction.add_reactant(ReactionParticipant(reactant))
 
@@ -164,12 +162,18 @@ def get_elements_from_lists_of_list(list_element_name,
       result_objects.append(result_obj)
   return result_objects
 
-def get_list_of_reactions(model):
+def get_list_of_reactions(model, ignore_sources=False, ignore_sinks=False):
   """Returns a list of reaction objects from an sbml model"""
-  return get_elements_from_lists_of_list("listOfReactions",
-                                         "reaction",
-                                         get_reaction_of_element,
-                                         model)
+  reactions = get_elements_from_lists_of_list("listOfReactions",
+                                              "reaction",
+                                              get_reaction_of_element,
+                                              model)
+  if ignore_sources:
+    reactions = [ r for r in reactions if not r.is_source() ] 
+  if ignore_sinks:
+    reactions = [ r for r in reactions if not r.is_sink() ]
+ 
+  return reactions
 
 def get_species_of_element(species_element):
   """Return a species object from a species element, in other words
@@ -283,14 +287,12 @@ def outline_rate_rules(model):
 
 def outline_model(model, arguments):
   """format and print out an outline for the given model"""
-  reactions = get_list_of_reactions(model)
+  reactions = get_list_of_reactions(model,
+                  ignore_sources = arguments.ignore_sources,
+                  ignore_sinks = arguments.ignore_sinks)
   print_amount(len(reactions), "reaction", "reactions")
   for reaction in reactions:
-    if ( (arguments.ignore_sources and reaction.is_sources()) or
-         (arguments.ignore_sinks and reaction.is_sink()) ):
-      pass
-    else:
-      print("  " + reaction.format_reaction())
+    print("  " + reaction.format_reaction())
 
   outline_rate_rules(model)
 
