@@ -82,7 +82,7 @@ class Event:
     event.appendChild(loea)
     return event
     
-  def create_copasi_element(self, document, event_number):
+  def create_copasi_element(self, document, key_map, event_number):
     """Create and return a copasi xml element representing this event"""
     event = document.createElement("Event")
     event_name = "TimeCourseEvent_" + str(event_number)
@@ -90,7 +90,9 @@ class Event:
     event.setAttribute("name", event_name)
     event.setAttribute("order", str(event_number + 1))
     trigger = document.createElement("TriggerExpression")
-    trigger_text = ("<CN=Root,Model=NoName,Reference=Time> gt " +
+    model_name = get_copasi_model_name(document)
+    trigger_text = ("<CN=Root,Model=" + model_name + 
+                    ",Reference=Time> gt " +
                     str(self.time))
     text_node = document.createTextNode(trigger_text)
     trigger.appendChild(text_node)
@@ -99,7 +101,11 @@ class Event:
     list_of_assignments = document.createElement("ListOfAssignments")
     for event_assign in self.event_assigns:
       assignment = document.createElement("Assignment")
-      assignment.setAttribute("targetKey", event_assign.species)
+      # The target key corresponding to the name of the species being
+      # assigned to, for some reason this cannot be the name, but must
+      # be the key which COPASI has assigned to it.
+      assignment_key = key_map[event_assign.species]
+      assignment.setAttribute("targetKey", assignment_key)
       expression = document.createElement("Expression")
       text_node = document.createTextNode(str(event_assign.value))
       expression.appendChild(text_node)
@@ -185,12 +191,13 @@ def add_events_sbml(filename, events, species, arguments):
   model = dom.getElementsByTagName("model")[0]
   
   # Where loe = listOfEvents
-  loe_elements = model.getElementsByTagName("ListOfEvents")
+  loe_elements = model.getElementsByTagName("listOfEvents")
   if not loe_elements:
-    loe_element = dom.createElement("ListOfEvents")
-
-    state_template = model.getElementsByTagName("StateTemplate") 
-    model.insertBefore(state_template)
+    loe_element = dom.createElement("listOfEvents")
+    # listOfEvents is the last child of a model so that we can
+    # just append it regardless of what other child nodes are in
+    # this particular model.
+    model.appendChild(loe_element)
   else:
     loe_element = loe_elements[0]
 
@@ -205,34 +212,69 @@ def add_events_sbml(filename, events, species, arguments):
     document = dom.toxml("UTF-8")
   print(document)
 
+def get_copasi_model_name(document):
+  """Assume the given xml document is a COPASI model and return the
+     model name attribute. If there is none such then return 'NoName'"""
+  model_elements = document.getElementsByTagName("Model")
+  if model_elements:
+    model_element = model_elements[0]
+    if model_element.hasAttributes():
+      name_attribute = model_element.attributes["name"]
+      if name_attribute:
+        return name_attribute.value
+  # If we do not return a proper name, then we return the default.
+  return "NoName"
+
+def get_copasi_key_map(document):
+  """For some reason COPASI expects assignments and such to refer to
+     the COPASI key, rather than the species/model_value name. Hence
+     we must find out what key it has given to each value that we may
+     wish to update in an assignment. So we build up a map and return
+     it"""
+  model_values = document.getElementsByTagName("ModelValue")
+  dictionary = dict()
+  for model_value in model_values:
+    # Technically we should check if it has attributes
+    attributes = model_value.attributes
+    name = attributes["name"].value
+    key = attributes["key"].value
+    dictionary[name] = key
+
+  return dictionary
+  
+
 def add_events_copasi(filename, events, species, arguments):
   """Parse in a file as a copasi model, add the given events and then
      print out the augmented model"""
   dom = xml.dom.minidom.parse(filename)
-  model = dom.getElementsByTagName("COPASI")[0]
+  model = dom.getElementsByTagName("Model")[0]
   
   # Where loe = listOfEvents
   loe_elements = model.getElementsByTagName("ListOfEvents")
   if not loe_elements:
     loe_element = dom.createElement("ListOfEvents")
-    # listOfEvents is the last child of a model so that we can
-    # just append it regardless of what other child nodes are in
-    # this particular model.
-    model.appendChild(loe_element)
+    # This is perhaps a bit dodgy, we don't know that there will be
+    # a state template element. We should probably look in model.childNodes
+    # for the node directly after ListOfReactions.
+    state_template = model.getElementsByTagName("StateTemplate")[0]
+    model.insertBefore(loe_element, state_template)
   else:
     loe_element = loe_elements[0]
 
+  key_map = get_copasi_key_map(dom)
   event_number = 0
   for event in events:
-    loe_element.appendChild(event.create_copasi_element(dom, event_number)) 
+    event_element = event.create_copasi_element(dom, key_map, event_number) 
+    loe_element.appendChild(event_element)
     event_number += 1
 
-  sbml_references = model.getElementsByTagName("SBMLReference")
+  copasi_element = dom.getElementsByTagName("COPASI")[0]
+  sbml_references = copasi_element.getElementsByTagName("SBMLReference")
   if sbml_references:
     sbml_reference = sbml_references[0]
   else:
     sbml_reference = dom.createElement("SBMLReference")
-    model.appendChild(sbml_reference)
+    copasi_element.appendChild(sbml_reference)
 
   for index in range (0, event_number):
     event_name = "TimeCourseEvent_" + str(index)
@@ -242,7 +284,7 @@ def add_events_copasi(filename, events, species, arguments):
     sbml_reference.appendChild(sbml_map)
     
 
-  check_constant_false (model, species)
+  # check_constant_false (model, species)
  
   if arguments.pretty:
     document = dom.toprettyxml(indent="  ", encoding="UTF-8")
