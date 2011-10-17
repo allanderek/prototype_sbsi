@@ -140,24 +140,23 @@ def events_from_timecourse(timecourse, arguments):
   """Create a list of events given a timecourse"""
   events = []
   column_names = timecourse.get_column_names()
-  if arguments.column:
-    column_names = [ column_name for column_name in column_names
-                       if column_name in arguments.column ]
-  if arguments.mcolumn:
-    column_names = [ column_name for column_name in column_names
-                       if column_name not in arguments.mcolumn ]
-    
+
   for row in timecourse.get_rows():
     time = row[0]
     event_assigns = []
     for i in range(len(column_names)):
       name = column_names[i]
-      # Because the column_names don't include the time value
-      # hence the index into the row will be one greater than
-      # the index into the column_names list.
-      value = row[i + 1]
-      event_assign = EventAssign(name, value)
-      event_assigns.append(event_assign)
+
+      # Essentially only generate an event assignment if the column
+      # is to be processed.
+      if ((not arguments.column or name in arguments.column) and
+          (not arguments.mcolumn or name not in arguments.mcolumn)):
+        # Because the column_names don't include the time value
+        # hence the index into the row will be one greater than
+        # the index into the column_names list.
+        value = row[i + 1]
+        event_assign = EventAssign(name, value)
+        event_assigns.append(event_assign)
     event = Event(time, event_assigns)
     events.append(event)
   return events
