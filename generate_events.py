@@ -53,7 +53,7 @@ class Event:
     return loea
  
   def create_element(self, document):
-    """Create an return the xml element representing this event"""
+    """Created an return the xml element representing this event"""
     event = document.createElement("event")
     trigger = document.createElement("trigger")
     event.appendChild(trigger)
@@ -82,6 +82,52 @@ class Event:
     event.appendChild(loea)
     return event
     
+  def create_copasi_element(self, document, event_number):
+    """Create and return a copasi xml element representing this event"""
+    event = document.createElement("Event")
+    event_name = "TimeCourseEvent_" + str(event_number)
+    event.setAttribute("key", event_name)
+    event.setAttribute("name", event_name)
+    event.setAttribute("order", str(event_number + 1))
+    trigger = document.createElement("TriggerExpression")
+    trigger_text = ("<CN=Root,Model=NoName,Reference=Time> gt " +
+                    str(self.time))
+    text_node = document.createTextNode(trigger_text)
+    trigger.appendChild(text_node)
+    event.appendChild(trigger)
+
+    list_of_assignments = document.createElement("ListOfAssignments")
+    for event_assign in self.event_assigns:
+      assignment = document.createElement("Assignment")
+      assignment.setAttribute("targetKey", event_assign.species)
+      expression = document.createElement("Expression")
+      text_node = document.createTextNode(str(event_assign.value))
+      expression.appendChild(text_node)
+      assignment.appendChild(expression)
+      list_of_assignments.appendChild(assignment)
+    
+    event.appendChild(list_of_assignments)
+    return event
+
+      # <Event key="Event_0" name="event_0" order="1">
+      #   <TriggerExpression>
+      #     &lt;CN=Root,Model=NoName,Reference=Time&gt; gt 0.1
+      #   </TriggerExpression>
+      #   <ListOfAssignments>
+      #     <Assignment targetKey="ModelValue_2">
+      #       <Expression>
+      #         18.6355
+      #       </Expression>
+      #     </Assignment>
+      #     <Assignment targetKey="ModelValue_6">
+      #       <Expression>
+      #         10
+      #       </Expression>
+      #     </Assignment>
+      #   </ListOfAssignments>
+      # </Event>
+
+
 
 def events_from_timecourse(timecourse):
   """Create a list of events given a timecourse"""
@@ -111,6 +157,12 @@ def has_xml_or_sbml_ext(filename):
   extension = os.path.splitext(filename)[1]
   return extension == ".xml" or extension == ".sbml"
 
+def has_copasi_ext(filename):
+  """Returns true if we believe the file to be a copasi model file
+     based on the file's extension"""
+  extension = os.path.splitext(filename)[1]
+  return extension == ".cps"
+
 def check_constant_false(model, species):
   """Checks that if the given species is defined in the model as a
      parameter, then it has its constant attribute set to false.
@@ -126,20 +178,19 @@ def check_constant_false(model, species):
         if name in species:
           parameter.setAttribute("constant", "false")
 
-def add_events(filename, events, species, arguments):
-  """Parse in a file as an SBML model, obfuscate it and then print out
-     the obfuscated model"""
+def add_events_sbml(filename, events, species, arguments):
+  """Parse in a file as an SBML model, add the given events and then
+     print out the augmented model"""
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("model")[0]
   
   # Where loe = listOfEvents
-  loe_elements = model.getElementsByTagName("listOfEvents")
+  loe_elements = model.getElementsByTagName("ListOfEvents")
   if not loe_elements:
-    loe_element = dom.createElement("listOfEvents")
-    # listOfEvents is the last child of a model so that we can
-    # just append it regardless of what other child nodes are in
-    # this particular model.
-    model.appendChild(loe_element)
+    loe_element = dom.createElement("ListOfEvents")
+
+    state_template = model.getElementsByTagName("StateTemplate") 
+    model.insertBefore(state_template)
   else:
     loe_element = loe_elements[0]
 
@@ -154,6 +205,52 @@ def add_events(filename, events, species, arguments):
     document = dom.toxml("UTF-8")
   print(document)
 
+def add_events_copasi(filename, events, species, arguments):
+  """Parse in a file as a copasi model, add the given events and then
+     print out the augmented model"""
+  dom = xml.dom.minidom.parse(filename)
+  model = dom.getElementsByTagName("COPASI")[0]
+  
+  # Where loe = listOfEvents
+  loe_elements = model.getElementsByTagName("ListOfEvents")
+  if not loe_elements:
+    loe_element = dom.createElement("ListOfEvents")
+    # listOfEvents is the last child of a model so that we can
+    # just append it regardless of what other child nodes are in
+    # this particular model.
+    model.appendChild(loe_element)
+  else:
+    loe_element = loe_elements[0]
+
+  event_number = 0
+  for event in events:
+    loe_element.appendChild(event.create_copasi_element(dom, event_number)) 
+    event_number += 1
+
+  sbml_references = model.getElementsByTagName("SBMLReference")
+  if sbml_references:
+    sbml_reference = sbml_references[0]
+  else:
+    sbml_reference = dom.createElement("SBMLReference")
+    model.appendChild(sbml_reference)
+
+  for index in range (0, event_number):
+    event_name = "TimeCourseEvent_" + str(index)
+    sbml_map = dom.createElement("SBMLMap")
+    sbml_map.setAttribute("COPASIkey", event_name)
+    sbml_map.setAttribute("SBMLid", event_name)
+    sbml_reference.appendChild(sbml_map)
+    
+
+  check_constant_false (model, species)
+ 
+  if arguments.pretty:
+    document = dom.toprettyxml(indent="  ", encoding="UTF-8")
+  else:
+    document = dom.toxml("UTF-8")
+  print(document)
+
+
 def run():
   """Perform the banalities of command-line argument processing
      and then actually do the main work """
@@ -167,13 +264,13 @@ def run():
    
   arguments = parser.parse_args()
 
-  timecourse_files = [ x for x in arguments.filenames 
-                         if not has_xml_or_sbml_ext(x) ]
-
   sbml_files = [ x for x in arguments.filenames 
                    if has_xml_or_sbml_ext(x) ]
+  copasi_files = [ x for x in arguments.filenames
+                      if has_copasi_ext(x) ]
+  timecourse_files = [ x for x in arguments.filenames
+                          if not x in sbml_files and not x in copasi_files ]
 
- 
   events = []
   species = []
   for filename in timecourse_files:
@@ -186,12 +283,14 @@ def run():
     print ("No events to add, doing nothing:")
     sys.exit(1)
 
-  if not sbml_files:
+  if not sbml_files and not copasi_files:
     for event in events:
       print (event.format_event())
   else:
     for filename in sbml_files:
-      add_events(filename, events, species, arguments)
+      add_events_sbml(filename, events, species, arguments)
+    for filename in copasi_files:
+      add_events_copasi(filename, events, species, arguments)
 
 
 
