@@ -7,6 +7,7 @@ import sys
 import argparse
 import xml.dom.minidom
 import timeseries
+import utils
 
 class EventAssign:
   """A simple class representing an event assignment"""
@@ -135,10 +136,17 @@ class Event:
 
 
 
-def events_from_timecourse(timecourse):
+def events_from_timecourse(timecourse, arguments):
   """Create a list of events given a timecourse"""
   events = []
   column_names = timecourse.get_column_names()
+  if arguments.column:
+    column_names = [ column_name for column_name in column_names
+                       if column_name in arguments.column ]
+  if arguments.mcolumn:
+    column_names = [ column_name for column_name in column_names
+                       if column_name not in arguments.mcolumn ]
+    
   for row in timecourse.get_rows():
     time = row[0]
     event_assigns = []
@@ -303,6 +311,10 @@ def run():
                       help="an sbml file to check invariants for")
   parser.add_argument('--pretty', action='store_true',
                       help="Pretty print the xml")
+  parser.add_argument('--column', action=utils.ListArgumentAction,
+                      help="Specify a column to be interpreted")
+  parser.add_argument('--mcolumn', action=utils.ListArgumentAction,
+                      help="Specify a column not to be interpreted")
    
   arguments = parser.parse_args()
 
@@ -318,7 +330,7 @@ def run():
   for filename in timecourse_files:
     timecourse = timeseries.get_timecourse_from_file(filename)
     species.extend(timecourse.get_column_names())
-    these_events = events_from_timecourse(timecourse)
+    these_events = events_from_timecourse(timecourse, arguments)
     events.extend(these_events)
 
   if not events:
