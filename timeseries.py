@@ -122,11 +122,12 @@ class Timeseries:
        time columns"""
     return len(self.rows) * (len(self.columns) - 1)
 
-  def write_to_file(self, results_file, separator=None):
+  def write_to_file(self, results_file, separator=None, head_comment=None):
     """Format the time series and write it to the given file"""
     if not separator:
       separator = ", "
-    results_file.write("# ")
+    if head_comment:
+      results_file.write(head_comment)
     prefix = ""
     for column in self.columns:
       results_file.write(prefix)
