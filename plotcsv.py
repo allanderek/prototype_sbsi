@@ -113,10 +113,18 @@ def create_gnuplot_file(basename, arguments, datafiles):
   gnufilename = basename + ".gnuplot"
   gnuplotfile = open (gnufilename, "w")
 
-  epsfilename = basename + ".eps"
-  set_gnuplot_option(gnuplotfile, "term",
-                     "post eps color enhanced", quote=False)
-  set_gnuplot_option(gnuplotfile, "output", epsfilename)
+  if arguments.output_format == "pdf" or arguments.output_format == "eps":
+    epsfilename = basename + ".eps"
+    set_gnuplot_option(gnuplotfile, "term",
+                       "post eps color enhanced", quote=False)
+    set_gnuplot_option(gnuplotfile, "output", epsfilename)
+    outputfilename = epsfilename
+  elif arguments.output_format == "png":
+    pngfilename = basename + ".png"
+    set_gnuplot_option(gnuplotfile, "term", "png enhanced", quote=False)
+    set_gnuplot_option(gnuplotfile, "output", pngfilename)
+    outputfilename = pngfilename
+
   # This assumes that all the files have the same separator
   # It would be nice to allow otherwise, but slightly tricky.
   separator = get_separator(datafiles[0], arguments)
@@ -131,7 +139,7 @@ def create_gnuplot_file(basename, arguments, datafiles):
 
   gnuplotfile.write("\n")
   gnuplotfile.close()
-  return (gnufilename, epsfilename)
+  return (gnufilename, outputfilename)
 
 def should_plot_column(arguments, name):
   """A simple function to determine, based on the command line arguments
@@ -296,6 +304,11 @@ will plot all columns except P and Q, so E, S and R are plotted.
                       help="Specify a column to be plotted")
   parser.add_argument('--mcolumn', action=utils.ListArgumentAction,
                       help="Specify a column not to be plotted")
+  parser.add_argument('--output-format', action='store',
+                      choices=["pdf", "png"],
+                      default="pdf",
+                      help="Set the output format image file")
+
   parser.add_argument('--no-gnuplot', action='store_true',
                       help="Just generate the gnuplot script, " +
                            "do not invoke gnuplot")
@@ -324,17 +337,17 @@ def run (argument_strings=None):
   if not basename:
     basename = os.path.splitext(datafile)[0]
 
-  (gnufilename, epsfilename) = create_gnuplot_file(basename,
-                                                   arguments,
-                                                   filenames)
+  (gnufilename, outputfilename) = create_gnuplot_file(basename,
+                                                      arguments,
+                                                      filenames)
 
   # We now also actually run gnuplot
   if not arguments.no_gnuplot:
     gnuplot_command = [ "gnuplot", gnufilename ]
     gnuplot_process = Popen(gnuplot_command)
     gnuplot_process.communicate()
-    if not arguments.no_epstopdf:
-      epstopdf_command = [ "epstopdf", epsfilename ]
+    if not arguments.no_epstopdf and arguments.output_format == "pdf":
+      epstopdf_command = [ "epstopdf", outputfilename ]
       epstopdf_process = Popen(epstopdf_command)
       epstopdf_process.communicate()
 
