@@ -8,6 +8,15 @@ class ReactionParticipant:
     self.name = name
     self.stoich = stoich
 
+  def __cmp__(self, other):
+    """Implementation of comparison for general use"""
+    if self.name == other.name and self.stoich == other.stoich:
+      return 0
+    elif self.name == other.name:
+      return cmp(self.stoich, other.stoich)
+    else:
+      return cmp(self.name, other.name)
+
   def get_name(self):
     """Return the name of the reaction participant"""
     return self.name
@@ -15,6 +24,16 @@ class ReactionParticipant:
     """Return the stoichiometry of this reaction participant
        within the reaction"""
     return self.stoich
+
+  def format_participant(self):
+    """Returns a reasonable format of this reaction participant,
+       basically just the name if the stoichiometry is 1, or
+       (name, stoich) otherwise
+    """
+    if self.stoich == 1:
+      return self.get_name()
+    else:
+      return "(" + self.get_name() + ", " + str(self.stoich) + ")"
 
 class Species:
   """A simple class to represent a species within an sbml model"""
@@ -24,6 +43,10 @@ class Species:
   def get_name(self):
     """ return the name of the species"""
     return self.name
+
+  def format_species(self):
+    """Returns a reasonable format of this species definition"""
+    return self.name + " in " + self.compartment
 
 class Reaction:
   """A class which represents a reaction"""
@@ -37,6 +60,7 @@ class Reaction:
     self.products = []
     self.modifiers = []
     self.name = name
+    self.kinetic_law = None
 
   def get_name(self):
     """return the name of the reaction"""
@@ -54,6 +78,10 @@ class Reaction:
     """Add a modifier to the reaction"""
     self.modifiers.append(modifier)
 
+  def get_modifiers(self):
+    """return the list of modifier names"""
+    return self.modifiers
+
   def get_reactants(self):
     """return the list of reactant names"""
     return self.reactants
@@ -61,6 +89,14 @@ class Reaction:
   def get_products(self):
     """return the list of product names"""
     return self.products
+
+  def get_kinetic_law(self):
+    """Return the kinetic law for the rate of this reaction if any"""
+    return self.kinetic_law
+
+  def set_kinetic_law(self, kinetic_law):
+    """Set the kinetic law, for the rate of this reaction"""
+    self.kinetic_law = kinetic_law
 
   def is_sink(self):
     """returns true if the reaction is a sink,
@@ -72,35 +108,55 @@ class Reaction:
        in that it has at least one product and no reactants"""
     return self.products and not self.reactants
 
+  def is_reverse(self, reversed):
+    """Returns true if the given reaction is the reverse of
+       the current reaction
+    """
+    def equal_lists(left, right):
+      """Checks if two lists are 'equal', equal if they are considered
+         to be sets
+      """
+      # Could check the lengths here, but I think we want
+      # 'l,l,r' to be equal to 'l,r', so we're ignoring duplicates.
+      # Not sure if that's correct to do so though.
+      for l in left:
+        if l not in right:
+          return False
+      for r in right :
+        if r not in left :
+          return False
+      return True
+    if (equal_lists(self.reactants, reversed.products) and
+        equal_lists(self.products, reversed.reactants)):
+       return True
+    else:
+       return False
+
+  def involves(self, species):
+    """Returns true if the given species is involved with this reaction"""
+    name = species.name
+    reactant_names = [ r.get_name() for r in self.reactants ] 
+    product_names = [ p.get_name() for p in self.products ]
+    modifier_names = [ m.get_name() for m in self.modifiers ]
+    if (name in reactant_names or
+        name in product_names  or
+        name in modifier_names):
+      return True
+    return False
+
   def format_reaction(self):
     """Return a string representing the reaction in a format 
        suitable for human consumption"""
     results = self.name + ": "
 
     # so the first reactant has nothing attached to the front of it
-    prefix = ""
-    for reactant in self.reactants:
-      results += prefix
-      results += reactant.get_name()
-      # hence, every reactant other than the first will have ", "
-      # prefixed to the front of it, separating it from the previous one
-      prefix = ", "
-
-    for modifier in self.modifiers:
-      results += prefix
-      results += "(.)" + modifier.get_name()
-      # Same trick as above, we still play it here because there may be
-      # no reactants so this might still be the first to set the prefix
-      # and hence it might still be empty.
-      prefix = ", "
-
+    reactants_and_modifiers = self.reactants + self.modifiers
+    results += ", ".join([ r.format_participant() 
+                           for r in reactants_and_modifiers])
     results += " --> "
-    prefix = ""
-    for product in self.products:
-      results += prefix
-      results += product.get_name()
-      prefix = ", "
-  
+    results += ", ".join([ p.format_participant() 
+                           for p in self.products])
+ 
     return results
 
 
@@ -112,34 +168,50 @@ def name_of_species_reference(spec_ref):
   name = spec_ref.getAttribute("species")
   return name
 
+def react_partic_of_species_ref(spec_ref):
+  """Return the 'ReactionParticpant' of a speciesReference sbml
+     element. This is also used for 
+     the modifierSpeciesReference elements
+  """
+  name = spec_ref.getAttribute("species")
+  stoich = spec_ref.getAttribute("stoichiometry")
+  if not stoich:
+    return ReactionParticipant(name)
+  else :
+    return ReactionParticipant(name, stoich=float(stoich))
+  return name
+
 def get_reaction_of_element(reaction_element):
   """a function to return a reaction object from a reaction sbml element"""
   name = reaction_element.getAttribute("id")
   reaction = Reaction(name)
   reactants = get_elements_from_lists_of_list("listOfReactants",
                                               "speciesReference",
-                                              name_of_species_reference,
+                                              react_partic_of_species_ref,
                                               reaction_element)
   for reactant in reactants:
-    reaction.add_reactant(ReactionParticipant(reactant))
+    reaction.add_reactant(reactant)
 
   # of course we do the same for products
   products = get_elements_from_lists_of_list("listOfProducts",
                                              "speciesReference",
-                                             name_of_species_reference,
+                                             react_partic_of_species_ref,
                                              reaction_element)
   for product in products:
-    reaction.add_product(ReactionParticipant(product))
+    reaction.add_product(product)
 
 
   # And also for the modifiers
   modifiers = get_elements_from_lists_of_list("listOfModifiers",
                                              "modifierSpeciesReference",
-                                             name_of_species_reference,
+                                             react_partic_of_species_ref,
                                              reaction_element)
   for modifier in modifiers:
-    reaction.add_modifier(ReactionParticipant(modifier))
+    reaction.add_modifier(modifier)
 
+  kinetic_laws = reaction_element.getElementsByTagName("kineticLaw")
+  if kinetic_laws:
+    reaction.set_kinetic_law(kinetic_laws[0])
 
   return reaction
    
@@ -175,6 +247,9 @@ def get_list_of_reactions(model, ignore_sources=False, ignore_sinks=False):
  
   return reactions
 
+
+ 
+
 def get_species_of_element(species_element):
   """Return a species object from a species element, in other words
      parse a species element"""
@@ -188,6 +263,40 @@ def get_list_of_species(model):
   return get_elements_from_lists_of_list("listOfSpecies",
                                          "species",
                                          get_species_of_element,
+                                         model)
+
+
+class Assignment:
+  def __init__(self, variable, expression):
+    self.variable = variable
+    self.expression = expression
+
+  def get_variable_name(self):
+    return self.variable
+
+  def get_assigned_expr(self):
+    return self.expression
+
+class InitialAssignment(Assignment):
+  pass
+
+class AssignmentRule(Assignment):
+  pass
+
+def get_assignment_rule_of_element(assign_rule_element):
+  variable_name = assign_rule_element.getAttribute("variable")
+  math_elements = assign_rule_element.getElementsByTagName("math")
+  expression = None
+  if math_elements:
+    expression = math_elements[0]
+
+  return AssignmentRule(variable_name, expression)
+ 
+def get_list_of_assignment_rules(model):
+  """Return the list of assignment rules from an sbml model"""
+  return get_elements_from_lists_of_list("listOfRules",
+                                         "assignmentRule",
+                                         get_assignment_rule_of_element,
                                          model)
 
 def print_amount(num, singular, plural):
@@ -293,6 +402,16 @@ def outline_model(model, arguments):
   print_amount(len(reactions), "reaction", "reactions")
   for reaction in reactions:
     print("  " + reaction.format_reaction())
+
+  species_list = get_list_of_species(model)
+  # Ha okay we don't really need 'print_amount' since the plural
+  # and singular of species is the same.
+  print_amount(len(species_list), "species", "species")
+  for species in species_list:
+    print ("  " + species.format_species())
+    for reaction in reactions:
+      if reaction.involves(species):
+        print ("       " + reaction.format_reaction())
 
   outline_rate_rules(model)
 

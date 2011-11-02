@@ -231,7 +231,7 @@ def invariants_model_file(filename, ignore_sources, ignore_sinks):
       print (name)
     if not ignore_sources or not ignore_sinks:
       print ("Try again whilst ignore source and sink reactions using the")
-      print ("command-line flags: --ignore_sources --ignore_sinks")
+      print ("command-line flags: --ignore-sources --ignore-sinks")
   else:
     print ("There are no components uncovered by invariants")
 
