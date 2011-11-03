@@ -64,20 +64,27 @@ def get_assignment_rules_from_model(model):
                model)
   return arules
 
-def init_params_model_file(filename, factor):
-  """Parse in a file as an SBML model, and extract the parameter
-     information from it"""
+def init_params_model_file(filename):
+  """Parse in a file as an SBML model, and extract the probably
+     optimisable parameters from it. Essentially then that is all
+     the parameters which are not associated with an assignment rule"""
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("model")[0]
   params = get_parameters_from_model(model)
   arules = get_assignment_rules_from_model(model)
   arule_names = [ arule.variable for arule in arules ]
 
+  return [ p for p in params if p.name not in arule_names ]
+
+
+def create_init_params_file(filename, factor):
+  """Get the parameters of an sbml file which we think are likely to
+     be 'optimisable' and based on that create an initparams file"""
+  params = init_params_model_file(filename)
   output_filename = utils.change_filename_ext(filename, ".initparams")
   output_file = open (output_filename, "w") 
   for param in params:
-    if param.name not in arule_names: 
-      output_file.write (param.format_init(factor) + "\n")
+    output_file.write (param.format_init(factor) + "\n")
   output_file.close()
  
 def run():
@@ -95,7 +102,7 @@ def run():
   factor = 10.0
 
   for filename in arguments.filenames:
-    init_params_model_file(filename, factor)
+    create_init_params_file(filename, factor)
 
 if __name__ == "__main__":
   run()

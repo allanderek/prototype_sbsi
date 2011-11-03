@@ -9,12 +9,15 @@ import os.path
 import random
 import math
 import logging
+import shutil
+
 # import configuration
 import solve_model
 import timeseries
 import parameters
+import range_cost
+import fft_cost
 import utils
-import shutil
 
 class MultipleCostFunctions:
   """A cost function class that does no actual costing itself but
@@ -32,84 +35,6 @@ class MultipleCostFunctions:
     cost = 0
     for comparison in self.cost_functions:
       cost += comparison.compare_timeseries(candidate_ts)
-    return cost
-
-
-
-class FFTcost:
-  """A cost function based on the fast fourier transform"""
-  def __init__(self, gold_ts):
-    self.gold_standard_timeseries = gold_ts
-    # This clearly isn't correct, since not all of the states
-    # may be periodic
-    self.state_names = gold_ts.get_column_names()
-
-
-  @staticmethod
-  def dft_single(values, k):
-    """Compute the 'energy' at the given frequency of a signal defined
-       by the time course of given values. The energy is not relative
-       to the energy of the signal as a whole, since it is not compared
-       with energies at other frequencies"""
-    inv = -1 
-    num_values = len(values)
-    energy = 0
-    for value_index in xrange(num_values) :
-      exponent = inv * 2j * math.pi * k * value_index / num_values
-      energy += values[value_index] * math.e**exponent
-    energy /= num_values
-    return abs(energy)
- 
-  @staticmethod
-  def dft(values, kman):
-    """Compute the cost using the dft of the signal given as a time
-       course of values. The cost is determined against the energy
-       of the signal at the given frequency (which in turn iss related
-       to the desired period)"""
-    num_values = len(values)
-
-    # Rather than find the energy at all frequencies, just
-    # figure out the energy at a few selected points 
-    k1_energy = FFTcost.dft_single(values, 1)
-    kman_energy = FFTcost.dft_single(values, kman)
-    khalf_energy = FFTcost.dft_single(values, num_values / 2)
-    kquarter_energy = FFTcost.dft_single(values, num_values / 4)
-    energies = [ k1_energy, kman_energy, 
-                 khalf_energy, kquarter_energy ]
-    # energies = [ FFTcost.dft_single(x, n) for n in range(1, N / 2) ]
-    # The cost then is how much of the energy at all the frequencies
-    # is attributable to the energy at the frequency we are interested
-    # in. This is essentially saying how relatively well represented is
-    # the given frequency. Note there may be a corner case here in which
-    # N is less than the number of frequencies we are considering but
-    # I think that is not interesting for our purposes.
-    sum_energies = sum(energies)
-    # Must be positive since all energies are positive and the sum of
-    # all the energies must be at least as large as the single energy
-    # we are considering.
-    cost = (sum_energies / kman_energy) - kman_energy
-    logging.debug("dft_energy       = " + str(kman_energy))
-    logging.debug("total_dft_energy = " + str(sum_energies))
-    return cost
-
-  def compare_timeseries(self, candidate_ts):
-    """Evaluate the given time series based on this DFT cost"""
-    # So the target period is actually 
-    # Should automatically check if these are in the output region
-    # of the solver since otherwise we will miss up.
-    start_sampling = 100.0
-    stop_sampling  = 300.0
-    target_period  = 20.0
-    num_cycles     = (stop_sampling - start_sampling) / target_period
-    # 300 / 20 = 15 
-    # num_cycles = 10 # 15 
-    cost = 0
-    for column_name in ["mRNA"]: # self.state_names:
-      column_data = candidate_ts.get_column_data(column_name)
-      
-      dft_cost = self.dft(column_data, num_cycles)
-      logging.debug("dft_cost = " + str(dft_cost))
-      cost += dft_cost 
     return cost
 
 # Returns the indexes into candidate time series which correspond
@@ -135,92 +60,15 @@ def get_candidate_indexes(gold_ts, candidate_ts):
       raise StandardError
   return candidate_indexes
 
-
-class SpecialCost:
+class SpecialCost(range_cost.RangeCost):
   """A special cost function only for the Cholesterol model.
      However in time we do wish to allow for user cost functions
      and I believe writing them in Python is not a bad way to go"""
   def __init__(self, gold_standard):
-    # self.factor = len(gold_standard.rows)
-    self.gold_standard = gold_standard
-
-  def compare_timeseries(self, candidate_ts):
-    """cost the time series by checking if all indexes are within
-       100 and 1000, other than of course the infamous Acetyl_CoA"""
-    # all_rows = candidate_ts.rows
-    # last_row = all_rows[len(all_rows) - 1] 
-    cost = 0
-
-    for gold_row in self.gold_standard.rows:
-      # Find the best candidate row, here we assume that time is the
-      # first column
-      gold_time = gold_row[0]
-      # Just skip if the gold standard has a zero time point
-      if gold_time <= 0.0:
-        continue
-      best_row = candidate_ts.get_best_matching_time_row(gold_time)
-
-      # Now that we've found the best row, we basically ignore the
-      # gold standard and just check that all values within that
-      # row are within 100 and 500
-      for i in range(1, len(candidate_ts.columns)):
-        candidate_column = candidate_ts.columns[i]
-        if candidate_column.lstrip().rstrip() != "Acetyl_CoA":
-          candidate_value = best_row[i]
-          if candidate_value < 100:
-            diff = 500 - candidate_value
-            cost += diff * diff
-          if candidate_value > 1500:
-            diff = candidate_value - 1500
-            cost += diff * diff
-    return cost 
-
-# This should be generalised into a range cost.
-# It should take the following parameters,
-# 1. The columns to check, perhaps all is permitted, or as in
-#    the Cholesterol model, all but a given few.
-# 2. The time range, rather than look at the gold standard times
-#    we should specify a range of times within which we check
-#    (perhaps also we can specify an interval, to avoid checking all
-#     the output).
-# 3. The range values, not that this will not be per column, but a
-#    global range, the intention is that this is generally used in
-#    conjunction with another cost function.
-class CircadCost:
-  """A special cost function only for the Circadian Clock model.
-     However in time we do wish to allow for user cost functions
-     and I believe writing them in Python is not a bad way to go"""
-  def __init__(self, gold_standard):
-    # self.factor = len(gold_standard.rows)
-    self.gold_standard = gold_standard
-
-  def compare_timeseries(self, candidate_ts):
-    """cost the time series by checking if all indexes are below
-       100"""
-    # all_rows = candidate_ts.rows
-    # last_row = all_rows[len(all_rows) - 1] 
-    cost = 0
-
-    for gold_row in self.gold_standard.rows:
-      # Find the best candidate row, here we assume that time is the
-      # first column
-      gold_time = gold_row[0]
-      # Just skip if the gold standard has a zero time point
-      if gold_time <= 0.0:
-        continue
-      best_row = candidate_ts.get_best_matching_time_row(gold_time)
-
-      # Now that we've found the best row, we basically ignore the
-      # gold standard and just check that all values within that
-      # row are within 100 and 500
-      for i in range(1, len(candidate_ts.columns)):
-        # candidate_column = candidate_ts.columns[i]
-        candidate_value = best_row[i]
-        if candidate_value > 100:
-          diff = candidate_value - 50
-          cost += diff * diff
-    return cost 
-
+    super(SpecialCost, self).__init__()
+    self.set_ignored_columns("Acetyl_CoA")
+    self.set_lower_limit(100)
+    self.set_upper_limit(1500)
 
 class X2cost:
   """ A chi-squared cost function which works by squaring the
@@ -746,11 +594,11 @@ class ModelData:
     if function_name == "x2":
       return X2cost(gold_standard)
     elif function_name == "fft":
-      return FFTcost(gold_standard)
+      return fft_cost.FFTcost(gold_standard)
     elif function_name == "special":
       return SpecialCost(gold_standard)
-    elif function_name == "circad":
-      return CircadCost(gold_standard)
+    elif function_name == "range":
+      return range_cost.RangeCost(gold_standard)
     else:
       print ("Unrecognised cost function name: " + function_name)
       print ("Choose from: x2 fft")
@@ -978,6 +826,22 @@ class OptimiserResults:
     self.best_citizen = best_citizen
     self.best_cost = best_cost
 
+  def print_best_citizen_results(self, results_dir):
+    """Print the results for the best citizen if there are any"""
+    if self.best_citizen.results:
+      for results in self.best_citizen.results:
+        basename = results.results_filename()
+        best_timeseries_fname = os.path.join(results_dir, basename)
+        best_timeseries_file = open(best_timeseries_fname, "w")
+        results.write_to_file(best_timeseries_file)
+        best_timeseries_file.close()
+        print ("Best timeseries written to file: " + 
+                best_timeseries_fname)
+    else: 
+      print ("No best candidate found")
+
+
+
   def report_results(self, configuration, results_dir):
     """Report on the results of a run of the optimisation"""
     optimisation = configuration.optimisation
@@ -1006,18 +870,7 @@ class OptimiserResults:
     best_cost_file.write(str(self.best_cost))
     best_cost_file.close()
 
-    if self.best_citizen.results:
-      for results in self.best_citizen.results:
-        basename = results.results_filename()
-        best_timeseries_fname = os.path.join(results_dir, basename)
-        best_timeseries_file = open(best_timeseries_fname, "w")
-        results.write_to_file(best_timeseries_file)
-        best_timeseries_file.close()
-        print ("Best timeseries written to file: " + 
-                best_timeseries_fname)
-    else: 
-      print ("No best candidate found")
-
+    self.print_best_citizen_results(results_dir)
 
 class ExperimentResults:
   """A class representing what we should do with the results of an

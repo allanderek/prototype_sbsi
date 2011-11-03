@@ -161,6 +161,14 @@ class Timeseries:
         best_row_distance = row_distance
     return best_row
 
+  def get_best_matching_rows(self, gold_standard):
+    """Return the rows of this time series which best fit the times
+       in the rows of the given gold standard time series. We return
+       it as a list of pairs matching each gold row to its best matching
+       row from this timeseries"""
+    best_rows = [ (self.get_best_matching_time_row(gold_row[0]), gold_row)
+                  for gold_row in gold_standard.rows ]
+    return best_rows
 
 def parse_csv(csv, separator=None):
   """Parse a comma-separated value file into a timeseries"""

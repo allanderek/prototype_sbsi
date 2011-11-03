@@ -4,11 +4,12 @@ definitions and output them as sbml function definitions.
 import os.path
 import argparse
 import xml.dom.minidom
-from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
+from parcon import Translate, ZeroOrMore
 import parcon
 import biopepa.biopepa_parser as bparser
 
 class FunctionDefinition:
+  """A class representing a function definition"""
   def __init__(self, name, parameters, body):
     self.name = name
     self.parameters = parameters
@@ -16,6 +17,8 @@ class FunctionDefinition:
     self.math_ns = "http://www.w3.org/1998/Math/MathML"
 
   def show_sbml(self):
+    """Return the function definition as an sbml string encoding a
+       'functionDefinition' element"""
     result = "<functionDefinition id=\"" + self.name + "\" >\n"
     result += "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"\n"
     result += "      xmlns:sbml=\"http://www.sbml.org/sbml/level3/"
@@ -33,6 +36,8 @@ class FunctionDefinition:
     return result
 
   def create_element(self, document):
+    """Return the dom representation of a 'functionDefinition' element
+       representing this function definition"""
     fun_def = document.createElement("functionDefinition")
     fun_def.setAttribute("id", self.name)
 
@@ -57,21 +62,26 @@ class FunctionDefinition:
     return fun_def
  
   def show_fun_def (self):
+    """Return as a string a formatted version of the function definition"""
     result = self.name + " "
-    for param in self.params:
+    for param in self.parameters:
       result += param + " "
     result += " = "
     result += self.body.show_expr()
     return result
    
 def make_fun_def(parse_result):
+  """The post parsing function to create a function definition
+     representation for the fun def parser"""
   return FunctionDefinition(parse_result[0],
                             parse_result[1],
                             parse_result[2])
 
 parameter_list = ZeroOrMore(parcon.alpha_word)
-fun_def = parcon.alpha_word + parameter_list + "=" + bparser.expr + ";"
-fun_def_parser = Translate (fun_def, make_fun_def)
+fun_def_syntax = ( parcon.alpha_word + parameter_list + "=" + 
+                   bparser.expr + ";"
+                 )
+fun_def_parser = Translate (fun_def_syntax, make_fun_def)
 
 function_def_list_parser = ( parcon.OneOrMore(fun_def_parser) +
                              parcon.End()
@@ -86,6 +96,9 @@ def parse_function_list(source):
   return function_def_list_parser.parse_string(source)
 
 def add_fun_defs_to_sbml(fun_defs, sbml_file):
+  """Given a list of function definition representations and an sbml
+     file, parse the sbml and add to the document the list of function
+     definitions as sbml 'functionDefinition' elements"""
   dom = xml.dom.minidom.parse(sbml_file)
   model = dom.getElementsByTagName("model")[0]
   

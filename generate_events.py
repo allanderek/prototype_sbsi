@@ -2,7 +2,6 @@
     produce a series of events to be added to an SBML model, such
     that the events simulate the changing of the population as in
     the time course data."""
-import os
 import sys
 import argparse
 import xml.dom.minidom
@@ -164,18 +163,6 @@ def events_from_timecourse(timecourse, arguments):
 
 
  
-def has_xml_or_sbml_ext(filename):
-  """Returns true if we believe the file to be an SBML file
-     based on the file's extension"""
-  extension = os.path.splitext(filename)[1]
-  return extension == ".xml" or extension == ".sbml"
-
-def has_copasi_ext(filename):
-  """Returns true if we believe the file to be a copasi model file
-     based on the file's extension"""
-  extension = os.path.splitext(filename)[1]
-  return extension == ".cps"
-
 def check_constant_false(model, species):
   """Checks that if the given species is defined in the model as a
      parameter, then it has its constant attribute set to false.
@@ -250,13 +237,13 @@ def get_copasi_key_map(document):
   return dictionary
   
 
-def add_events_copasi(filename, events, species, arguments):
+def add_events_copasi(filename, events, arguments):
   """Parse in a file as a copasi model, add the given events and then
      print out the augmented model"""
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("Model")[0]
   
-  # Where loe = listOfEvents
+  # Where loe = ListOfEvents
   loe_elements = model.getElementsByTagName("ListOfEvents")
   if not loe_elements:
     loe_element = dom.createElement("ListOfEvents")
@@ -275,6 +262,19 @@ def add_events_copasi(filename, events, species, arguments):
     loe_element.appendChild(event_element)
     event_number += 1
 
+  # check_constant_false (model, species)
+
+  create_copasi_sbml_references(dom, event_number)
+
+  if arguments.pretty:
+    print (dom.toprettyxml(indent="  ", encoding="UTF-8"))
+  else:
+    print (dom.toxml("UTF-8"))
+
+def create_copasi_sbml_references(dom, num_events):
+  """Create the sbml references element of the copasi file for the
+     event elements which should be elsewhere generated
+  """
   copasi_element = dom.getElementsByTagName("COPASI")[0]
   sbml_references = copasi_element.getElementsByTagName("SBMLReference")
   if sbml_references:
@@ -283,21 +283,13 @@ def add_events_copasi(filename, events, species, arguments):
     sbml_reference = dom.createElement("SBMLReference")
     copasi_element.appendChild(sbml_reference)
 
-  for index in range (0, event_number):
+  for index in range (0, num_events):
     event_name = "TimeCourseEvent_" + str(index)
     sbml_map = dom.createElement("SBMLMap")
     sbml_map.setAttribute("COPASIkey", event_name)
     sbml_map.setAttribute("SBMLid", event_name)
     sbml_reference.appendChild(sbml_map)
     
-
-  # check_constant_false (model, species)
- 
-  if arguments.pretty:
-    document = dom.toprettyxml(indent="  ", encoding="UTF-8")
-  else:
-    document = dom.toxml("UTF-8")
-  print(document)
 
 
 def run():
@@ -318,9 +310,9 @@ def run():
   arguments = parser.parse_args()
 
   sbml_files = [ x for x in arguments.filenames 
-                   if has_xml_or_sbml_ext(x) ]
+                   if utils.has_xml_or_sbml_ext(x) ]
   copasi_files = [ x for x in arguments.filenames
-                      if has_copasi_ext(x) ]
+                      if utils.has_copasi_ext(x) ]
   timecourse_files = [ x for x in arguments.filenames
                           if not x in sbml_files and not x in copasi_files ]
 
@@ -343,7 +335,7 @@ def run():
     for filename in sbml_files:
       add_events_sbml(filename, events, species, arguments)
     for filename in copasi_files:
-      add_events_copasi(filename, events, species, arguments)
+      add_events_copasi(filename, events, arguments)
 
 
 

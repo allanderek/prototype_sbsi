@@ -22,6 +22,37 @@ def get_new_directory(desired_name):
   os.makedirs(dir_name)
   return dir_name
 
+def has_xml_or_sbml_ext(filename):
+  """Returns true if we believe the file to be an SBML file
+     based on the file's extension"""
+  extension = os.path.splitext(filename)[1]
+  return extension == ".xml" or extension == ".sbml"
+
+def has_copasi_ext(filename):
+  """Returns true if we believe the file to be a copasi model file
+     based on the file's extension"""
+  extension = os.path.splitext(filename)[1]
+  return extension == ".cps"
+
+
+def get_non_ignored (all_names, in_names, ignored_names):
+  """Many of these utilities have a --column and a --mcolumn flag.
+     The semantics of this is supposed to be that we plot/output/use
+     all names specified under --column and ignore those specified
+     under --mcolumn. But the default for --column is ALL names and
+     the default for --mcolumn is the empty set. This function given
+     the list of all names and the list of --column and --mcolumn names
+     does the right thing and returns the correct set."""
+  if not in_names and not ignored_names:
+    return all_names
+  elif not in_names and ignored_names:
+    return [ n for n in all_names if n not in ignored_names ]
+  elif in_names and not ignored_names:
+    return [ n for n in all_names if n in in_names ]
+  elif in_names and ignored_names:
+    return [ n for n in all_names 
+                 if n in in_names and n not in ignored_names
+           ]
 
 class ListArgumentAction(argparse.Action):
   """ A simple argument action to allow a list of arguments to be

@@ -108,7 +108,7 @@ class Reaction:
        in that it has at least one product and no reactants"""
     return self.products and not self.reactants
 
-  def is_reverse(self, reversed):
+  def is_reverse(self, the_inverse):
     """Returns true if the given reaction is the reverse of
        the current reaction
     """
@@ -119,18 +119,18 @@ class Reaction:
       # Could check the lengths here, but I think we want
       # 'l,l,r' to be equal to 'l,r', so we're ignoring duplicates.
       # Not sure if that's correct to do so though.
-      for l in left:
-        if l not in right:
+      for l_item in left:
+        if l_item not in right:
           return False
-      for r in right :
-        if r not in left :
+      for r_item in right :
+        if r_item not in left :
           return False
       return True
-    if (equal_lists(self.reactants, reversed.products) and
-        equal_lists(self.products, reversed.reactants)):
-       return True
+    if (equal_lists(self.reactants, the_inverse.products) and
+        equal_lists(self.products, the_inverse.reactants)):
+      return True
     else:
-       return False
+      return False
 
   def involves(self, species):
     """Returns true if the given species is involved with this reaction"""
@@ -267,23 +267,32 @@ def get_list_of_species(model):
 
 
 class Assignment:
+  """A class representing an assignment of an sbml expression to
+     a variable name"""
   def __init__(self, variable, expression):
     self.variable = variable
     self.expression = expression
 
   def get_variable_name(self):
+    """return the name of the variable being assigned to"""
     return self.variable
 
   def get_assigned_expr(self):
+    """return the expression part of the assignment, that is
+       the right hand side"""
     return self.expression
 
 class InitialAssignment(Assignment):
+  """A class representing an sbml initial assignment"""
   pass
 
 class AssignmentRule(Assignment):
+  """A class representing an sbml assignment rule"""
   pass
 
 def get_assignment_rule_of_element(assign_rule_element):
+  """Returns the AssignmentRule representation of an 
+     AssignmentRule sbml element"""
   variable_name = assign_rule_element.getAttribute("variable")
   math_elements = assign_rule_element.getElementsByTagName("math")
   expression = None
