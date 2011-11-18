@@ -15,7 +15,7 @@
 # 3. The range values, not that this will not be per column, but a
 #    global range, the intention is that this is generally used in
 #    conjunction with another cost function.
-class RangeCost:
+class RangeCost(object):
   """A special cost function only for the Circadian Clock model.
      However in time we do wish to allow for user cost functions
      and I believe writing them in Python is not a bad way to go"""

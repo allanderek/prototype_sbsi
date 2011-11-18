@@ -26,6 +26,8 @@ def run():
                       help="Specify a column to be in the output")
   parser.add_argument('--mcolumn', action=utils.ListArgumentAction,
                       help="Specify a column not to be in the output")
+  parser.add_argument('--output-file', action='store',
+                      help="Specify an output file location")
 
   arguments = parser.parse_args()
 
@@ -36,7 +38,7 @@ def run():
   timecourse_file = arguments.filenames[0]
   timecourse = timeseries.get_timecourse_from_file(timecourse_file)
 
-  all_names = timecourse.get_column_names
+  all_names = timecourse.get_column_names()
   used_names = utils.get_non_ignored(all_names,
                                      arguments.column,
                                      arguments.mcolumn)
@@ -45,8 +47,11 @@ def run():
       timecourse.remove_column(name)
 
   timecourse.apply_noise_function(dream_noise_function)
-  
-  newfile = open ("noise_timecourse.csv", "w")
+ 
+  output_filename = "noise_timecourse.csv" 
+  if arguments.output_file:
+    output_filename = arguments.output_file
+  newfile = open (output_filename, "w")
   timecourse.write_to_file(newfile)
   newfile.close()
 
