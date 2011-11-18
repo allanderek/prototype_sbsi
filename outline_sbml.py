@@ -48,7 +48,9 @@ class Species:
     """Returns a reasonable format of this species definition"""
     return self.name + " in " + self.compartment
 
-class Reaction:
+
+
+class Reaction(object):
   """A class which represents a reaction"""
   def __init__(self, name):
     """initialise a reaction which has no reactants or products
@@ -61,6 +63,7 @@ class Reaction:
     self.modifiers = []
     self.name = name
     self.kinetic_law = None
+    self.location = None
 
   def get_name(self):
     """return the name of the reaction"""
@@ -97,6 +100,14 @@ class Reaction:
   def set_kinetic_law(self, kinetic_law):
     """Set the kinetic law, for the rate of this reaction"""
     self.kinetic_law = kinetic_law
+
+  def get_location(self):
+    """Return the location of the reaction"""
+    return self.location
+ 
+  def set_location(self, location):
+    """Set the location of this reaction"""
+    self.location = location
 
   def is_sink(self):
     """returns true if the reaction is a sink,
@@ -138,17 +149,21 @@ class Reaction:
     reactant_names = [ r.get_name() for r in self.reactants ] 
     product_names = [ p.get_name() for p in self.products ]
     modifier_names = [ m.get_name() for m in self.modifiers ]
-    if (name in reactant_names or
-        name in product_names  or
-        name in modifier_names):
+    if ( (name in reactant_names or
+          name in product_names  or
+          name in modifier_names) and
+         (species.compartment == self.location) ):
       return True
     return False
 
   def format_reaction(self):
     """Return a string representing the reaction in a format 
        suitable for human consumption"""
-    results = self.name + ": "
+    results = self.name 
+    if self.location:
+      results += "@" + self.location
 
+    results += ": "
     # so the first reactant has nothing attached to the front of it
     reactants_and_modifiers = self.reactants + self.modifiers
     results += ", ".join([ r.format_participant() 
@@ -158,7 +173,6 @@ class Reaction:
                            for p in self.products])
  
     return results
-
 
 def name_of_species_reference(spec_ref):
   """Return the name of the species referred to within a
@@ -185,6 +199,9 @@ def get_reaction_of_element(reaction_element):
   """a function to return a reaction object from a reaction sbml element"""
   name = reaction_element.getAttribute("id")
   reaction = Reaction(name)
+  location = reaction_element.getAttribute("compartment")
+  if location:
+    reaction.set_location(location)
   reactants = get_elements_from_lists_of_list("listOfReactants",
                                               "speciesReference",
                                               react_partic_of_species_ref,

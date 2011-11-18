@@ -1,11 +1,8 @@
 """
 A module that implements a parser for the Bio-PEPA language
 """
-import argparse
 import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
-import xml.dom.minidom as minidom
-
 
 # A simply utility for creating parsers which accept a list of
 # somethings, separated by something elses.
@@ -54,6 +51,7 @@ class Expression:
        yet fully groked visitor patterns for python.
        Well it's a bit more than a stub, all the very simple expressions
        which don't have sub-expressions do not need to override this."""
+    # pylint: disable-msg=W0613
     return self 
 
 class NumExpression(Expression):
@@ -199,9 +197,12 @@ argument_list = Optional(create_separated_by(expr, ","))
 # we must make sure that "h()" is different from "h", the former being
 # an application of the function h to no arguments and the latter being
 # just a name expression referencing the 'h' variable.
-variable_name = parcon.alpha_word
-name_expr = Translate (parcon.alpha_word, make_name_expression)
-apply_expr = Translate (parcon.alpha_word + "(" + argument_list + ")",
+#
+# Note also that parcon.alphanum_word may be incorrect here, it should
+# be alphchar followed by alphanum_word, or something like that.
+variable_name = parcon.alphanum_word
+name_expr = Translate (variable_name, make_name_expression)
+apply_expr = Translate (variable_name + "(" + argument_list + ")",
                         make_apply_expression)
 
 term = ( parcon.number[create_number_expression] 
@@ -266,6 +267,29 @@ variable_definition = Translate(variable_name + "=" + expr + ";",
                                 create_variable_dec)
 
 
+class LocationDefinition(object):
+  """The representation of a location definition"""
+  def __init__(self, name, size_expr):
+    self.name = name
+    self.size_expr = size_expr
+
+def create_location_definition(parse_result):
+  """Post parsing method for location definitions"""
+  return LocationDefinition(parse_result[0], parse_result[1])
+
+# location M : size = 1;
+location_name_syntax = variable_name
+location_definition_syntax = ( "location" + 
+                               location_name_syntax + 
+                               ":" +
+                               "size" +
+                               "=" +
+                               expr +
+                               ";" )
+location_definition_parser = Translate(location_definition_syntax,
+                                       create_location_definition)
+
+
 class RateDefinition:
   """The representation of a rate definition"""
   def __init__(self, name, rate):
@@ -314,6 +338,7 @@ class Behaviour:
     self.reaction_name = reaction
     self.operator = operator
     self.stoichiometry = 1
+    self.location = None
 
   def get_name(self):
     """Return the name of the reaction to which the behaviour is
@@ -328,6 +353,10 @@ class Behaviour:
     """Print out the behaviour as a string in Bio-PEPA format"""
     return self.reaction_name + " " + self.operator
 
+  def set_location (self, location):
+    """Sets the location of this behaviour"""
+    self.location = location
+
 behaviour_op = parcon.First (parcon.SignificantLiteral(">>"), 
                              parcon.SignificantLiteral("<<"),
                              parcon.SignificantLiteral("(+)"),
@@ -338,23 +367,56 @@ behaviour_op_list = parcon.OneOrMore(behaviour_op)
 
 def make_behaviour(parse_result):
   """The parse action for the behaviour parser"""
-  print ("--- parse result ---")
+  print ("parse result for a behaviour")
   print (parse_result)
   reaction_name = parse_result[0]
   stoich = parse_result[1]
   operator = parse_result[2]
   behaviour = Behaviour(reaction_name, operator)
   behaviour.set_stoiciometry(stoich)
+  if len(parse_result) > 3:
+    # We should check somehow that the component is the correct name
+    component_placement = parse_result[3]
+    behaviour.set_location(component_placement.location)
   return behaviour
 
 stoich_list = create_separated_by(parcon.number, ",")
 explicit_stoich_syntax = "(" + variable_name + "," + stoich_list + ")"
-implicit_stoich_syntax = Translate(variable_name, lambda x : (x,[1]))
+implicit_stoich_syntax = Translate(variable_name, lambda x : (x, [1]))
 name_and_stoich = parcon.First(implicit_stoich_syntax,
                                explicit_stoich_syntax)
                                
+component_name_syntax = variable_name
+component_name_placement = (component_name_syntax +
+                            Optional ("@" + location_name_syntax)
+                           )
 
-behaviour_syntax = Translate(name_and_stoich + behaviour_op_list,
+class ComponentLocation(object):
+  """A class representing a component as well as a location, which
+     might be None. Intended to represent the parsed "A@M" syntax
+  """
+  def __init__(self, name, location):
+    self.name = name
+    self.location = location
+
+def create_component_with_location(parse_result):
+  """Post-parsing method for a component with a location,
+     eg "A@M".
+  """
+  component = parse_result[0]
+  if len(parse_result) > 1:
+    location = parse_result[1]
+  else:
+    location = None  
+  return ComponentLocation(component, location)
+component_with_location = Translate(component_name_placement,
+                                    create_component_with_location)
+optional_component_placement = Optional (component_with_location)
+                             
+
+behaviour_syntax = Translate(name_and_stoich +
+                             behaviour_op_list + 
+                             optional_component_placement,
                              make_behaviour)
 
 
@@ -362,6 +424,8 @@ behaviour_list_parser = create_separated_by(behaviour_syntax, "+")
 
 def make_component_def(parse_result):
   """The parse action for the component definition parser"""
+  print ("component def parse result")
+  print (parse_result)
   return ComponentDefinition(parse_result[0], parse_result[1])
 component_definition_syntax = (variable_name + "=" + 
                                behaviour_list_parser + ";")
@@ -370,7 +434,8 @@ component_definition = Translate(component_definition_syntax,
 
 any_definition = parcon.First(variable_definition,
                               rate_def_parser,
-                              component_definition
+                              component_definition,
+                              location_definition_parser
                               )
 definition_list = parcon.OneOrMore(any_definition)
 
@@ -381,18 +446,19 @@ class ComponentPopulation:
   def __init__(self, name, population_expr):
     self.name = name
     self.population_expr = population_expr
-    self.compartment = "default_compartment"
-
-  def get_name(self):
-    return self.name
-  def get_compartment(self):
-    return self.compartment
+    self.location = "default location"
 
 def create_component_population(parse_result):
   """A post-parsing function to create a component population"""
-  return ComponentPopulation(parse_result[0], parse_result[1])
+  component_location = parse_result[0]
+  component_name = component_location.name
+  population = parse_result[1]
+  result = ComponentPopulation(component_name, population)
+  result.location = component_location.location
+  return result
 
-component_population = Translate(variable_name + "[" + expr + "]",
+component_population = Translate(component_with_location + 
+                                 "[" + expr + "]",
                                  create_component_population)
 system_equation_parser = create_separated_by(component_population, "<*>")
 
@@ -416,271 +482,9 @@ def parse_model(model_source):
   """
   return model_parser.parse_string(model_source)
 
-class ReactionParticipant:
-  """A simple class to represent a reaction participant"""
-  def __init__(self, name):
-    self.name = name
-    self.stoichiometry = 1
-
-  def get_name(self):
-    """Return the name of the reaction particpant"""
-    return self.name
-
-  def set_stoichiometry(self, stoichiometry):
-    """Set the stoichiometry of the reaction participant"""
-    self.stoichiometry = stoichiometry
-
-class Reaction:
-  """ A class representing a Bio-PEPA reaction"""
-  def __init__(self, name):
-    self.name = name
-    # The user should not be forced into providing a rate
-    # they may only wish to perform invariant analysis for example.
-    self.rate = None
-    self.reactants = []
-    self.products = []
-    self.modifiers = []
-
-  def define_rate(self, rate):
-    """The default rate is undefined since we may be attempting to
-       perform a rateless analysis over the model and we needn't then
-       insist that the user writes down rates. This method sets the
-       rate to the given expression
-    """
-    self.rate = rate
-
-  def get_mass_action_participants(self):
-    """Return the left hand side participants which contribute to the
-       rate in a mass action rate method. For example A + B --> C 
-       would return A and B. Essentially this is so that fMA(r) could
-       be translated to r * A * B.
-    """
-    # I think we return all the modifiers but perhaps not the inhibitors?
-    return self.reactants + self.modifiers
-
-  def add_behaviour(self, comp_name, behaviour):
-    """Add the given behaviour to the reaction, essentially this means
-       we are adding a component as a participant (reactant, product
-       or modifier) to the reaction.
-    """
-    stoichimetries = behaviour.stoichiometry
-    operators = behaviour.operator
-    if len(stoichimetries) != len(operators):
-      print ("Must have the same number of operators as stoichimetries")
-      sys.exit(1)
-
-    # Not sure if this is really the best way to do this, this means
-    # we will be adding multiple behaviours for the same component.
-    # eg, we'll have A + B -> B + B, where as arguably we should retain
-    # the knowledge, perhaps we should just have the operator <> or ><
-    for stoich, operator in zip(stoichimetries, operators):
-      participant = ReactionParticipant(comp_name)
-      participant.set_stoichiometry(stoich)
-      if operator == ">>" :
-        self.products.append(participant)
-      elif operator == "<<": 
-        self.reactants.append(participant)
-      elif operator == "(+)":
-        self.modifiers.append(participant)
-      elif operator == "(-)":
-        self.modifiers.append(participant)
-      elif operator == "(.)":
-        self.modifiers.append(participant)
-      else:
-        print ("Unrecognised behaviour operator: " + operator)
-        sys.exit(1)
-
-  def create_element(self, document):
-    """Create an xml element representing this reaction"""
-    reaction_element = document.createElement("reaction")
-    reaction_element.setAttribute("id", self.name)
-    reaction_element.setAttribute("reversible", "false")
-    reaction_element.setAttribute("fast", "false")
-    if self.reactants:
-      list_of_reactants = document.createElement("listOfReactants")
-      reaction_element.appendChild(list_of_reactants)
-      for reactant in self.reactants:
-        spec_ref = document.createElement("speciesReference")
-        # spec_ref.setAttribute("id", reactant.name)
-        spec_ref.setAttribute("species", reactant.name)
-        # for biopepa models the stoichiometry values cannot
-        # change during the simulation so this 'constant' attribute is
-        # always true.
-        spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(reactant.stoichiometry))
-        list_of_reactants.appendChild(spec_ref)
-    if self.products:
-      list_of_products = document.createElement("listOfProducts")
-      reaction_element.appendChild(list_of_products)
-      for product in self.products:
-        spec_ref = document.createElement("speciesReference")
-        # spec_ref.setAttribute("id", product.name)
-        spec_ref.setAttribute("species", product.name)
-        # for biopepa models the stoichiometry values cannot
-        # change during the simulation so this 'constant' attribute is
-        # always true.
-        spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(product.stoichiometry))
-        list_of_products.appendChild(spec_ref)
-    if self.modifiers:
-      list_of_modifiers = document.createElement("listOfModifiers")
-      reaction_element.appendChild(list_of_modifiers)
-      for modifier in self.modifiers:
-        spec_ref = document.createElement("modifierSpeciesReference")
-        # spec_ref.setAttribute("id", modifier.name)
-        # Note there is no stoichiometry attribute on
-        # modifierSpeciesReference elements in SBML.
-        spec_ref.setAttribute("species", modifier.name)
-        list_of_modifiers.appendChild(spec_ref)
-    if self.rate:
-      kinetic_law = document.createElement("kineticLaw")
-      reaction_element.appendChild(kinetic_law)
-      math_element = document.createElement("math")
-      kinetic_law.appendChild(math_element)
-      mathxmlns = "http://www.w3.org/1998/Math/MathML"
-      math_element.setAttribute("xmlns", mathxmlns)
-      simplified_rate = self.rate.remove_rate_law_sugar(self)
-      expr_element = simplified_rate.create_sbml_element(document)
-      math_element.appendChild(expr_element)
-    return reaction_element
-
-def create_compartment_elements(document, model_element):
-  """This is likely to change signature when we allow for user defined
-     compartments but for now we have only a single default compartment
-     to add to the model"""
-  list_of_compartments = document.createElement("listOfCompartments")
-  model_element.appendChild(list_of_compartments)
-
-  default_compartment = document.createElement("compartment")
-  default_compartment.setAttribute("id", "default_compartment")
-  default_compartment.setAttribute("constant", "true")
-  list_of_compartments.appendChild(default_compartment)
-
-def create_species_elements(document, model_element, component_defs):
-  """Creates the listOfSpecies element and all of the associated
-     species elements under it for a set of component definitions"""
-  list_of_species = document.createElement("listOfSpecies")
-  model_element.appendChild(list_of_species)
-  for comp_def in component_defs:
-    species_element = document.createElement("species")
-    name = comp_def.get_name()
-    species_element.setAttribute("id", name)
-    species_element.setAttribute("name", name)
-    species_element.setAttribute("compartment", comp_def.get_compartment())
-    species_element.setAttribute("hasOnlySubstanceUnits", "true")
-    species_element.setAttribute("constant", "false")
-    species_element.setAttribute("boundaryCondition", "false")
-    list_of_species.appendChild(species_element) 
-
-def convert_variable_declarations(document, top_element, var_decs):
-  """Convert a set of variable declarations into SBML elements and
-     add them to an sbml document
-  """
-  if var_decs:
-    list_of_params = document.createElement("listOfParameters")
-    top_element.appendChild(list_of_params)
- 
-    init_assigns = document.createElement("listOfInitialAssignments")
-    top_element.appendChild(init_assigns)
-    for var_dec in var_decs:
-      param_element = var_dec.create_parameter_element(document)
-      list_of_params.appendChild(param_element)
-
-      init_assign = var_dec.create_initial_assignment(document)
-      init_assigns.appendChild(init_assign)
-
-
-def build_reaction_dictionary(components, rate_definitions):
-  """From a list of components build a reaction dictionary which maps
-     reaction names to reaction representations"""
-  reaction_dictionary = dict()
-  for rate_def in rate_definitions:
-    name = rate_def.get_name()
-    reaction = Reaction(name)
-    reaction.define_rate(rate_def.get_rate())
-    reaction_dictionary[name] = reaction
-
-
-  for component_def in components:
-    for behaviour in component_def.get_behaviours():
-      b_name = behaviour.get_name() 
-      if b_name in reaction_dictionary:
-        reaction = reaction_dictionary[b_name]
-      else:
-        reaction = Reaction(b_name)
-        reaction_dictionary[b_name] = reaction
-      reaction.add_behaviour(component_def.get_name(), behaviour)
-  return reaction_dictionary
-
-
-
-def process_file(filename):
-  """A simple method to process a Bio-PEPA model file and print
-     out the parse result, mostly for debugging purposes"""
-  # I'm not exactly sure how to do this, there is no parseFile
-  # in parcon, I think we just need to open the file and pass in
-  # the file handle but I haven't tried that yet. 
-  model_file = open(filename, "r")
+def parse_model_file(model_file):
+  """Parse an entire Bio-PEPA model file"""
   parse_result = model_parser.parse_string(model_file.read())
-  model_file.close()
-
-  # print (parse_result.asXML())
-
-  var_decs = [ x for x in parse_result.definitions
-                     if isinstance(x, VariableDeclaration) ]
-  rate_defs = [ x for x in parse_result.definitions
-                      if isinstance(x, RateDefinition) ]
-  components = [ x for x in parse_result.definitions
-                       if isinstance(x, ComponentDefinition) ]
-
-  reaction_dictionary = build_reaction_dictionary(components, rate_defs)
-
-  xml_implementation = minidom.getDOMImplementation()
-  document = xml_implementation.createDocument(None, "sbml", None)
-  top_element = document.documentElement 
-  xmlns = "http://www.sbml.org/sbml/level3/version1/core" 
-  top_element.setAttribute("xmlns", xmlns)
-  top_element.setAttribute("level", "3")
-  top_element.setAttribute("version", "1")
-
-  model_element = document.createElement("model")
-  top_element.appendChild(model_element)
-
-  create_compartment_elements(document, model_element)
-
-  create_species_elements(document, model_element,
-                          parse_result.system_equation)
-
-  convert_variable_declarations(document, model_element, var_decs)
-
-  list_of_reactions = document.createElement("listOfReactions")
-  model_element.appendChild(list_of_reactions)
-
-  for reaction in reaction_dictionary.values():
-    reaction_element = reaction.create_element(document)
-    list_of_reactions.appendChild(reaction_element)
-     
-
-  # top_element.writexml(sys.stdout, indent="  ")
-  # print ("")
-  formatted = document.toprettyxml(indent="  ", encoding="UTF-8")
-  print (formatted)
-
-def main():
-  """A simple main function to parse in the arguments as
-     Bio-PEPA model files"""
-  description = "Parse a Bio-PEPA model file(s)"
-  parser = argparse.ArgumentParser(add_help=True,
-                                   description=description)
-   # Might want to make the type of this 'FileType('r')'
-  parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="A Bio-PEPA model file to parse")
-  arguments = parser.parse_args()
-  for filename in arguments.filenames:
-    process_file(filename)
-
-
-if __name__ == '__main__':
-  main()
+  return parse_result
 
 
