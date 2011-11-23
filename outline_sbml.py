@@ -35,11 +35,32 @@ class ReactionParticipant:
     else:
       return "(" + self.get_name() + ", " + str(self.stoich) + ")"
 
-class Species:
+
+class IdNamedElement(object):
+  """Many of the classes below are a parsed representation of a
+     kind of sbml element. Many such elements have a required id
+     attribute and an optional name element. This is a base class
+     which will define and parse those fields such that we needn't
+     do it ourselves for each kind of element.
+  """
+  def __init__(self, element):
+    self.id = element.getAttribute("id")
+    self.name = element.getAttribute("name")
+
+class Species(IdNamedElement):
   """A simple class to represent a species within an sbml model"""
-  def __init__(self, name, compartment):
-    self.name = name
-    self.compartment = compartment
+  def __init__(self, element):
+    super(Species, self).__init__(element)
+    self.compartment = element.getAttribute("compartment")
+    self.initial_amount = element.getAttribute("initialAmount")
+    self.initial_conc = element.getAttribute("initialConcentration")
+    self.substance_units = element.getAttribute("substanceUnits")
+    self.has_only_substance_units = element.getAttribute(
+          "hasOnlySubstanceUnits")
+    self.boundary_condition = element.getAttribute("boundaryCondition")
+    self.constant = element.getAttribute("constant")
+    self.conversion_factor = element.getAttribute("conversionFactor")
+
   def get_name(self):
     """ return the name of the species"""
     return self.name
@@ -48,6 +69,16 @@ class Species:
     """Returns a reasonable format of this species definition"""
     return self.name + " in " + self.compartment
 
+
+class Parameter(IdNamedElement):
+  """A simple class to represent a parameter definition
+     within an sbml model
+  """
+  def __init__(self, element):
+    super(Parameter, self).__init__(element)
+    self.value = element.getAttribute("value")
+    self.units = element.getAttribute("units")
+    self.boolean = element.getAttribute("boolean")
 
 
 class Reaction(object):
@@ -270,10 +301,7 @@ def get_list_of_reactions(model, ignore_sources=False, ignore_sinks=False):
 def get_species_of_element(species_element):
   """Return a species object from a species element, in other words
      parse a species element"""
-  name = species_element.getAttribute("id")
-  compartment = species_element.getAttribute("compartment")
-  species = Species(name, compartment)
-  return species
+  return Species(species_element)
 
 def get_list_of_species(model):
   """Return the list of species from an sbml model"""
@@ -282,6 +310,18 @@ def get_list_of_species(model):
                                          get_species_of_element,
                                          model)
 
+def get_parameter_of_element(param_element):
+  """Return a Parameter object from a parameter element,
+     in other words parse a parameter element
+  """
+  return Parameter(param_element)
+
+def get_list_of_parameters(model):
+  """Return the list of parameters from an sbml model"""
+  return get_elements_from_lists_of_list("listOfParameters",
+                                         "parameter",
+                                         Parameter,
+                                         model)
 
 class Assignment:
   """A class representing an assignment of an sbml expression to

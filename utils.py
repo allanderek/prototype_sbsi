@@ -54,6 +54,18 @@ def get_non_ignored (all_names, in_names, ignored_names):
                  if n in in_names and n not in ignored_names
            ]
 
+
+def add_lists(left, right):
+  """A utility function to add the elements of two lists together
+     to form a new list. The result list will be the same length as
+     the two given lists which must be of equal length"""
+  assert(len(left) == len(right))
+  result = []
+  for i in range(len(left)):
+    result.append(left[i] + right[i])
+  return result
+
+
 class ListArgumentAction(argparse.Action):
   """ A simple argument action to allow a list of arguments to be
       separated by a comma. This allows slightly more concise command

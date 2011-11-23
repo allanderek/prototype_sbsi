@@ -4,29 +4,7 @@ import argparse
 
 import outline_sbml
 import timeseries
-
-
-def add_lists(left, right):
-  """A utility function to add the elements of two lists together
-     to form a new list. The result list will be the same length as
-     the two given lists which must be of equal length"""
-  assert(len(left) == len(right))
-  result = []
-  for i in range(len(left)):
-    result.append(left[i] + right[i])
-  return result
-
-def format_list(separator, items):
-  """Formats a list of strings as a single string containing all
-     items separated by 'separator'"""
-  result = ""
-  prefix = ""
-  for item in items:
-    result += prefix
-    result += item
-    prefix = separator
-  return result
-
+import utils
 
 class KinecticIndependenceGraph:
   """A class representing the kinectic independence graph allowing
@@ -103,8 +81,8 @@ class InvariantInferer:
   def combine_invariant_rows(self, row1, row2):
     """A (private) helper function to combine to rows into a
        single row by summing the columns"""
-    species = add_lists(row1.species, row2.species)
-    row = add_lists(row1.row, row2.row)
+    species = utils.add_lists(row1.species, row2.species)
+    row = utils.add_lists(row1.row, row2.row)
     return self.InvRow(species, row)
 
   def calculate_initial_rows(self):
@@ -170,8 +148,7 @@ class InvariantInferer:
           else:
             items.append("(" + str(coeff) + name + ")")
         
-      return format_list(" + ", items)
-       
+      return " + ".join(items)
 
   def calculate_invariants(self):
     """Calculate the set of species invariants for this instance
