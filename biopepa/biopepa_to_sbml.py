@@ -2,59 +2,13 @@
 
 import sys
 import argparse
-import xml.dom.minidom as minidom
 import parcon
 
 from biopepa_parser import VariableDeclaration, RateDefinition, \
                            ComponentDefinition
 import biopepa_parser
-import utils
 import outline_sbml
-
-def create_compartment_elements(document, model_element):
-  """This is likely to change signature when we allow for user defined
-     compartments but for now we have only a single default compartment
-     to add to the model"""
-  list_of_compartments = document.createElement("listOfCompartments")
-  model_element.appendChild(list_of_compartments)
-
-  default_compartment = document.createElement("compartment")
-  default_compartment.setAttribute("id", "default_compartment")
-  default_compartment.setAttribute("constant", "true")
-  list_of_compartments.appendChild(default_compartment)
-
-def create_species_elements(document, model_element, component_defs):
-  """Creates the listOfSpecies element and all of the associated
-     species elements under it for a set of component definitions"""
-  list_of_species = document.createElement("listOfSpecies")
-  model_element.appendChild(list_of_species)
-  for comp_def in component_defs:
-    species_element = document.createElement("species")
-    name = comp_def.get_name()
-    species_element.setAttribute("id", name)
-    species_element.setAttribute("name", name)
-    species_element.setAttribute("compartment", comp_def.get_location())
-    species_element.setAttribute("hasOnlySubstanceUnits", "true")
-    species_element.setAttribute("constant", "false")
-    species_element.setAttribute("boundaryCondition", "false")
-    list_of_species.appendChild(species_element) 
-
-def convert_variable_declarations(document, top_element, var_decs):
-  """Convert a set of variable declarations into SBML elements and
-     add them to an sbml document
-  """
-  if var_decs:
-    list_of_params = document.createElement("listOfParameters")
-    top_element.appendChild(list_of_params)
- 
-    init_assigns = document.createElement("listOfInitialAssignments")
-    top_element.appendChild(init_assigns)
-    for var_dec in var_decs:
-      param_element = var_dec.create_parameter_element(document)
-      list_of_params.appendChild(param_element)
-
-      init_assign = var_dec.create_initial_assignment(document)
-      init_assigns.appendChild(init_assign)
+import create_sbml
 
 class Reaction(outline_sbml.Reaction):
   """A class representing reactions within a Bio-PEPA model. These
@@ -117,63 +71,6 @@ class Reaction(outline_sbml.Reaction):
         print ("Unrecognised behaviour operator: " + operator)
         sys.exit(1)
 
-  def create_element(self, document):
-    """Create an xml element representing this reaction"""
-    reaction_element = document.createElement("reaction")
-    reaction_element.setAttribute("id", self.name)
-    reaction_element.setAttribute("reversible", "false")
-    reaction_element.setAttribute("fast", "false")
-    if self.location:
-      reaction_element.setAttribute("compartment", self.location)
-    if self.reactants:
-      list_of_reactants = document.createElement("listOfReactants")
-      reaction_element.appendChild(list_of_reactants)
-      for reactant in self.reactants:
-        spec_ref = document.createElement("speciesReference")
-        # spec_ref.setAttribute("id", reactant.name)
-        spec_ref.setAttribute("species", reactant.name)
-        # for biopepa models the stoichiometry values cannot
-        # change during the simulation so this 'constant' attribute is
-        # always true.
-        spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(reactant.stoich))
-        list_of_reactants.appendChild(spec_ref)
-    if self.products:
-      list_of_products = document.createElement("listOfProducts")
-      reaction_element.appendChild(list_of_products)
-      for product in self.products:
-        spec_ref = document.createElement("speciesReference")
-        # spec_ref.setAttribute("id", product.name)
-        spec_ref.setAttribute("species", product.name)
-        # for biopepa models the stoichiometry values cannot
-        # change during the simulation so this 'constant' attribute is
-        # always true.
-        spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(product.stoichiometry))
-        list_of_products.appendChild(spec_ref)
-    if self.modifiers:
-      list_of_modifiers = document.createElement("listOfModifiers")
-      reaction_element.appendChild(list_of_modifiers)
-      for modifier in self.modifiers:
-        spec_ref = document.createElement("modifierSpeciesReference")
-        # spec_ref.setAttribute("id", modifier.name)
-        # Note there is no stoichiometry attribute on
-        # modifierSpeciesReference elements in SBML.
-        spec_ref.setAttribute("species", modifier.name)
-        list_of_modifiers.appendChild(spec_ref)
-    if self.rate:
-      kinetic_law = document.createElement("kineticLaw")
-      reaction_element.appendChild(kinetic_law)
-      math_element = document.createElement("math")
-      kinetic_law.appendChild(math_element)
-      mathxmlns = "http://www.w3.org/1998/Math/MathML"
-      math_element.setAttribute("xmlns", mathxmlns)
-      simplified_rate = self.rate.remove_rate_law_sugar(self)
-      expr_element = simplified_rate.create_sbml_element(document)
-      math_element.appendChild(expr_element)
-    return reaction_element
-
-
 
 def build_reaction_dictionary(components, rate_definitions):
   """From a list of components build a reaction dictionary which maps
@@ -199,7 +96,7 @@ def build_reaction_dictionary(components, rate_definitions):
     reaction = Reaction(b_name)
     reaction_dictionary[b_name] = reaction
     if behaviour.location:
-      reaction.set_location(behaviour.location)
+      reaction.location = behaviour.location
     return reaction
 
   for component_def in components:
@@ -242,42 +139,18 @@ def translate_biopepa_model(parse_result):
                        if isinstance(x, ComponentDefinition) ]
 
   reaction_dictionary = build_reaction_dictionary(components, rate_defs)
+  reactions = reaction_dictionary.values()
+  sbml_model = create_sbml.SBML_Model()
+  sbml_model.reactions = reactions
+  sbml_model.component_defs = parse_result.system_equation
+  sbml_model.var_decs = var_decs
 
-  xml_implementation = minidom.getDOMImplementation()
-  document = xml_implementation.createDocument(None, "sbml", None)
-  top_element = document.documentElement 
-  xmlns = "http://www.sbml.org/sbml/level3/version1/core" 
-  top_element.setAttribute("xmlns", xmlns)
-  top_element.setAttribute("level", "3")
-  top_element.setAttribute("version", "1")
-
-  model_element = document.createElement("model")
-  top_element.appendChild(model_element)
-
-  create_compartment_elements(document, model_element)
-
-  create_species_elements(document, model_element,
-                          parse_result.system_equation)
-
-  convert_variable_declarations(document, model_element, var_decs)
-
-  list_of_reactions = document.createElement("listOfReactions")
-  model_element.appendChild(list_of_reactions)
-
-  for reaction in reaction_dictionary.values():
-    reaction_element = reaction.create_element(document)
-    list_of_reactions.appendChild(reaction_element)
-
-  return document
-
+  return sbml_model.create_sbml_document()
 
 def process_file(filename, arguments):
   """Parse in a Bio-PEPA file, translate to SBML and create an
      SBML file which should be the translated Bio-PEPA model.
   """
-  # I'm not exactly sure how to do this, there is no parseFile
-  # in parcon, I think we just need to open the file and pass in
-  # the file handle but I haven't tried that yet. 
   model_file = open(filename, "r")
   try:
     parse_result = biopepa_parser.parse_model_file(model_file)
@@ -287,29 +160,17 @@ def process_file(filename, arguments):
   model_file.close()
 
   document = translate_biopepa_model(parse_result)
-
-  if arguments.output_file:
-    sbml_filename = arguments.output_file
-  else:
-    sbml_filename = utils.change_filename_ext(filename, ".sbml")
-  if sbml_filename == "stdout":
-    sbml_file = sys.stdout
-  else:
-    sbml_file = open(sbml_filename, "w")
-
-  document.writexml(sbml_file, indent="", addindent="  ", newl="\n")
-  if sbml_filename != "stdout":
-    sbml_file.close()
+  create_sbml.output_to_sbml_file(filename, arguments, document)
 
 def main():
   """A simple main function to parse in the arguments as
      Bio-PEPA model files"""
-  description = "Parse a Bio-PEPA model file(s)"
+  description = "Translates Bio-PEPA model files to SBML"
   parser = argparse.ArgumentParser(add_help=True,
                                    description=description)
    # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="A Bio-PEPA model file to parse")
+                      help="A Bio-PEPA model file to translate")
   parser.add_argument('--output-file', action='store',
                       help="The file to output to, stdout to print")
   arguments = parser.parse_args()

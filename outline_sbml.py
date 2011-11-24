@@ -93,13 +93,13 @@ class Reaction(object):
     self.products = []
     self.modifiers = []
     self.name = name
+    #  Because of create_element, whatever you set this to,
+    # should have a 'remove_rate_law_sugar' method and the result
+    # of that call should be an object (possibly the same one) with
+    # a method for creating an sbml element to represent the expression
     self.kinetic_law = None
     self.location = None
 
-  def get_name(self):
-    """return the name of the reaction"""
-    return self.name
-  
   def add_reactant(self, reactant):
     """add a reactant into the reaction definition"""
     self.reactants.append(reactant)
@@ -112,33 +112,6 @@ class Reaction(object):
     """Add a modifier to the reaction"""
     self.modifiers.append(modifier)
 
-  def get_modifiers(self):
-    """return the list of modifier names"""
-    return self.modifiers
-
-  def get_reactants(self):
-    """return the list of reactant names"""
-    return self.reactants
-
-  def get_products(self):
-    """return the list of product names"""
-    return self.products
-
-  def get_kinetic_law(self):
-    """Return the kinetic law for the rate of this reaction if any"""
-    return self.kinetic_law
-
-  def set_kinetic_law(self, kinetic_law):
-    """Set the kinetic law, for the rate of this reaction"""
-    self.kinetic_law = kinetic_law
-
-  def get_location(self):
-    """Return the location of the reaction"""
-    return self.location
- 
-  def set_location(self, location):
-    """Set the location of this reaction"""
-    self.location = location
 
   def is_sink(self):
     """returns true if the reaction is a sink,
@@ -205,6 +178,63 @@ class Reaction(object):
  
     return results
 
+  def create_element(self, document):
+    """Create an xml element representing this reaction"""
+    reaction_element = document.createElement("reaction")
+    reaction_element.setAttribute("id", self.name)
+    reaction_element.setAttribute("reversible", "false")
+    reaction_element.setAttribute("fast", "false")
+    if self.location:
+      reaction_element.setAttribute("compartment", self.location)
+    if self.reactants:
+      list_of_reactants = document.createElement("listOfReactants")
+      reaction_element.appendChild(list_of_reactants)
+      for reactant in self.reactants:
+        spec_ref = document.createElement("speciesReference")
+        # spec_ref.setAttribute("id", reactant.name)
+        spec_ref.setAttribute("species", reactant.name)
+        # for biopepa models the stoichiometry values cannot
+        # change during the simulation so this 'constant' attribute is
+        # always true.
+        spec_ref.setAttribute("constant", "true")
+        spec_ref.setAttribute("stoichiometry", str(reactant.stoich))
+        list_of_reactants.appendChild(spec_ref)
+    if self.products:
+      list_of_products = document.createElement("listOfProducts")
+      reaction_element.appendChild(list_of_products)
+      for product in self.products:
+        spec_ref = document.createElement("speciesReference")
+        # spec_ref.setAttribute("id", product.name)
+        spec_ref.setAttribute("species", product.name)
+        # for biopepa models the stoichiometry values cannot
+        # change during the simulation so this 'constant' attribute is
+        # always true.
+        spec_ref.setAttribute("constant", "true")
+        spec_ref.setAttribute("stoichiometry", str(product.stoichiometry))
+        list_of_products.appendChild(spec_ref)
+    if self.modifiers:
+      list_of_modifiers = document.createElement("listOfModifiers")
+      reaction_element.appendChild(list_of_modifiers)
+      for modifier in self.modifiers:
+        spec_ref = document.createElement("modifierSpeciesReference")
+        # spec_ref.setAttribute("id", modifier.name)
+        # Note there is no stoichiometry attribute on
+        # modifierSpeciesReference elements in SBML.
+        spec_ref.setAttribute("species", modifier.name)
+        list_of_modifiers.appendChild(spec_ref)
+    if self.kinetic_law:
+      kinetic_law = document.createElement("kineticLaw")
+      reaction_element.appendChild(kinetic_law)
+      math_element = document.createElement("math")
+      kinetic_law.appendChild(math_element)
+      mathxmlns = "http://www.w3.org/1998/Math/MathML"
+      math_element.setAttribute("xmlns", mathxmlns)
+      simplified_rate = self.kinetic_law.remove_rate_law_sugar(self)
+      expr_element = simplified_rate.create_sbml_element(document)
+      math_element.appendChild(expr_element)
+    return reaction_element
+
+
 def name_of_species_reference(spec_ref):
   """Return the name of the species referred to within a
      speciesReference sbml element. This is also used for 
@@ -232,7 +262,7 @@ def get_reaction_of_element(reaction_element):
   reaction = Reaction(name)
   location = reaction_element.getAttribute("compartment")
   if location:
-    reaction.set_location(location)
+    reaction.location = location
   reactants = get_elements_from_lists_of_list("listOfReactants",
                                               "speciesReference",
                                               react_partic_of_species_ref,
@@ -259,7 +289,7 @@ def get_reaction_of_element(reaction_element):
 
   kinetic_laws = reaction_element.getElementsByTagName("kineticLaw")
   if kinetic_laws:
-    reaction.set_kinetic_law(kinetic_laws[0])
+    reaction.kinetic_law = kinetic_laws[0]
 
   return reaction
    

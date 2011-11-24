@@ -4,14 +4,19 @@
 """
      
 import sys
-import os
 import argparse
 import logging
 
-def parameterise_model_file(filename, dictionary):
+import utils
+import parameters
+
+def parameterise_model_file(dictionary, biopepa_filename, output_filename):
   """Parameterise a model file with the given dictionary"""
-  biopepa_file = open(filename, "r")
-  output_file = sys.stdout
+  biopepa_file = open(biopepa_filename, "r")
+  if output_filename == "stdout":
+    output_file = sys.stdout
+  else:
+    output_file = open(output_filename, "w")
   parameterised_names = []
 
   for line in biopepa_file:
@@ -37,27 +42,6 @@ def parameterise_model_file(filename, dictionary):
   output_file.close()
 
 
-def parse_param_file(param_filename, dictionary):
-  """Parse a parameter file into the given dictionary"""
-  param_file = open(param_filename, "r")
-
-  for line in param_file:
-    separator = "\t"
-    if not separator in line and ":" in line:
-      separator = ":"
-    (name, value_string) = line.split(separator, 1)
-    value = float(value_string.lstrip().rstrip())
-    # We should also check if the name already exists in the dictionary
-    dictionary[name] = value
-
-  param_file.close()
-
-def has_extension(filename, extensions):
-  """Returns true if the given filename has one of the given
-     list of extensions"""
-  file_extension = os.path.splitext(filename)[1]
-  return file_extension in extensions
-
 def run():
   """Perform the banalities of command-line argument processing and
      and then get under way in parameterising the model"""
@@ -65,24 +49,22 @@ def run():
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="input files, parameters and sbml model files")
-  # parser.add_argument('--pretty', action='store_true',
-  #                     help="Pretty print the xml")
+                      help="Bio-PEPA and parameter files")
 
   arguments = parser.parse_args()
 
   biopepa_extentions = [ ".biopepa" ]
   param_files = [ x for x in arguments.filenames
-                        if not has_extension(x, biopepa_extentions) ]
+                        if not utils.has_extension(x, biopepa_extentions) ]
 
   biopepa_files = [ x for x in arguments.filenames
-                      if has_extension(x, biopepa_extentions) ]
+                      if utils.has_extension(x, biopepa_extentions) ]
 
   dictionary = dict()
   for param_file in param_files:
-    parse_param_file(param_file, dictionary)
+    parameters.parse_param_file(param_file, dictionary)
   for biopepa_file in biopepa_files:
-    parameterise_model_file(biopepa_file, dictionary)
+    parameterise_model_file(dictionary, biopepa_file, "stdout")
 
 if __name__ == "__main__":
   run()

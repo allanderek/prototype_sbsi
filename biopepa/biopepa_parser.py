@@ -367,8 +367,6 @@ behaviour_op_list = parcon.OneOrMore(behaviour_op)
 
 def make_behaviour(parse_result):
   """The parse action for the behaviour parser"""
-  print ("parse result for a behaviour")
-  print (parse_result)
   reaction_name = parse_result[0]
   stoich = parse_result[1]
   operator = parse_result[2]

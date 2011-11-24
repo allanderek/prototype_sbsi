@@ -12,8 +12,6 @@ def convert_file(filename):
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("model")[0]
   species = outline_sbml.get_list_of_species(model)
-  species_names = [ spec.get_name() for spec in species ]
-  all_reactions = outline_sbml.get_list_of_reactions(model)
 
   model_name = model.getAttribute("name")
   if not model_name:

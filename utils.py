@@ -22,17 +22,24 @@ def get_new_directory(desired_name):
   os.makedirs(dir_name)
   return dir_name
 
+def has_extension(filename, extensions):
+  """Returns true if the given filename has one of the given
+     list of extensions. The extensions should include the .
+     to begin them, eg [ ".xml" ]
+  """
+  file_extension = os.path.splitext(filename)[1]
+  return file_extension in extensions
+
+
 def has_xml_or_sbml_ext(filename):
   """Returns true if we believe the file to be an SBML file
      based on the file's extension"""
-  extension = os.path.splitext(filename)[1]
-  return extension == ".xml" or extension == ".sbml"
+  return has_extension(filename, [ ".xml", ".sbml" ])
 
 def has_copasi_ext(filename):
   """Returns true if we believe the file to be a copasi model file
      based on the file's extension"""
-  extension = os.path.splitext(filename)[1]
-  return extension == ".cps"
+  return has_extension(filename, [ ".cps" ])
 
 
 def get_non_ignored (all_names, in_names, ignored_names):

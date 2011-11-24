@@ -313,32 +313,10 @@ class BioPEPASolver:
        Bio-PEPA file. We assume that each parameter definition begins
        a line, with 'param_name = ....' and we simply replace the dots
        with the new value of the parameter."""
-    biopepa_file = open(self.model_file, "r")
-    output_file = open(self.paramed_file, "w")
-
-    parameterised_names = []
-
-    for line in biopepa_file:
-      if '=' in line:
-        name = line.partition('=')[0]
-        name = name.lstrip().rstrip()
-        if dictionary.has_key (name):
-          new_value = dictionary[name]
-          output_file.write(name + " = " + str(new_value) + " ;\n")
-          parameterised_names.append(name)
-        else:
-          output_file.write(line)
-      else:
-        output_file.write(line)
-
-    unparameterised = [ x for x in dictionary.keys()
-                            if x not in parameterised_names ]
-    if unparameterised:
-      logging.error ("Failed to fully parameterise Bio-PEPA file")
-      sys.exit(1)
-
-    biopepa_file.close()
-    output_file.close()
+    biopepa.dumb_parameteriser.parameterise_model_file(
+              dictionary,
+              self.model_file,
+              self.paramed_file)
 
   def solve_model(self, configuration):
     """Solve the parameterised version of the model. This assumes

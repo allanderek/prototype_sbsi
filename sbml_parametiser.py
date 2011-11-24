@@ -1,9 +1,10 @@
 """ A simple script to replace the values of parameters within an
     sbml model file"""
 import xml.dom.minidom
-import os
 import argparse
+
 import parameters
+import utils
 
 
 def parameterise_model(model, dictionary):
@@ -27,33 +28,26 @@ def parameterise_model_file (filename, dictionary):
     parameterise_model(model, dictionary)
   # Print out the modified dom model.
   print(dom.toxml("UTF-8"))
+
   
-
-def has_extension(filename, extensions):
-  """Returns true if the given filename has one of the given
-     list of extensions"""
-  file_extension = os.path.splitext(filename)[1]
-  return file_extension in extensions
-
 def run():
-  """Perform the banalities of command-line argument processing and
-     and then get under way in parameterising the model"""
+  """The main entry point, parameterise SBML model files given
+     on the command line
+  """
   description = "Parameterise an SBML model based on a given param file"
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="input files, parameters and sbml model files")
-  # parser.add_argument('--pretty', action='store_true',
-  #                     help="Pretty print the xml")
+                      help="input files: parameters and sbml model files")
 
   arguments = parser.parse_args()
 
   sbml_extentions = [ ".xml", ".sbml" ]
   param_files = [ x for x in arguments.filenames
-                        if not has_extension(x, sbml_extentions) ]
+                        if not utils.has_extension(x, sbml_extentions) ]
 
   sbml_files = [ x for x in arguments.filenames
-                   if has_extension(x, sbml_extentions) ]
+                   if utils.has_extension(x, sbml_extentions) ]
 
   dictionary = dict()
   for param_file in param_files:
