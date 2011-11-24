@@ -1,0 +1,210 @@
+# Gal signalling model
+# Gal1/2/3/4 & Gal80p
+# Sept 7, 2011. Added Gal2 so now this version includes gal import. 
+# parameters from Ramsey et al. (2006). Units are number of molecules, 
+# not concentrations! They have been adjusted to match ss I obtain in matlab
+
+#####################################################################
+###################### PARAMETERS ###################################
+#####################################################################
+# unless otherwise specified, all rate units are 1/min
+
+#####################################################################
+# statistical mechanics parameters for transcription (all dimensionless)
+variable Kp			= 0.02104 
+variable Kq			= 0.1052
+variable Cp			= 1
+variable Cq			= 30
+#####################################################################
+
+#####################################################################
+# expression (transcription=tc, translation=tl) and degradation rates
+# gal1
+variable k_tc1_max		= .0057 #0.7379/6.022e23/3.57e-14/60   # M/s
+variable k_r1_degr		= 3.7267e-04 #0.02236/60  # 1/s
+variable k_tl1			= 0.03209 # 1.9254/60
+variable k1_degr		= 6.41833e-05 #0.003851/60
+# gal2-  VALUES NOT TESTED
+variable k_tc2_max		= 1.9706765e-2 #2.542/6.022e23/3.57e-14/60 # molec/min
+variable k_r2_degr		= 0.0012836667 #0.07702/60
+variable k_tl2			= 0.22463167 #13.4779/60
+variable k2_degr		= 6.4183333e-05 #0.003851/60
+# gal3-  VALUES TESTED (gal3p still induced a bit high)
+variable k_tc3_max		= 4e-3 #0.7465/6.022e23/3.57e-14/60  # molec/min
+variable k_r3_degr		= 4e-4 #0.02666/60
+variable k_tl3			= 0.026 # see wiki re: how this was chosen 55.4518/60
+variable k3_degr		= 1.9e-5 #0.1155/60
+# gal4 
+variable k_tc4			= 7.6765e-5 #.009902/6.022e23/3.57e-14/60  # molec/min
+variable k_r4_degr		= 4.1267e-04 #0.02476/60
+variable k_tl4			= 0.1785 #10.7091/60
+variable k4_degr 		= 1.1552e-04 #0.006931/60
+# gal80
+variable k_tc80_max		= .01 #0.6065/6.022e23/3.57e-14/60  # molec/min
+variable k_r80_degr		= .0004 #0.02888/60
+variable k_tl80			= 0.02 #3.6737/60
+variable k80_degr		= 6e-06 #0.006931/60
+#####################################################################
+
+#####################################################################
+# dimerization rates for Gal4 & Gal80p (same for both)
+variable k_dim 			= .01 #.001*(6.022e23*3.57e-14)/60  # /M/s
+variable k_mon			= 10 #100/60  # /s 
+#####################################################################
+
+#####################################################################
+# Gal80p shuttling between nucleus & cytosol-  VALUES OK
+variable k80_nuc		= 8.3333 #500/60 # /s
+variable k80_cyt		= 8.3333 #500/60 # /s
+#####################################################################
+
+#####################################################################
+# Gal1p metabolization of galI-  VALUES NOT TESTED
+variable k1_cat		= 55.8333 #3350/60 # /s
+variable K1_m			= 6.0018e-04 #1.2903e7/6.022e23/3.57e-14 # M
+#####################################################################
+
+#####################################################################
+# Gal2p (gal import)-  VALUES NOT TESTED
+# THESE ARE THE ONLY PARAMETERS NOT TAKEN FROM Ramsey et al.
+# they use a Michaelis-Menten-like import that is linear in the difference of galE and galI
+# (see Eq. (29) in their supplementary material)  UNITS?!?!?
+# param values tested in mathematica. I found that keeping the values below except with both 
+# K2_act and k2act_bind ten times smaller, then galE can go negative (bad)
+variable k2act_bind		= 1		# /molec/min, to be changed!
+variable k2act_unbind		= 100		# /min,  to be changed!
+variable K2bound_act 		= 500		# unitless,   to be changed!
+variable K2_bind		= 200		# /molec, to be changed!
+variable K2_act			= 2		# unitless,  to be changed!
+#####################################################################
+
+#####################################################################
+# Gal3p activation by galI-  VALUES OK
+variable k3_act			= 266.9402 #7.45e-7*6.022e23*3.57e-14/60 # /M/s
+variable k3_deact		= 14.8333 #890/60 # /s
+#####################################################################
+
+#####################################################################
+# Gal3p-Gal8p0 interaction-  VALUES OK
+variable k3a_80_bind		= 1 # was 0.01596*6.022e23*3.57e-14/60 but this was too big# /M/s
+variable k3a_80_unbind		= 4.2867e-04 #0.02572/60 # /s
+#####################################################################
+
+###########################################################################################
+###########################################################################################
+
+
+#####################################################################
+###################### REACTIONS ####################################
+#####################################################################
+
+#########################
+#### gene expression ####
+#########################
+# Gal1p
+null				=> rGal1;			k_tc1 = k_tc1_max*(Cp* Kp*Gal4p_dim*(2 + Cp* (Kp*Gal4p_dim + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc))* (2 + Cp*(Cp*(Kp*Gal4p_dim)^2 + 2*(Kp*Gal4p_dim)*(1 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc) +  2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc*(2 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc))))/(1 + Cp* (Kp*Gal4p_dim + Cq* Kp*Gal4p_dim*Kq*Gal80p_dim_nuc))^4	# 4 gal4p binding sites
+rGal1 				-> null;			k_r1_degr;
+rGal1				-> rGal1 + Gal1p;		k_tl1;
+Gal1p				-> null;   			k1_degr;
+
+# Gal2p  !NB! Here we show 2 binding sites for gal2 (following Lohr et al 1995 rev.), but Ramsey had 5 (cf Ramsey ref 18?)
+null				=> rGal2;			k_tc2 = k_tc2_max * Cp*Kp * Gal4p_dim*(2+Cp*(Kp *Gal4p_dim+2*Cq*Kp * Gal4p_dim*Kq * Gal80p_dim_nuc))/ (1+Cp*(Kp * Gal4p_dim+Cq*Kp * Gal4p_dim*Kq *Gal80p_dim_nuc))^2;
+rGal2 				-> null;			k_r2_degr;
+rGal2				-> rGal2 + Gal2p;		k_tl2;
+Gal2p				-> null;   			k2_degr;
+
+# Gal3p
+null				=> rGal3;			k_tc3 = k_tc3_max * Cp*Kp * Gal4p_dim/(1+Cp*(Kp *Gal4p_dim+Cq*Kp * Gal4p_dim*Kq * Gal80p_dim_nuc));
+rGal3 				-> null;			k_r3_degr;
+rGal3				-> rGal3 + Gal3p;		k_tl3;
+Gal3p				-> null;   			k3_degr;
+
+# Gal4p (constitutive expression)
+null				<-> rGal4;			k_tc4 ; k_r4_degr;
+rGal4				 -> rGal4 + Gal4p;		k_tl4 ;
+Gal4p				-> null;   			k4_degr ;
+
+# Gal80p expression
+null				 => rGal80;			k_tc80 = k_tc80_max * Cp*Kp * Gal4p_dim/(1+Cp*(Kp *Gal4p_dim+Cq*Kp * Gal4p_dim*Kq * Gal80p_dim_nuc));
+rGal80 			 	 -> null;			k_r80_degr;
+rGal80			 	 -> rGal80 + Gal80p_nuc;	k_tl80;	# in Ramsey et al. translation produces nucleic Gal80p, but shouldn't it rather be cytosolic?
+
+##################################
+#### dimerization & shuttling ####
+##################################
+# Gal4p
+Gal4p + Gal4p			<-> Gal4p_dim;			k_dim ; k_mon;
+Gal4p_dim			 -> null; 			k4_degr;
+
+# Gal80p (cytosolic & nucleic forms can dimerize)
+Gal80p_cyt + Gal80p_cyt		<-> Gal80p_dim_cyt;		k_dim ; k_mon;
+Gal80p_nuc + Gal80p_nuc		<-> Gal80p_dim_nuc;		k_dim ; k_mon;
+Gal80p_cyt			<-> Gal80p_nuc;			k80_nuc ; k80_cyt;		
+Gal80p_dim_cyt 	       		<-> Gal80p_dim_nuc;		k80_nuc ; k80_cyt;
+Gal80p_cyt		 	 -> null;			k80_degr;
+Gal80p_nuc		 	 -> null;			k80_degr;
+Gal80p_dim_cyt	  	 	 -> null; 			k80_degr;
+Gal80p_dim_nuc	  	 	 -> null; 			k80_degr;
+
+####################
+#### gal import #### This currently is the more complicated expression. if we assume gale>>gali, we can put k_imp = Gal2p*(galE*K2bound_act*K2_bind *k2act_unbind)/ (1+K2_act+(1+K2bound_act)*K2_bind*galE);
+####################
+galE				 => galI;		k_imp = Gal2p*(galE*K2bound_act*K2_bind *k2act_unbind-galI*k2act_bind*K2_act)/ (1+K2_act+(1+K2bound_act)*K2_bind*galE);
+
+########################
+#### gal metabolism ####
+########################
+galI				 => null;			k_gal_met=k1_cat*Gal1p*galI/(K1_m+galI);
+
+##########################
+#### Gal3p activation ####
+##########################
+Gal3p + galI 			<-> Gal3pa;		k3_act ; k3_deact;
+Gal3pa					->	null; 		k3_degr; #Degradation of Gal3pa added Aug 23 		
+
+##################################
+#### Gal3p-Gal80p interaction ####
+##################################
+Gal3pa + Gal80p_dim_cyt		<-> Gal3paGal80p_cyt;		k3a_80_bind ; k3a_80_unbind;
+Gal3paGal80p_cyt 		->		null; 			0.5*k3_degr; # Degradation of complex added Aug 23 
+
+
+###########################################################################################
+###########################################################################################
+
+
+#####################################################################
+###################### INITIAL VALUES ###############################
+#####################################################################
+INIT
+# initial values chosen Aug 19, 2011. They are steady states reached when galE=galI=0
+# galactose-  VALUES NOT TESTED
+galE	  	  = 2.365e19 N; # This comes out to 0.11M, which is 2% galactose
+galI 		  = 0 M;
+
+# RNA
+rGal1		  = 9.2702e9 N; 
+rGal2		  = 4.6859e+09 N; 
+rGal3		  = 1.5307e9 N; 
+rGal4		  = 3.9985e9 N;
+rGal80		  = 3.8289e9 N; 
+
+# proteins
+Gal1p		  = 4.6353e12 N; 
+Gal2p		  = 1.6386e+13 N; 
+Gal3p 		  = 2.1021e+12 N;  
+Gal3pa 		  = 0 N;
+Gal4p		  = 4.3881e12 N; 
+Gal4p_dim	  = 8.9566e11 N; 
+Gal80p_nuc    = 4.4991e12 N; 
+Gal80p_cyt	  = 4.4991e12 N; 
+Gal80p_dim_cyt	  = 9.4154e+11 N; 
+Gal80p_dim_nuc	  = 9.4154e+11 N; 
+
+# complexes
+Gal3paGal80p_cyt  = 0 N;
+#Gal3pa_galI	  = 0 N;
+
+CONFIG:
+compartment_volume = 3.57e-14                       # in L
+#cv	= 29e-15L;   # http://yeastpheromonemodel.org/wiki/Cell_volume
