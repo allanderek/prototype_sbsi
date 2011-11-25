@@ -14,7 +14,8 @@ def translate_facile_model(parse_result):
   """Translate the parsed facile model into an SBML xml document"""
   sbml_model = create_sbml.SBML_Model()
 
-  sbml_model.reactions = parse_result # [0]
+  sbml_model.reactions = parse_result[0]
+  sbml_
   document = sbml_model.create_sbml_document()
   return document
 

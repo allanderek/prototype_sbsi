@@ -38,7 +38,43 @@ reaction_syntax = (list_of_species_syntax +
 reaction_parser = Translate(reaction_syntax, create_reaction)
 equation_section_syntax = parcon.OneOrMore(reaction_parser)
 
-model_parser = equation_section_syntax + parcon.End()
+
+class InitialCondition(object):
+  """Class representing an initial condition"""
+  def __init__(self):
+    self.name = None
+    self.value = None
+    self.units = None
+
+def create_initial_condition(parse_result):
+  """post parsing method for initial conditions"""
+  init_cond = InitialCondition()
+  init_cond.name = parse_result[0]
+  init_cond.value = parse_result[1]
+  init_cond.units = parse_result[2]
+  
+  return init_cond
+  
+init_cond_units_syntax = parcon.First(SignificantLiteral ("N"),
+                                      SignificantLiteral ("M"),
+                                      SignificantLiteral ("uM")
+                                     )
+initial_condition_syntax = (name_syntax +
+                            "=" +
+                            parcon.number +
+                            init_cond_units_syntax
+                           )
+initial_condition_parser = Translate(initial_condition_syntax,
+                                     create_initial_condition)
+
+init_cond_section_syntax = parcon.ZeroOrMore(initial_condition_parser)
+
+
+model_parser = (equation_section_syntax + 
+                "INIT" +
+                init_cond_section_syntax +
+                parcon.End()
+               )
 
 def parse_model(model_source):
  """Takes in the string which represents the source of the model.
