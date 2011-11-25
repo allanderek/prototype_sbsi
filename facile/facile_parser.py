@@ -2,10 +2,43 @@
 A module that implements a parser for the Bio-PEPA language
 """
 import parcon
-from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
+from parcon import Translate, SignificantLiteral
+
+import biopepa.biopepa_parser as biopepa_parser
+from biopepa.biopepa_parser import create_separated_by 
+import outline_sbml
 
 
-model_parser = parcon.alphanum_word + parcon.End()
+name_syntax = parcon.alphanum_word
+
+list_of_species_syntax = create_separated_by(name_syntax, "+")
+reaction_arrow_syntax = parcon.First(SignificantLiteral ("->"), 
+                                     SignificantLiteral ("<-"),
+                                     SignificantLiteral ("<->"))
+
+rate_law_syntax = name_syntax + "=" + biopepa_parser.expr + ";"
+
+def create_reaction(parse_result):
+  """The post-parse action for the reaction parser"""
+  reaction = outline_sbml.Reaction("reaction") 
+  reaction.reactants = [ outline_sbml.ReactionParticipant(n, 1) 
+                            for n in parse_result[0] ]
+  reaction.products =  [ outline_sbml.ReactionParticipant(n, 1) 
+                            for n in parse_result[2] ]
+  reaction.kinetic_law = parse_result[4]
+  return reaction
+  
+
+reaction_syntax = (list_of_species_syntax +
+                   reaction_arrow_syntax +
+                   list_of_species_syntax +
+                   ";"
+                   + rate_law_syntax
+                  )
+reaction_parser = Translate(reaction_syntax, create_reaction)
+equation_section_syntax = parcon.OneOrMore(reaction_parser)
+
+model_parser = equation_section_syntax + parcon.End()
 
 def parse_model(model_source):
  """Takes in the string which represents the source of the model.

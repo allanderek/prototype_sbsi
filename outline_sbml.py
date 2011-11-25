@@ -112,6 +112,14 @@ class Reaction(object):
     """Add a modifier to the reaction"""
     self.modifiers.append(modifier)
 
+  def get_mass_action_participants(self):
+    """Return the left hand side participants which contribute to the
+       rate in a mass action rate method. For example A + B --> C 
+       would return A and B. Essentially this is so that fMA(r) could
+       be translated to r * A * B.
+    """
+    # I think we return all the modifiers but perhaps not the inhibitors?
+    return self.reactants + self.modifiers
 
   def is_sink(self):
     """returns true if the reaction is a sink,
@@ -210,7 +218,7 @@ class Reaction(object):
         # change during the simulation so this 'constant' attribute is
         # always true.
         spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(product.stoichiometry))
+        spec_ref.setAttribute("stoichiometry", str(product.stoich))
         list_of_products.appendChild(spec_ref)
     if self.modifiers:
       list_of_modifiers = document.createElement("listOfModifiers")

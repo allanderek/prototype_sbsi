@@ -29,15 +29,6 @@ class Reaction(outline_sbml.Reaction):
     """The setter for the rate property"""
     self.kinetic_law = rate
 
-  def get_mass_action_participants(self):
-    """Return the left hand side participants which contribute to the
-       rate in a mass action rate method. For example A + B --> C 
-       would return A and B. Essentially this is so that fMA(r) could
-       be translated to r * A * B.
-    """
-    # I think we return all the modifiers but perhaps not the inhibitors?
-    return self.reactants + self.modifiers
-
 
   def add_behaviour(self, comp_name, behaviour):
     """Add the given behaviour to the reaction, essentially this means
