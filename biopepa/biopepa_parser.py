@@ -4,6 +4,8 @@ A module that implements a parser for the Bio-PEPA language
 import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
 
+import create_sbml
+
 # A simply utility for creating parsers which accept a list of
 # somethings, separated by something elses.
 # Note here that the separator_parser should return None
@@ -27,139 +29,14 @@ def create_separated_by(element_parser, separator_parser):
   return Translate(list_syntax, create_list_result)
 
 
-class Expression:
-  """The base class for all classes which represent the AST of some
-     kind of expression"""
-  def __init__(self):
-    pass
-
-  def show_expr(self):
-    """This is a virtual method stub, this method should be overridden
-       by any class inheriting from this class"""
-    raise NotImplementedError("Expression is really an abstract class")
-
-
-  def convert_to_sbml(self):
-    """This is a virtual method stub, this method should be overridden
-       by any class inheriting from this class"""
-    raise NotImplementedError("Expression is really an abstract class")
-
-  def remove_rate_law_sugar(self, reaction):
-    """This is a virtual method stub, this method should be overridden
-       by any class inheriting from this class. In fact we should be
-       doing this with something like a visitor pattern, but I have not
-       yet fully groked visitor patterns for python.
-       Well it's a bit more than a stub, all the very simple expressions
-       which don't have sub-expressions do not need to override this."""
-    # pylint: disable-msg=W0613
-    return self 
-
-class NumExpression(Expression):
-  """A class to represent the AST of an number literal expression"""
-  def __init__(self, number):
-    Expression.__init__(self)
-    self.number = number
-  def convert_to_sbml(self):
-    """Convert the number expression to SBML code for the expression"""
-    return "<cn>" + str(self.number) + "</cn>"
-  def show_expr(self):
-    """Display the underlying number of the numerical expression"""
-    return str(self.number)
-  def create_sbml_element(self, document):
-    """Create an sbml xml element for the sbml code for the expression"""
-    cn_element = document.createElement("cn")
-    cn_text = document.createTextNode(str(self.number))
-    cn_element.appendChild(cn_text)
-    return cn_element
-
 def create_number_expression(number_str):
   """Simple utility to create a number expression from the parse result
      of parsing a simple number"""
-  return NumExpression(float(number_str))
- 
-
-class NameExpression(Expression):
-  """A class to represent the AST of a variable (name) expression"""
-  def __init__(self, name):
-    Expression.__init__(self) 
-    self.name = name
-
-  def show_expr(self):
-    """Format as a string the name expression"""
-    return self.name
-
-  def convert_to_sbml(self):
-    """Convert the variable(name) expression to SBML code for
-       the expression"""
-    return "<ci>" + self.name + "</ci>"
-
-  def create_sbml_element(self, document):
-    """Create an sbml xml element for the sbml code for the expression"""
-    ci_element = document.createElement("ci")
-    ci_text = document.createTextNode(self.name)
-    ci_element.appendChild(ci_text)
-    return ci_element
-
+  return create_sbml.NumExpression(float(number_str))
  
 def make_name_expression(parse_result):
   """Simple post parsing creation method for NameExpression"""
   return NameExpression(parse_result)
-
-class ApplyExpression(Expression):
-  """A class to represent the AST of an apply expression, applying a
-     named function to a list of argument expressions"""
-  def __init__(self, name, args):
-    Expression.__init__(self)
-    self.name = name
-    self.args = args
-
-  def show_expr(self):
-    """Format as a string the application expression"""
-    result = self.name + "("
-    prefix = ""
-    for arg in self.args:
-      result += prefix
-      result += arg.show_expr()
-      prefix = ", "
-    result += ")"
-    return result
-
-  def convert_to_sbml(self):
-    """return a string representing the sbml of an math apply expression"""
-    result = "<apply>\n"
-    result += "  <" + self.name + "/>\n"
-    for argument in self.args:
-      result += "  " + argument.convert_to_sbml() + "\n"
-    result += "</apply>"
-    return result
-
-  def create_sbml_element(self, document):
-    """Create an sbml xml element for the sbml code for the expression"""
-    apply_el = document.createElement("apply")
-    operator_el = document.createElement(self.name)
-    apply_el.appendChild(operator_el)
-    for argument in self.args:
-      arg_el = argument.create_sbml_element(document)
-      apply_el.appendChild(arg_el)
-    
-    return apply_el
-
-  def remove_rate_law_sugar(self, reaction):
-    # First apply this to all of the argument expressions.
-    new_args = [ arg.remove_rate_law_sugar(reaction) for arg in self.args ]
-    self.args = new_args
- 
-    if self.name == "fMA":
-      # Should do some more error checking, eg if there is exactly
-      # one argument.
-      mass_action_reactants = reaction.get_mass_action_participants()
-      extra_args = [ NameExpression(reactant.get_name())
-                       for reactant in mass_action_reactants ]
-      new_expr = ApplyExpression("times", new_args + extra_args)
-      return new_expr
-    else:
-      new_expr = ApplyExpression(self.name, new_args)
-      return new_expr
 
    
 def make_apply_expression(parse_result):
@@ -171,6 +48,7 @@ def make_apply_expression(parse_result):
   # Otherwise the second part of the parse result should be a list
   # of arguments
   return ApplyExpression(parse_result[0], parse_result[1])
+
 def make_plus_expression(left, right):
   """simple post-parsing creation method for add expressions"""
   return ApplyExpression("plus", [left, right])
@@ -216,48 +94,6 @@ term = InfixExpr(term, [("+", make_plus_expression),
                         ("-", make_minus_expression)])
 expr.set(term(name="expr"))
 
-
-class VariableDeclaration:
-  """A class to represent the AST of a variable declaration in Bio-PEPA"""
-  def __init__(self, variable, expression):
-    self.variable = variable
-    self.expression = expression
-
-  def get_name(self):
-    """Return the name of the variable being declared"""
-    return self.variable
-
-  def create_parameter_element(self, document):
-    """Creates a parameter sbml element for the parameter corresponding
-       to this variable declaration"""
-    parameter = document.createElement("parameter")
-    parameter.setAttribute("id", self.variable)
-    parameter.setAttribute("name", self.variable)
-    # true means that the parameter's value can only be set by an
-    # initial assignment (or here as the 'value' attribute) so I think it
-    # is reasonable here to set it to true.
-    parameter.setAttribute("constant", "true")
-    if isinstance(self.expression, NumExpression):
-      parameter.setAttribute("value", self.expression.show_expr())
-    return parameter
- 
-  def create_initial_assignment(self, document):
-    """Creates an sbml element for an initial assignment for the
-       parameter corresponding to this variable declaration"""
-    init_assign = document.createElement("initialAssignment")
-    init_assign.setAttribute("symbol", self.variable)
-
-    math_element = document.createElement("math")
-    mathxmlns = "http://www.w3.org/1998/Math/MathML"
-    math_element.setAttribute("xmlns", mathxmlns)
-    mathxmlnssbml = "http://www.sbml.org/sbml/level3/"
-    math_element.setAttribute("xmlns:sbml", mathxmlnssbml)
-    init_assign.appendChild(math_element)
-
-    expr_element = self.expression.create_sbml_element(document)
-    math_element.appendChild(expr_element)
-
-    return init_assign
 
 def create_variable_dec(parse_result):
   """The parse action for the variable_definition parser"""
@@ -443,6 +279,10 @@ class ComponentPopulation:
   """
   def __init__(self, name, population_expr):
     self.name = name
+    # The 'create_sbml' module requires this to have an 'initial_amount'
+    # field. In theory we could populate this if the expression is a
+    # simple number.
+    self.initial_amount = None
     self.population_expr = population_expr
     self.location = "default location"
 

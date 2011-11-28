@@ -10,12 +10,12 @@ import utils
 import outline_sbml
 import create_sbml
 
-def translate_facile_model(parse_result):
+def translate_facile_model(facile_model):
   """Translate the parsed facile model into an SBML xml document"""
   sbml_model = create_sbml.SBML_Model()
-
-  sbml_model.reactions = parse_result[0]
-  sbml_
+  sbml_model.reactions = facile_model.equations
+  sbml_model.component_defs = facile_model.initial_conditions
+  sbml_model.var_decs = facile_model.var_decs
   document = sbml_model.create_sbml_document()
   return document
 
@@ -23,13 +23,13 @@ def translate_file(filename, arguments):
   """Translate a facile file into sbml"""
   model_file = open(filename, "r")
   try:
-    parse_result = facile_parser.parse_model_file(model_file)
+    facile_model = facile_parser.parse_model_file(model_file)
   except parcon.ParseException as parse_except:
     print parse_except
     sys.exit(1)
   model_file.close()
 
-  document = translate_facile_model(parse_result)
+  document = translate_facile_model(facile_model)
   create_sbml.output_to_sbml_file(filename, arguments, document)
 
 
