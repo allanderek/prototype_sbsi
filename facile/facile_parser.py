@@ -6,9 +6,7 @@ from parcon import Translate, SignificantLiteral
 
 import biopepa.biopepa_parser as biopepa_parser
 from biopepa.biopepa_parser import create_separated_by 
-import create_sbml
-import outline_sbml
-
+import sbml_ast
 
 name_syntax = parcon.alphanum_word
 
@@ -21,10 +19,10 @@ rate_law_syntax = name_syntax + "=" + biopepa_parser.expr + ";"
 
 def create_reaction(parse_result):
   """The post-parse action for the reaction parser"""
-  reaction = outline_sbml.Reaction("reaction") 
-  reaction.reactants = [ outline_sbml.ReactionParticipant(n, 1) 
+  reaction = sbml_ast.Reaction("reaction") 
+  reaction.reactants = [ sbml_ast.ReactionParticipant(n, 1) 
                             for n in parse_result[0] ]
-  reaction.products =  [ outline_sbml.ReactionParticipant(n, 1) 
+  reaction.products =  [ sbml_ast.ReactionParticipant(n, 1) 
                             for n in parse_result[2] ]
   reaction.kinetic_law = parse_result[4]
   return reaction
@@ -43,8 +41,8 @@ var_dec_syntax = "variable" + name_syntax + "=" + parcon.number
 def create_var_dec(parse_result):
   """post-parsing method for variable declarations"""
   name = parse_result[0]
-  expression = create_sbml.NumExpression(parse_result[1])
-  var_dec = create_sbml.VariableDeclaration(name, expression)
+  expression = sbml_ast.NumExpression(parse_result[1])
+  var_dec = sbml_ast.VariableDeclaration(name, expression)
   return var_dec
 var_dec_parser = Translate(var_dec_syntax, create_var_dec)
 
@@ -100,9 +98,9 @@ def create_model(parse_result):
   facile_model = FacileModel()
   eqn_section = parse_result[0]
   facile_model.equations = [ s for s in eqn_section 
-                                 if isinstance(s, outline_sbml.Reaction) ]
+                                 if isinstance(s, sbml_ast.Reaction) ]
   var_decs = [ s for s in eqn_section
-                   if isinstance(s, create_sbml.VariableDeclaration)
+                   if isinstance(s, sbml_ast.VariableDeclaration)
              ]
   facile_model.var_decs = var_decs
   facile_model.initial_conditions = parse_result[1]
@@ -111,12 +109,12 @@ def create_model(parse_result):
 model_parser = Translate(model_syntax, create_model)
 
 def parse_model(model_source):
- """Takes in the string which represents the source of the model.
-    You can instead call 'parse_model_file' but this is useful if
-    you have the source already, for example perhaps as part of a
-    web or gui application
- """
- return model_parser.parse_string(model_source)
+  """Takes in the string which represents the source of the model.
+     You can instead call 'parse_model_file' but this is useful if
+     you have the source already, for example perhaps as part of a
+     web or gui application
+  """
+  return model_parser.parse_string(model_source)
 
 def parse_model_file(model_file):
   """Given a model file (handle, not filename), parse the contents

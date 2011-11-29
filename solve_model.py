@@ -7,6 +7,9 @@ import sys
 import os.path
 from subprocess import Popen, PIPE
 import logging
+
+
+import biopepa
 import timeseries
 import utils
 import plotcsv

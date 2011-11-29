@@ -1,6 +1,7 @@
 """A unit test module for the biopepa_parser module"""
-import biopepa_parser
 import unittest
+
+import biopepa_parser
 
 class Arguments:
   """Emulates the arguments class which can be passed into
@@ -37,22 +38,16 @@ class TestCheckBiopepaParser(unittest.TestCase):
         B = y >> + x << ;
         A[0] <*> B[x + y]
         """
-    parse_results = biopepa_parser.parse_model(my_source)
-
+    biopepa_model = biopepa_parser.parse_model(my_source)
+    
     expected_number_var_defs = 9
-    var_defs = [ x for x in parse_results.definitions
-                   if isinstance(x, biopepa_parser.VariableDeclaration)
-               ]
-    actual_number_var_defs = len(var_defs)
+    actual_number_var_defs = len(biopepa_model.var_defs)
     self.assertEqual(expected_number_var_defs,
                      actual_number_var_defs)
 
 
     expected_number_of_comp_defs = 2
-    comp_defs = [ x for x in parse_results.definitions
-                    if isinstance(x, biopepa_parser.ComponentDefinition)
-                ]
-    actual_number_of_component_defs = len(comp_defs)
+    actual_number_of_component_defs = len(biopepa_model.component_defs)
     self.assertEqual(expected_number_of_comp_defs, 
                      actual_number_of_component_defs)
 

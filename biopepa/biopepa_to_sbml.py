@@ -4,13 +4,10 @@ import sys
 import argparse
 import parcon
 
-from biopepa_parser import VariableDeclaration, RateDefinition, \
-                           ComponentDefinition
 import biopepa_parser
-import outline_sbml
-import create_sbml
+import sbml_ast
 
-class Reaction(outline_sbml.Reaction):
+class Reaction(sbml_ast.Reaction):
   """A class representing reactions within a Bio-PEPA model. These
      reactions have been derived from the rate laws and the component
      definitions (and their associated reaction behaviours)
@@ -46,7 +43,7 @@ class Reaction(outline_sbml.Reaction):
     # eg, we'll have A + B -> B + B, where as arguably we should retain
     # the knowledge, perhaps we should just have the operator <> or ><
     for stoich, operator in zip(stoichimetries, operators):
-      participant = outline_sbml.ReactionParticipant(comp_name)
+      participant = sbml_ast.ReactionParticipant(comp_name)
       participant.stoich = stoich
       if operator == ">>" :
         self.products.append(participant)
@@ -120,21 +117,17 @@ def build_reaction_dictionary(components, rate_definitions):
   return reaction_dictionary
 
 
-def translate_biopepa_model(parse_result):
+def translate_biopepa_model(biopepa_model):
   """Translate the parsed Bio-PEPA model into an SBML xml document"""
-  var_decs = [ x for x in parse_result.definitions
-                     if isinstance(x, VariableDeclaration) ]
-  rate_defs = [ x for x in parse_result.definitions
-                      if isinstance(x, RateDefinition) ]
-  components = [ x for x in parse_result.definitions
-                       if isinstance(x, ComponentDefinition) ]
+  
+  react_dict = build_reaction_dictionary(biopepa_model.component_defs,
+                                         biopepa_model.rate_defs)
+  reactions = react_dict.values()
 
-  reaction_dictionary = build_reaction_dictionary(components, rate_defs)
-  reactions = reaction_dictionary.values()
-  sbml_model = create_sbml.SBML_Model()
+  sbml_model = sbml_ast.SBMLModel()
   sbml_model.reactions = reactions
-  sbml_model.component_defs = parse_result.system_equation
-  sbml_model.var_decs = var_decs
+  sbml_model.var_decs = biopepa_model.var_decs
+  sbml_model.component_defs = biopepa_model.system_equation
 
   return sbml_model.create_sbml_document()
 
@@ -151,7 +144,7 @@ def process_file(filename, arguments):
   model_file.close()
 
   document = translate_biopepa_model(parse_result)
-  create_sbml.output_to_sbml_file(filename, arguments, document)
+  sbml_ast.output_to_sbml_file(filename, arguments, document)
 
 def main():
   """A simple main function to parse in the arguments as

@@ -2,17 +2,14 @@
 
 import sys
 import argparse
-import xml.dom.minidom as minidom
 import parcon
 
 import facile_parser
-import utils
-import outline_sbml
-import create_sbml
+import sbml_ast
 
 def translate_facile_model(facile_model):
   """Translate the parsed facile model into an SBML xml document"""
-  sbml_model = create_sbml.SBML_Model()
+  sbml_model = sbml_ast.SBMLModel()
   sbml_model.reactions = facile_model.equations
   sbml_model.component_defs = facile_model.initial_conditions
   sbml_model.var_decs = facile_model.var_decs
@@ -30,7 +27,7 @@ def translate_file(filename, arguments):
   model_file.close()
 
   document = translate_facile_model(facile_model)
-  create_sbml.output_to_sbml_file(filename, arguments, document)
+  sbml_ast.output_to_sbml_file(filename, arguments, document)
 
 
 def main():

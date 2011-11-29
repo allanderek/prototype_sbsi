@@ -36,24 +36,24 @@ using namespace std;
   # For each species 
   for component in species:
     if component.initial_amount:
-      c_file.write ("  setStateByName(\"" + component.id +
+      c_file.write ("  setStateByName(\"" + component.ident +
                     "\", " + str(component.initial_amount) + ");\n")
     else:
       c_file.write ("  // Setting the state to zero as it should be\n")
       c_file.write ("  // updated by an initial assignment\n")
-      c_file.write ("  setStateByName(\"" + component.id +
+      c_file.write ("  setStateByName(\"" + component.ident +
                     "\", 0);\n")
 
   # We also need to do the same for variables and parameters
   parameters = outline_sbml.get_list_of_parameters(model)
   for param in parameters:
     if param.value:
-      c_file.write("  setParamByName(\"" + param.id +
+      c_file.write("  setParamByName(\"" + param.ident +
                    "\", " + param.value + ");\n")
     else:
       c_file.write("  // Parameter's value not set in model file\n")
       c_file.write("  // Presumably set elsewhere, eg initialAssignment\n")
-      c_file.write("  setParamByName(\"" + param.id +
+      c_file.write("  setParamByName(\"" + param.ident +
                    "\", 0);\n")
       
    

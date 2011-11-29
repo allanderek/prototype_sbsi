@@ -2,246 +2,7 @@
 import xml.dom.minidom
 import argparse
 
-class ReactionParticipant:
-  """A simple class to represent a reaction participant"""
-  def __init__(self, name, stoich=1):
-    self.name = name
-    self.stoich = stoich
-
-  def __cmp__(self, other):
-    """Implementation of comparison for general use"""
-    if self.name == other.name and self.stoich == other.stoich:
-      return 0
-    elif self.name == other.name:
-      return cmp(self.stoich, other.stoich)
-    else:
-      return cmp(self.name, other.name)
-
-  def get_name(self):
-    """Return the name of the reaction participant"""
-    return self.name
-  def get_stoichiometry(self):
-    """Return the stoichiometry of this reaction participant
-       within the reaction"""
-    return self.stoich
-
-  def format_participant(self):
-    """Returns a reasonable format of this reaction participant,
-       basically just the name if the stoichiometry is 1, or
-       (name, stoich) otherwise
-    """
-    if self.stoich == 1:
-      return self.get_name()
-    else:
-      return "(" + self.get_name() + ", " + str(self.stoich) + ")"
-
-
-class IdNamedElement(object):
-  """Many of the classes below are a parsed representation of a
-     kind of sbml element. Many such elements have a required id
-     attribute and an optional name element. This is a base class
-     which will define and parse those fields such that we needn't
-     do it ourselves for each kind of element.
-  """
-  def __init__(self, element):
-    self.id = element.getAttribute("id")
-    self.name = element.getAttribute("name")
-
-class Species(IdNamedElement):
-  """A simple class to represent a species within an sbml model"""
-  def __init__(self, element):
-    super(Species, self).__init__(element)
-    self.compartment = element.getAttribute("compartment")
-    self.initial_amount = element.getAttribute("initialAmount")
-    self.initial_conc = element.getAttribute("initialConcentration")
-    self.substance_units = element.getAttribute("substanceUnits")
-    self.has_only_substance_units = element.getAttribute(
-          "hasOnlySubstanceUnits")
-    self.boundary_condition = element.getAttribute("boundaryCondition")
-    self.constant = element.getAttribute("constant")
-    self.conversion_factor = element.getAttribute("conversionFactor")
-
-  def get_name(self):
-    """ return the name of the species"""
-    return self.name
-
-  def format_species(self):
-    """Returns a reasonable format of this species definition"""
-    return self.name + " in " + self.compartment
-
-
-class Parameter(IdNamedElement):
-  """A simple class to represent a parameter definition
-     within an sbml model
-  """
-  def __init__(self, element):
-    super(Parameter, self).__init__(element)
-    self.value = element.getAttribute("value")
-    self.units = element.getAttribute("units")
-    self.boolean = element.getAttribute("boolean")
-
-
-class Reaction(object):
-  """A class which represents a reaction"""
-  def __init__(self, name):
-    """initialise a reaction which has no reactants or products
-       these may in turn be added with 'add_reactant' and 'add_product'
-       Similarly there are initially no modifiers which can be added with
-       'add_modifier'
-    """
-    self.reactants = []
-    self.products = []
-    self.modifiers = []
-    self.name = name
-    #  Because of create_element, whatever you set this to,
-    # should have a 'remove_rate_law_sugar' method and the result
-    # of that call should be an object (possibly the same one) with
-    # a method for creating an sbml element to represent the expression
-    self.kinetic_law = None
-    self.location = None
-
-  def add_reactant(self, reactant):
-    """add a reactant into the reaction definition"""
-    self.reactants.append(reactant)
-
-  def add_product(self, product):
-    """add a product to the reaction"""
-    self.products.append(product)
-
-  def add_modifier(self, modifier):
-    """Add a modifier to the reaction"""
-    self.modifiers.append(modifier)
-
-  def get_mass_action_participants(self):
-    """Return the left hand side participants which contribute to the
-       rate in a mass action rate method. For example A + B --> C 
-       would return A and B. Essentially this is so that fMA(r) could
-       be translated to r * A * B.
-    """
-    # I think we return all the modifiers but perhaps not the inhibitors?
-    return self.reactants + self.modifiers
-
-  def is_sink(self):
-    """returns true if the reaction is a sink,
-       in that it has at least one reactant and no products"""
-    return self.reactants and not self.products
-
-  def is_source(self):
-    """returns true if the reaction is a source reaction,
-       in that it has at least one product and no reactants"""
-    return self.products and not self.reactants
-
-  def is_reverse(self, the_inverse):
-    """Returns true if the given reaction is the reverse of
-       the current reaction
-    """
-    def equal_lists(left, right):
-      """Checks if two lists are 'equal', equal if they are considered
-         to be sets
-      """
-      # Could check the lengths here, but I think we want
-      # 'l,l,r' to be equal to 'l,r', so we're ignoring duplicates.
-      # Not sure if that's correct to do so though.
-      for l_item in left:
-        if l_item not in right:
-          return False
-      for r_item in right :
-        if r_item not in left :
-          return False
-      return True
-    if (equal_lists(self.reactants, the_inverse.products) and
-        equal_lists(self.products, the_inverse.reactants)):
-      return True
-    else:
-      return False
-
-  def involves(self, species):
-    """Returns true if the given species is involved with this reaction"""
-    name = species.name
-    reactant_names = [ r.get_name() for r in self.reactants ] 
-    product_names = [ p.get_name() for p in self.products ]
-    modifier_names = [ m.get_name() for m in self.modifiers ]
-    if ( (name in reactant_names or
-          name in product_names  or
-          name in modifier_names) and
-         (species.compartment == self.location) ):
-      return True
-    return False
-
-  def format_reaction(self):
-    """Return a string representing the reaction in a format 
-       suitable for human consumption"""
-    results = self.name 
-    if self.location:
-      results += "@" + self.location
-
-    results += ": "
-    # so the first reactant has nothing attached to the front of it
-    reactants_and_modifiers = self.reactants + self.modifiers
-    results += ", ".join([ r.format_participant() 
-                           for r in reactants_and_modifiers])
-    results += " --> "
-    results += ", ".join([ p.format_participant() 
-                           for p in self.products])
- 
-    return results
-
-  def create_element(self, document):
-    """Create an xml element representing this reaction"""
-    reaction_element = document.createElement("reaction")
-    reaction_element.setAttribute("id", self.name)
-    reaction_element.setAttribute("reversible", "false")
-    reaction_element.setAttribute("fast", "false")
-    if self.location:
-      reaction_element.setAttribute("compartment", self.location)
-    if self.reactants:
-      list_of_reactants = document.createElement("listOfReactants")
-      reaction_element.appendChild(list_of_reactants)
-      for reactant in self.reactants:
-        spec_ref = document.createElement("speciesReference")
-        # spec_ref.setAttribute("id", reactant.name)
-        spec_ref.setAttribute("species", reactant.name)
-        # for biopepa models the stoichiometry values cannot
-        # change during the simulation so this 'constant' attribute is
-        # always true.
-        spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(reactant.stoich))
-        list_of_reactants.appendChild(spec_ref)
-    if self.products:
-      list_of_products = document.createElement("listOfProducts")
-      reaction_element.appendChild(list_of_products)
-      for product in self.products:
-        spec_ref = document.createElement("speciesReference")
-        # spec_ref.setAttribute("id", product.name)
-        spec_ref.setAttribute("species", product.name)
-        # for biopepa models the stoichiometry values cannot
-        # change during the simulation so this 'constant' attribute is
-        # always true.
-        spec_ref.setAttribute("constant", "true")
-        spec_ref.setAttribute("stoichiometry", str(product.stoich))
-        list_of_products.appendChild(spec_ref)
-    if self.modifiers:
-      list_of_modifiers = document.createElement("listOfModifiers")
-      reaction_element.appendChild(list_of_modifiers)
-      for modifier in self.modifiers:
-        spec_ref = document.createElement("modifierSpeciesReference")
-        # spec_ref.setAttribute("id", modifier.name)
-        # Note there is no stoichiometry attribute on
-        # modifierSpeciesReference elements in SBML.
-        spec_ref.setAttribute("species", modifier.name)
-        list_of_modifiers.appendChild(spec_ref)
-    if self.kinetic_law:
-      kinetic_law = document.createElement("kineticLaw")
-      reaction_element.appendChild(kinetic_law)
-      math_element = document.createElement("math")
-      kinetic_law.appendChild(math_element)
-      mathxmlns = "http://www.w3.org/1998/Math/MathML"
-      math_element.setAttribute("xmlns", mathxmlns)
-      simplified_rate = self.kinetic_law.remove_rate_law_sugar(self)
-      expr_element = simplified_rate.create_sbml_element(document)
-      math_element.appendChild(expr_element)
-    return reaction_element
-
+import sbml_ast
 
 def name_of_species_reference(spec_ref):
   """Return the name of the species referred to within a
@@ -259,15 +20,15 @@ def react_partic_of_species_ref(spec_ref):
   name = spec_ref.getAttribute("species")
   stoich = spec_ref.getAttribute("stoichiometry")
   if not stoich:
-    return ReactionParticipant(name)
+    return sbml_ast.ReactionParticipant(name)
   else :
-    return ReactionParticipant(name, stoich=float(stoich))
+    return sbml_ast.ReactionParticipant(name, stoich=float(stoich))
   return name
 
 def get_reaction_of_element(reaction_element):
   """a function to return a reaction object from a reaction sbml element"""
   name = reaction_element.getAttribute("id")
-  reaction = Reaction(name)
+  reaction = sbml_ast.Reaction(name)
   location = reaction_element.getAttribute("compartment")
   if location:
     reaction.location = location
@@ -339,7 +100,7 @@ def get_list_of_reactions(model, ignore_sources=False, ignore_sinks=False):
 def get_species_of_element(species_element):
   """Return a species object from a species element, in other words
      parse a species element"""
-  return Species(species_element)
+  return sbml_ast.Species(species_element)
 
 def get_list_of_species(model):
   """Return the list of species from an sbml model"""
@@ -352,39 +113,14 @@ def get_parameter_of_element(param_element):
   """Return a Parameter object from a parameter element,
      in other words parse a parameter element
   """
-  return Parameter(param_element)
+  return sbml_ast.Parameter(param_element)
 
 def get_list_of_parameters(model):
   """Return the list of parameters from an sbml model"""
   return get_elements_from_lists_of_list("listOfParameters",
                                          "parameter",
-                                         Parameter,
+                                         sbml_ast.Parameter,
                                          model)
-
-class Assignment:
-  """A class representing an assignment of an sbml expression to
-     a variable name"""
-  def __init__(self, variable, expression):
-    self.variable = variable
-    self.expression = expression
-
-  def get_variable_name(self):
-    """return the name of the variable being assigned to"""
-    return self.variable
-
-  def get_assigned_expr(self):
-    """return the expression part of the assignment, that is
-       the right hand side"""
-    return self.expression
-
-class InitialAssignment(Assignment):
-  """A class representing an sbml initial assignment"""
-  pass
-
-class AssignmentRule(Assignment):
-  """A class representing an sbml assignment rule"""
-  pass
-
 def get_assignment_rule_of_element(assign_rule_element):
   """Returns the AssignmentRule representation of an 
      AssignmentRule sbml element"""
@@ -394,7 +130,7 @@ def get_assignment_rule_of_element(assign_rule_element):
   if math_elements:
     expression = math_elements[0]
 
-  return AssignmentRule(variable_name, expression)
+  return sbml_ast.AssignmentRule(variable_name, expression)
  
 def get_list_of_assignment_rules(model):
   """Return the list of assignment rules from an sbml model"""

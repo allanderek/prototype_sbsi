@@ -4,7 +4,7 @@ A module that implements a parser for the Bio-PEPA language
 import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
 
-import create_sbml
+import sbml_ast
 
 # A simply utility for creating parsers which accept a list of
 # somethings, separated by something elses.
@@ -32,11 +32,11 @@ def create_separated_by(element_parser, separator_parser):
 def create_number_expression(number_str):
   """Simple utility to create a number expression from the parse result
      of parsing a simple number"""
-  return create_sbml.NumExpression(float(number_str))
+  return sbml_ast.NumExpression(float(number_str))
  
 def make_name_expression(parse_result):
   """Simple post parsing creation method for NameExpression"""
-  return NameExpression(parse_result)
+  return sbml_ast.NameExpression(parse_result)
 
    
 def make_apply_expression(parse_result):
@@ -44,23 +44,23 @@ def make_apply_expression(parse_result):
   if len(parse_result) == 1:
     # We assume then that there are no arguments, and that it was
     # an application expression such as: f()
-    return ApplyExpression(parse_result[0], [])
+    return sbml_ast.ApplyExpression(parse_result[0], [])
   # Otherwise the second part of the parse result should be a list
   # of arguments
-  return ApplyExpression(parse_result[0], parse_result[1])
+  return sbml_ast.ApplyExpression(parse_result[0], parse_result[1])
 
 def make_plus_expression(left, right):
   """simple post-parsing creation method for add expressions"""
-  return ApplyExpression("plus", [left, right])
+  return sbml_ast.ApplyExpression("plus", [left, right])
 def make_minus_expression(left, right):
   """simple post-parsing creation method for subtract expressions"""
-  return ApplyExpression("minus", [left, right])
+  return sbml_ast.ApplyExpression("minus", [left, right])
 def make_times_expression(left, right):
   """simple post-parsing creation method for multiply expressions"""
-  return ApplyExpression("times", [left, right])
+  return sbml_ast.ApplyExpression("times", [left, right])
 def make_divide_expression(left, right):
   """simple post-parsing creation method for divide expressions"""
-  return ApplyExpression("divide", [left, right])
+  return sbml_ast.ApplyExpression("divide", [left, right])
 
 
 expr = Forward()
@@ -97,7 +97,7 @@ expr.set(term(name="expr"))
 
 def create_variable_dec(parse_result):
   """The parse action for the variable_definition parser"""
-  return VariableDeclaration (parse_result[0], parse_result[1])
+  return sbml_ast.VariableDeclaration (parse_result[0], parse_result[1])
 
 variable_definition = Translate(variable_name + "=" + expr + ";",
                                 create_variable_dec)
@@ -302,13 +302,30 @@ system_equation_parser = create_separated_by(component_population, "<*>")
 
 class BioPEPAModel:
   """A simple class to hold the representation of a Bio-PEPA model"""
-  def __init__(self, definitions, system_equation):
-    self.definitions = definitions
-    self.system_equation = system_equation
+  def __init__(self):
+    self.var_decs = None
+    self.rate_defs = None
+    self.component_defs = None
+    self.system_equation = None
 
 def make_model(parse_result):
   """Simple post-parsing creation function for the model parser"""
-  return BioPEPAModel(parse_result[0], parse_result[1])
+  biopepa_model = BioPEPAModel()
+  definitions = parse_result[0]
+
+  var_decs = [ x for x in definitions
+                     if isinstance(x, sbml_ast.VariableDeclaration) ]
+  rate_defs = [ x for x in definitions
+                      if isinstance(x, RateDefinition) ]
+  components = [ x for x in definitions
+                       if isinstance(x, ComponentDefinition) ]
+  biopepa_model.var_decs = var_decs
+  biopepa_model.rate_defs = rate_defs
+  biopepa_model.component_defs = components
+
+  biopepa_model.system_equation = parse_result[1] 
+  return biopepa_model
+
 model_syntax = definition_list + system_equation_parser + parcon.End()
 model_parser = Translate(model_syntax, make_model)
 
