@@ -63,6 +63,7 @@ def decide_how_many_rate_laws(parse_result):
   def add_double_rate_law(rate_laws):
     rate_law = rate_laws[0]
     reaction.kinetic_law = rate_law.value_expr
+    return reaction
 
   if parse_result[1] in [ "<->", "<=>" ]:
     return Translate(rate_law_parser + rate_law_parser,
