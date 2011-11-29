@@ -20,7 +20,7 @@ variable Cq			= 30
 #####################################################################
 # expression (transcription=tc, translation=tl) and degradation rates
 # gal1
-variable k_tc1_max		= .0057 #0.7379/6.022e23/3.57e-14/60   # M/s
+variable k_tc1_max		= 0.0057 #0.7379/6.022e23/3.57e-14/60   # M/s
 variable k_r1_degr		= 3.7267e-04 #0.02236/60  # 1/s
 variable k_tl1			= 0.03209 # 1.9254/60
 variable k1_degr		= 6.41833e-05 #0.003851/60
@@ -40,15 +40,15 @@ variable k_r4_degr		= 4.1267e-04 #0.02476/60
 variable k_tl4			= 0.1785 #10.7091/60
 variable k4_degr 		= 1.1552e-04 #0.006931/60
 # gal80
-variable k_tc80_max		= .01 #0.6065/6.022e23/3.57e-14/60  # molec/min
-variable k_r80_degr		= .0004 #0.02888/60
+variable k_tc80_max		= 0.01 #0.6065/6.022e23/3.57e-14/60  # molec/min
+variable k_r80_degr		= 0.0004 #0.02888/60
 variable k_tl80			= 0.02 #3.6737/60
 variable k80_degr		= 6e-06 #0.006931/60
 #####################################################################
 
 #####################################################################
 # dimerization rates for Gal4 & Gal80p (same for both)
-variable k_dim 			= .01 #.001*(6.022e23*3.57e-14)/60  # /M/s
+variable k_dim 			= 0.01 #.001*(6.022e23*3.57e-14)/60  # /M/s
 variable k_mon			= 10 #100/60  # /s 
 #####################################################################
 
@@ -102,7 +102,7 @@ variable k3a_80_unbind		= 4.2867e-04 #0.02572/60 # /s
 #### gene expression ####
 #########################
 # Gal1p
-null				=> rGal1;			k_tc1 = k_tc1_max*(Cp* Kp*Gal4p_dim*(2 + Cp* (Kp*Gal4p_dim + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc))* (2 + Cp*(Cp*(Kp*Gal4p_dim)^2 + 2*(Kp*Gal4p_dim)*(1 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc) +  2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc*(2 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc))))/(1 + Cp* (Kp*Gal4p_dim + Cq* Kp*Gal4p_dim*Kq*Gal80p_dim_nuc))^4	# 4 gal4p binding sites
+null				=> rGal1;			k_tc1 = k_tc1_max*(Cp* Kp*Gal4p_dim*(2 + Cp* (Kp*Gal4p_dim + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc))* (2 + Cp*(Cp*(Kp*Gal4p_dim)^2 + 2*(Kp*Gal4p_dim)*(1 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc) +  2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc*(2 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim_nuc))))/(1 + Cp* (Kp*Gal4p_dim + Cq* Kp*Gal4p_dim*Kq*Gal80p_dim_nuc))^4 ;	# 4 gal4p binding sites
 rGal1 				-> null;			k_r1_degr;
 rGal1				-> rGal1 + Gal1p;		k_tl1;
 Gal1p				-> null;   			k1_degr;
@@ -205,6 +205,6 @@ Gal80p_dim_nuc	  = 9.4154e+11 N;
 Gal3paGal80p_cyt  = 0 N;
 #Gal3pa_galI	  = 0 N;
 
-CONFIG:
-compartment_volume = 3.57e-14                       # in L
+# CONFIG:
+# compartment_volume = 3.57e-14                       # in L
 #cv	= 29e-15L;   # http://yeastpheromonemodel.org/wiki/Cell_volume

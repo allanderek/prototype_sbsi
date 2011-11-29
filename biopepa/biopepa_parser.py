@@ -61,6 +61,9 @@ def make_times_expression(left, right):
 def make_divide_expression(left, right):
   """simple post-parsing creation method for divide expressions"""
   return sbml_ast.ApplyExpression("divide", [left, right])
+def make_power_expression(left, right):
+  """simple post-parsing creation method for power expressions"""
+  return sbml_ast.ApplyExpression("power", [left, right])
 
 
 expr = Forward()
@@ -78,12 +81,17 @@ argument_list = Optional(create_separated_by(expr, ","))
 #
 # Note also that parcon.alphanum_word may be incorrect here, it should
 # be alphchar followed by alphanum_word, or something like that.
-variable_name = parcon.alphanum_word
+variable_name = parcon.Word(parcon.alphanum_chars + "_", 
+                            init_chars=parcon.alpha_chars)
 name_expr = Translate (variable_name, make_name_expression)
 apply_expr = Translate (variable_name + "(" + argument_list + ")",
                         make_apply_expression)
 
-term = ( parcon.number[create_number_expression] 
+signed_number = (Optional(parcon.CharIn("+-")) + parcon.number)["".join]
+exponent_end = (parcon.CharIn("Ee") + signed_number)["".join]
+scientific_number = (signed_number + Optional(exponent_end))["".join]
+
+term = ( scientific_number[create_number_expression] 
          | "(" + expr + ")" 
          | apply_expr
          | name_expr
@@ -92,6 +100,7 @@ term = InfixExpr(term, [("*", make_times_expression),
                         ("/", make_divide_expression)])
 term = InfixExpr(term, [("+", make_plus_expression), 
                         ("-", make_minus_expression)])
+term = InfixExpr(term, [("^", make_power_expression)])
 expr.set(term(name="expr"))
 
 
