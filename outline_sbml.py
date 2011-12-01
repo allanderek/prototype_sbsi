@@ -56,9 +56,16 @@ def get_reaction_of_element(reaction_element):
   for modifier in modifiers:
     reaction.add_modifier(modifier)
 
+  # This whole thing is not very defensively programmed
+  # in that we just keep taking the first of any appropriate
+  # sub nodes.
   kinetic_laws = reaction_element.getElementsByTagName("kineticLaw")
   if kinetic_laws:
-    reaction.kinetic_law = kinetic_laws[0]
+    kinetic_law = kinetic_laws[0]
+    math_elements = kinetic_law.getElementsByTagName("math")
+    if math_elements:
+      math_element = math_elements[0]
+      reaction.kinetic_law = math_element
 
   return reaction
    
@@ -139,6 +146,26 @@ def get_list_of_assignment_rules(model):
                                          get_assignment_rule_of_element,
                                          model)
 
+def get_init_assign_of_element(init_assign_element):
+  """Returns the list InitialAssignment representation of an
+     InitialAssignment rule sbml element
+  """
+  symbol_name = init_assign_element.getAttribute("symbol")
+  math_elements = init_assign_element.getElementsByTagName("math")
+  expression = None
+  if math_elements:
+    expression = math_elements[0]
+
+  return sbml_ast.InitialAssignment(symbol_name, expression)
+  
+
+def get_list_of_init_assigns(model):
+  """Return the list of initial assignments from an sbml model"""
+  return get_elements_from_lists_of_list("listOfInitialAssignments",
+                                         "initialAssignment",
+                                         get_init_assign_of_element,
+                                         model)
+
 def print_amount(num, singular, plural):
   """Utility function to print an expression for the number of
      something. Picks the singular or plural noun appropriately"""
@@ -173,6 +200,8 @@ class ExprVisitor:
         self.visit_apply(element)
       elif tag_name == "ci":
         self.visit_ci(element)
+      elif tag_name == "cn":
+        self.visit_cn(element)
       else:
         self.print_str("unknown-tag: " + tag_name)
     else: 
@@ -180,6 +209,10 @@ class ExprVisitor:
 
   def visit_ci(self, element):
     """Visit a 'ci' element"""
+    self.print_str(element.firstChild.data)
+
+  def visit_cn(self, element):
+    """Visit a 'cn' element"""
     self.print_str(element.firstChild.data)
 
   def visit_apply(self, element):
@@ -214,13 +247,19 @@ class ExprVisitor:
       if maths.nodeType == maths.ELEMENT_NODE:
         self.generic_visit(child)
 
+def format_math_element(maths):
+  """Format an math element as an expression
+  """
+  expr_visitor = ExprVisitor()
+  expr_visitor.visit_maths(maths)
+  return expr_visitor.get_results()
+ 
+
 def format_rate_rule(raterule):
   """Return a string representing a 'rateRule' element"""
-  maths_visitor = ExprVisitor()
-  maths = raterule.getElementsByTagName ("math")[0]
-  maths_visitor.visit_maths(maths)
   name = raterule.getAttribute("variable")
-  return name + " = " + maths_visitor.get_results()
+  maths = raterule.getElementsByTagName ("math")[0]
+  return name + " = " + format_math_element(maths)
 
 
 def outline_rate_rules(model):

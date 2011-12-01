@@ -1,0 +1,1995 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created by COPASI version 4.6 (Build 32) on 2011-12-01 14:33 with libSBML version 3.4.1. -->
+<sbml xmlns="http://www.sbml.org/sbml/level2/version4" level="2" version="4">
+  <model metaid="COPASI1" id="Model_1" name="NoName">
+    <annotation>
+      <COPASI xmlns="http://www.copasi.org/static/sbml">
+        <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+          <rdf:Description rdf:about="#COPASI1">
+            <dcterms:created>
+              <rdf:Description>
+                <dcterms:W3CDTF>2011-10-26T15:31:19Z</dcterms:W3CDTF>
+              </rdf:Description>
+            </dcterms:created>
+          </rdf:Description>
+        </rdf:RDF>
+      </COPASI>
+      <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:vCard="http://www.w3.org/2001/vcard-rdf/3.0#" xmlns:bqbiol="http://biomodels.net/biology-qualifiers/" xmlns:bqmodel="http://biomodels.net/model-qualifiers/">
+        <rdf:Description rdf:about="#COPASI1">
+          <dc:creator>
+            <rdf:Bag/>
+          </dc:creator>
+          <dcterms:created rdf:parseType="Resource">
+            <dcterms:W3CDTF>2011-10-26T15:31:19Z</dcterms:W3CDTF>
+          </dcterms:created>
+        </rdf:Description>
+      </rdf:RDF>
+    </annotation>
+    <listOfFunctionDefinitions>
+      <functionDefinition id="function_5" name="function_4_Gal1p  -&gt; null;   k1_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal1p </ci>
+            </bvar>
+            <bvar>
+              <ci> k1_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k1_degr </ci>
+                <ci> Gal1p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_8" name="function_4_rGal3   -&gt; null;  k_r3_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_r3_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal3 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_r3_degr </ci>
+                <ci> rGal3 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_18" name="function_4_Gal4p + Gal4p  -&gt; Gal4p_dim;  k_dim ">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal4p </ci>
+            </bvar>
+            <bvar>
+              <ci> k_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_dim </ci>
+                <ci> Gal4p </ci>
+                <ci> Gal4p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_30" name="function_4_Gal3paGal80p -&gt; Gal3pa + Gal80p_dim ; k3a_80_unbind">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3paGal80p </ci>
+            </bvar>
+            <bvar>
+              <ci> k3a_80_unbind </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3a_80_unbind </ci>
+                <ci> Gal3paGal80p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_9" name="function_4_rGal3  -&gt; rGal3 + Gal3p; k_tl3;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tl3 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal3 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_tl3 </ci>
+                <ci> rGal3 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_20" name="function_4_Gal4p_dim  -&gt; null;  k4_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal4p_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> k4_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k4_degr </ci>
+                <ci> Gal4p_dim </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_31" name="function_4_Gal3paGal80p  -&gt; null;  0.5*k3_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3paGal80p </ci>
+            </bvar>
+            <bvar>
+              <ci> k3_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3_degr </ci>
+                <ci> Gal3paGal80p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_21" name="function_4_Gal80p + Gal80p -&gt; Gal80p_dim; k_dim ">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal80p </ci>
+            </bvar>
+            <bvar>
+              <ci> k_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_dim </ci>
+                <ci> Gal80p </ci>
+                <ci> Gal80p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_14" name="function_4_Gal4p  -&gt; null;   k4_degr ;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal4p </ci>
+            </bvar>
+            <bvar>
+              <ci> k4_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k4_degr </ci>
+                <ci> Gal4p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_26" name="function_4_Gal3p + galI  -&gt; Gal3pa; k3_act ">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3p </ci>
+            </bvar>
+            <bvar>
+              <ci> galI </ci>
+            </bvar>
+            <bvar>
+              <ci> k3_act </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3_act </ci>
+                <ci> Gal3p </ci>
+                <ci> galI </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_23" name="function_4_Gal80p   -&gt; null;  k80_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal80p </ci>
+            </bvar>
+            <bvar>
+              <ci> k80_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k80_degr </ci>
+                <ci> Gal80p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_27" name="function_4_Gal3pa -&gt; Gal3p + galI ; k3_deact">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3pa </ci>
+            </bvar>
+            <bvar>
+              <ci> k3_deact </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3_deact </ci>
+                <ci> Gal3pa </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_2" name="function_4_rGal1   -&gt; null;  k_r1_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_r1_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal1 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_r1_degr </ci>
+                <ci> rGal1 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_11" name="function_4_null  -&gt; rGal4;  k_tc4 ">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tc4 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <ci> k_tc4 </ci>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_12" name="function_4_rGal4 -&gt; null ; k_r4_degr">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_r4_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal4 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_r4_degr </ci>
+                <ci> rGal4 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_24" name="function_4_Gal80p_dim    -&gt; null;  k80_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal80p_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> k80_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k80_degr </ci>
+                <ci> Gal80p_dim </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_25" name="function_4_galI  =&gt; null;  k_gal_met=k1_cat*Gal1p*galI/(K1_m+galI)">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_gal_met </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <ci> k_gal_met </ci>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_7" name="function_4_null  =&gt; rGal3;  k_tc3 = k_tc3_max * Cp*Kp * Gal4p_dim/(1+Cp*(Kp *Gal4p_dim+Cq*Kp * Gal4p_dim*Kq * Gal80p_dim))">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tc3 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <ci> k_tc3 </ci>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_3" name="function_4_rGal1  -&gt; rGal1 + Gal1p; k_tl1;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tl1 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal1 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_tl1 </ci>
+                <ci> rGal1 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_17" name="function_4_rGal80   -&gt; rGal80 + Gal80p; k_tl80;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tl80 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal80 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_tl80 </ci>
+                <ci> rGal80 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_28" name="function_4_Gal3pa   -&gt; null;  k3_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3pa </ci>
+            </bvar>
+            <bvar>
+              <ci> k3_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3_degr </ci>
+                <ci> Gal3pa </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_19" name="function_4_Gal4p_dim -&gt; Gal4p + Gal4p ; k_mon">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal4p_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> k_mon </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_mon </ci>
+                <ci> Gal4p_dim </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_1" name="function_4_null  =&gt; rGal1;  k_tc1 = k_tc1_max*(Cp* Kp*Gal4p_dim*(2 + Cp* (Kp*Gal4p_dim + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim))* (2 + Cp*(Cp*(Kp*Gal4p_dim)^2 + 2*(Kp*Gal4p_dim)*(1 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim) + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim*(2 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim))))/(1 + Cp* (Kp*Gal4p_dim + Cq* Kp*Gal4p_dim*Kq*Gal80p_dim))^4">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tc1 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <ci> k_tc1 </ci>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_16" name="function_4_rGal80    -&gt; null;  k_r80_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_r80_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal80 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_r80_degr </ci>
+                <ci> rGal80 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_29" name="function_4_Gal3pa + Gal80p_dim -&gt; Gal3paGal80p; k3a_80_bind ">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3pa </ci>
+            </bvar>
+            <bvar>
+              <ci> Gal80p_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> k3a_80_bind </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3a_80_bind </ci>
+                <ci> Gal3pa </ci>
+                <ci> Gal80p_dim </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_15" name="function_4_null  =&gt; rGal80;  k_tc80 = k_tc80_max * Cp*Kp * Gal4p_dim/(1+Cp*(Kp *Gal4p_dim+Cq*Kp * Gal4p_dim*Kq * Gal80p_dim))">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tc80 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <ci> k_tc80 </ci>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_13" name="function_4_rGal4   -&gt; rGal4 + Gal4p; k_tl4 ;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> k_tl4 </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <bvar>
+              <ci> rGal4 </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_tl4 </ci>
+                <ci> rGal4 </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_10" name="function_4_Gal3p  -&gt; null;   k3_degr;">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal3p </ci>
+            </bvar>
+            <bvar>
+              <ci> k3_degr </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k3_degr </ci>
+                <ci> Gal3p </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+      <functionDefinition id="function_22" name="function_4_Gal80p_dim -&gt; Gal80p + Gal80p ; k_mon">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <lambda>
+            <bvar>
+              <ci> Gal80p_dim </ci>
+            </bvar>
+            <bvar>
+              <ci> k_mon </ci>
+            </bvar>
+            <bvar>
+              <ci> main </ci>
+            </bvar>
+            <apply>
+              <divide/>
+              <apply>
+                <times/>
+                <ci> k_mon </ci>
+                <ci> Gal80p_dim </ci>
+              </apply>
+              <ci> main </ci>
+            </apply>
+          </lambda>
+        </math>
+      </functionDefinition>
+    </listOfFunctionDefinitions>
+    <listOfCompartments>
+      <compartment id="main" name="main" size="1"/>
+    </listOfCompartments>
+    <listOfSpecies>
+      <species metaid="COPASI2" id="rGal1" name="rGal1" compartment="main" initialConcentration="10.4865049727174">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI2">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:30Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI3" id="Gal1p" name="Gal1p" compartment="main" initialConcentration="11587.014704789">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI3">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:05Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI4" id="rGal3" name="rGal3" compartment="main" initialConcentration="0.119258217071772">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI4">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:33Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI5" id="Gal3p" name="Gal3p" compartment="main" initialConcentration="310.071364386607">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI5">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:19:57Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI6" id="rGal4" name="rGal4" compartment="main" initialConcentration="0.00569989581091873">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI6">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:34Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI7" id="Gal4p" name="Gal4p" compartment="main" initialConcentration="20.9061958550774">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI7">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:19Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI8" id="rGal80" name="rGal80" compartment="main" initialConcentration="0.119258217071774">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI8">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:34Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI9" id="Gal80p" name="Gal80p" compartment="main" initialConcentration="177.90234883972">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI9">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:23Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI10" id="Gal4p_dim" name="Gal4p_dim" compartment="main" initialConcentration="0.437066983446099">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI10">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:21:28Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI11" id="Gal80p_dim" name="Gal80p_dim" compartment="main" initialConcentration="31.6492144257018">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI11">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:23:23Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI12" id="galE" name="galE" compartment="main" initialConcentration="100000000000">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI12">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-26T15:32:30Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI13" id="galI" name="galI" compartment="main" initialConcentration="0">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI13">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:20:42Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI14" id="Gal3pa" name="Gal3pa" compartment="main" initialConcentration="0">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI14">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:19:37Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI15" id="Gal3paGal80p" name="Gal3paGal80p" compartment="main" initialConcentration="0">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI15">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:19:42Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI16" id="species_1" name="Gal3tot" compartment="main" initialConcentration="150.739271696886" boundaryCondition="true">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI16">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-26T15:41:19Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI17" id="species_2" name="Gal80tot" compartment="main" initialConcentration="101.87219349346" boundaryCondition="true">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI17">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-26T15:42:10Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+      <species metaid="COPASI18" id="species_3" name="Gal1tot" compartment="main" initialConcentration="5632.95537205188" boundaryCondition="true">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI18">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-26T15:46:01Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </species>
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="Kp" name="Kp" value="0.02104"/>
+      <parameter id="Kq" name="Kq" value="0.1052"/>
+      <parameter id="Cp" name="Cp" value="1"/>
+      <parameter id="Cq" name="Cq" value="30"/>
+      <parameter id="k_tc1_max" name="k_tc1_max" value="0.206279336646267"/>
+      <parameter id="k_r1_degr" name="k_r1_degr" value="0.00037267"/>
+      <parameter id="k_tl1" name="k_tl1" value="0.03209"/>
+      <parameter id="k1_degr" name="k1_degr" value="2.90421608281396e-05"/>
+      <parameter id="k_tc2_max" name="k_tc2_max" value="0.583512786936663"/>
+      <parameter id="k_r2_degr" name="k_r2_degr" value="0.0012836667"/>
+      <parameter id="k_tl2" name="k_tl2" value="0.22463167"/>
+      <parameter id="k2_degr" name="k2_degr" value="3.95773954498807e-05"/>
+      <parameter id="k_tc3_max" name="k_tc3_max" value="0.00999999999999978"/>
+      <parameter id="k_r3_degr" name="k_r3_degr" value="0.0004"/>
+      <parameter id="k_tl3" name="k_tl3" value="0.026"/>
+      <parameter metaid="COPASI19" id="k3_degr" name="k3_degr" value="1e-05">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI19">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-31T17:33:51Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </parameter>
+      <parameter id="k_tc4" name="k_tc4" value="2.35217600429183e-06"/>
+      <parameter id="k_r4_degr" name="k_r4_degr" value="0.00041267"/>
+      <parameter id="k_tl4" name="k_tl4" value="0.1785"/>
+      <parameter id="k4_degr" name="k4_degr" value="4.67133147461547e-05"/>
+      <parameter metaid="COPASI20" id="k_tc80_max" name="k_tc80_max" value="0.01">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI20">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-11-01T12:00:49Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </parameter>
+      <parameter id="k_r80_degr" name="k_r80_degr" value="0.0004"/>
+      <parameter id="k_tl80" name="k_tl80" value="0.02"/>
+      <parameter id="k80_degr" name="k80_degr" value="9.88870916693401e-06"/>
+      <parameter id="k_dim" name="k_dim" value="0.01"/>
+      <parameter id="k_mon" name="k_mon" value="10"/>
+      <parameter id="k1_cat" name="k1_cat" value="55.8333"/>
+      <parameter id="K1_m" name="K1_m" value="0.00060018"/>
+      <parameter id="k2act_bind" name="k2act_bind" value="0.000100000000000222"/>
+      <parameter id="k2act_unbind" name="k2act_unbind" value="0.0728816481945288"/>
+      <parameter id="K2bound_act" name="K2bound_act" value="0.111064317650422"/>
+      <parameter id="K2_bind" name="K2_bind" value="0.000100136140327888"/>
+      <parameter id="K2_act" name="K2_act" value="77.5225706597084"/>
+      <parameter id="k3_act" name="k3_act" value="266.9402"/>
+      <parameter id="k3_deact" name="k3_deact" value="14.8333"/>
+      <parameter id="k3a_80_bind" name="k3a_80_bind" value="1"/>
+      <parameter id="k3a_80_unbind" name="k3a_80_unbind" value="0.00042867"/>
+      <parameter id="k_tc1" name="k_tc1" value="0.00390800580818258" constant="false"/>
+      <parameter id="k_tc2" name="k_tc2" value="0.00555381713085608" constant="false"/>
+      <parameter id="k_tc3" name="k_tc3" value="4.77032868287087e-05" constant="false"/>
+      <parameter id="k_tc80" name="k_tc80" value="4.77032868287097e-05" constant="false"/>
+      <parameter id="k_gal_met" name="k_gal_met" value="0" constant="false"/>
+      <parameter metaid="COPASI21" id="parameter_1" name="FluorFac" value="0.486143801105538">
+        <annotation>
+          <COPASI xmlns="http://www.copasi.org/static/sbml">
+            <rdf:RDF xmlns:dcterms="http://purl.org/dc/terms/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+              <rdf:Description rdf:about="#COPASI21">
+                <dcterms:created>
+                  <rdf:Description>
+                    <dcterms:W3CDTF>2011-10-26T15:43:27Z</dcterms:W3CDTF>
+                  </rdf:Description>
+                </dcterms:created>
+              </rdf:Description>
+            </rdf:RDF>
+          </COPASI>
+        </annotation>
+      </parameter>
+    </listOfParameters>
+    <listOfRules>
+      <assignmentRule variable="k_gal_met">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <ci> k1_cat </ci>
+              <ci> Gal1p </ci>
+              <ci> galI </ci>
+            </apply>
+            <apply>
+              <plus/>
+              <ci> K1_m </ci>
+              <ci> galI </ci>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_tc2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <ci> k_tc2_max </ci>
+              <ci> Cp </ci>
+              <ci> Kp </ci>
+              <ci> Gal4p_dim </ci>
+              <apply>
+                <plus/>
+                <cn> 2 </cn>
+                <apply>
+                  <times/>
+                  <ci> Cp </ci>
+                  <apply>
+                    <plus/>
+                    <apply>
+                      <times/>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                    </apply>
+                    <apply>
+                      <times/>
+                      <cn> 2 </cn>
+                      <ci> Cq </ci>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                      <ci> Kq </ci>
+                      <ci> Gal80p_dim </ci>
+                    </apply>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <apply>
+              <power/>
+              <apply>
+                <plus/>
+                <cn> 1 </cn>
+                <apply>
+                  <times/>
+                  <ci> Cp </ci>
+                  <apply>
+                    <plus/>
+                    <apply>
+                      <times/>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                    </apply>
+                    <apply>
+                      <times/>
+                      <ci> Cq </ci>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                      <ci> Kq </ci>
+                      <ci> Gal80p_dim </ci>
+                    </apply>
+                  </apply>
+                </apply>
+              </apply>
+              <cn> 2 </cn>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_tc1">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <ci> k_tc1_max </ci>
+              <ci> Cp </ci>
+              <ci> Kp </ci>
+              <ci> Gal4p_dim </ci>
+              <apply>
+                <plus/>
+                <cn> 2 </cn>
+                <apply>
+                  <times/>
+                  <ci> Cp </ci>
+                  <apply>
+                    <plus/>
+                    <apply>
+                      <times/>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                    </apply>
+                    <apply>
+                      <times/>
+                      <cn> 2 </cn>
+                      <ci> Cq </ci>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                      <ci> Kq </ci>
+                      <ci> Gal80p_dim </ci>
+                    </apply>
+                  </apply>
+                </apply>
+              </apply>
+              <apply>
+                <plus/>
+                <cn> 2 </cn>
+                <apply>
+                  <times/>
+                  <ci> Cp </ci>
+                  <apply>
+                    <plus/>
+                    <apply>
+                      <times/>
+                      <ci> Cp </ci>
+                      <apply>
+                        <power/>
+                        <apply>
+                          <times/>
+                          <ci> Kp </ci>
+                          <ci> Gal4p_dim </ci>
+                        </apply>
+                        <cn> 2 </cn>
+                      </apply>
+                    </apply>
+                    <apply>
+                      <times/>
+                      <cn> 2 </cn>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                      <apply>
+                        <plus/>
+                        <cn> 1 </cn>
+                        <apply>
+                          <times/>
+                          <ci> Cp </ci>
+                          <ci> Cq </ci>
+                          <ci> Kp </ci>
+                          <ci> Gal4p_dim </ci>
+                          <ci> Kq </ci>
+                          <ci> Gal80p_dim </ci>
+                        </apply>
+                      </apply>
+                    </apply>
+                    <apply>
+                      <times/>
+                      <cn> 2 </cn>
+                      <ci> Cq </ci>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                      <ci> Kq </ci>
+                      <ci> Gal80p_dim </ci>
+                      <apply>
+                        <plus/>
+                        <cn> 2 </cn>
+                        <apply>
+                          <times/>
+                          <ci> Cp </ci>
+                          <ci> Cq </ci>
+                          <ci> Kp </ci>
+                          <ci> Gal4p_dim </ci>
+                          <ci> Kq </ci>
+                          <ci> Gal80p_dim </ci>
+                        </apply>
+                      </apply>
+                    </apply>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <apply>
+              <power/>
+              <apply>
+                <plus/>
+                <cn> 1 </cn>
+                <apply>
+                  <times/>
+                  <ci> Cp </ci>
+                  <apply>
+                    <plus/>
+                    <apply>
+                      <times/>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                    </apply>
+                    <apply>
+                      <times/>
+                      <ci> Cq </ci>
+                      <ci> Kp </ci>
+                      <ci> Gal4p_dim </ci>
+                      <ci> Kq </ci>
+                      <ci> Gal80p_dim </ci>
+                    </apply>
+                  </apply>
+                </apply>
+              </apply>
+              <cn> 4 </cn>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_tc3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <ci> k_tc3_max </ci>
+              <ci> Cp </ci>
+              <ci> Kp </ci>
+              <ci> Gal4p_dim </ci>
+            </apply>
+            <apply>
+              <plus/>
+              <cn> 1 </cn>
+              <apply>
+                <times/>
+                <ci> Cp </ci>
+                <apply>
+                  <plus/>
+                  <apply>
+                    <times/>
+                    <ci> Kp </ci>
+                    <ci> Gal4p_dim </ci>
+                  </apply>
+                  <apply>
+                    <times/>
+                    <ci> Cq </ci>
+                    <ci> Kp </ci>
+                    <ci> Gal4p_dim </ci>
+                    <ci> Kq </ci>
+                    <ci> Gal80p_dim </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="k_tc80">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <divide/>
+            <apply>
+              <times/>
+              <ci> k_tc80_max </ci>
+              <ci> Cp </ci>
+              <ci> Kp </ci>
+              <ci> Gal4p_dim </ci>
+            </apply>
+            <apply>
+              <plus/>
+              <cn> 1 </cn>
+              <apply>
+                <times/>
+                <ci> Cp </ci>
+                <apply>
+                  <plus/>
+                  <apply>
+                    <times/>
+                    <ci> Kp </ci>
+                    <ci> Gal4p_dim </ci>
+                  </apply>
+                  <apply>
+                    <times/>
+                    <ci> Cq </ci>
+                    <ci> Kp </ci>
+                    <ci> Gal4p_dim </ci>
+                    <ci> Kq </ci>
+                    <ci> Gal80p_dim </ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="species_3">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <ci> Gal1p </ci>
+            <ci> parameter_1 </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="species_2">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <plus/>
+              <ci> Gal3paGal80p </ci>
+              <ci> Gal80p_dim </ci>
+              <ci> Gal80p </ci>
+            </apply>
+            <ci> parameter_1 </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+      <assignmentRule variable="species_1">
+        <math xmlns="http://www.w3.org/1998/Math/MathML">
+          <apply>
+            <times/>
+            <apply>
+              <plus/>
+              <ci> Gal3p </ci>
+              <ci> Gal3pa </ci>
+              <ci> Gal3paGal80p </ci>
+            </apply>
+            <ci> parameter_1 </ci>
+          </apply>
+        </math>
+      </assignmentRule>
+    </listOfRules>
+    <listOfReactions>
+      <reaction id="R0" name="null  =&gt; rGal1;  k_tc1 = k_tc1_max*(Cp* Kp*Gal4p_dim*(2 + Cp* (Kp*Gal4p_dim + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim))* (2 + Cp*(Cp*(Kp*Gal4p_dim)^2 + 2*(Kp*Gal4p_dim)*(1 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim) + 2*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim*(2 +Cp*Cq*Kp*Gal4p_dim* Kq*Gal80p_dim))))/(1 + Cp* (Kp*Gal4p_dim + Cq* Kp*Gal4p_dim*Kq*Gal80p_dim))^4">
+        <listOfProducts>
+          <speciesReference species="rGal1"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_1 </ci>
+                <ci> k_tc1 </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R1" name="rGal1   -&gt; null;  k_r1_degr;">
+        <listOfReactants>
+          <speciesReference species="rGal1"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_2 </ci>
+                <ci> k_r1_degr </ci>
+                <ci> main </ci>
+                <ci> rGal1 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R2" name="rGal1  -&gt; rGal1 + Gal1p; k_tl1;">
+        <listOfReactants>
+          <speciesReference species="rGal1"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="rGal1"/>
+          <speciesReference species="Gal1p"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_3 </ci>
+                <ci> k_tl1 </ci>
+                <ci> main </ci>
+                <ci> rGal1 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R3" name="Gal1p  -&gt; null;   k1_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal1p"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_5 </ci>
+                <ci> Gal1p </ci>
+                <ci> k1_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R8" name="null  =&gt; rGal3;  k_tc3 = k_tc3_max * Cp*Kp * Gal4p_dim/(1+Cp*(Kp *Gal4p_dim+Cq*Kp * Gal4p_dim*Kq * Gal80p_dim))">
+        <listOfProducts>
+          <speciesReference species="rGal3"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_7 </ci>
+                <ci> k_tc3 </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R9" name="rGal3   -&gt; null;  k_r3_degr;">
+        <listOfReactants>
+          <speciesReference species="rGal3"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_8 </ci>
+                <ci> k_r3_degr </ci>
+                <ci> main </ci>
+                <ci> rGal3 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R10" name="rGal3  -&gt; rGal3 + Gal3p; k_tl3;">
+        <listOfReactants>
+          <speciesReference species="rGal3"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="rGal3"/>
+          <speciesReference species="Gal3p"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_9 </ci>
+                <ci> k_tl3 </ci>
+                <ci> main </ci>
+                <ci> rGal3 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R11" name="Gal3p  -&gt; null;   k3_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal3p"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_10 </ci>
+                <ci> Gal3p </ci>
+                <ci> k3_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R12" name="null  -&gt; rGal4;  k_tc4 ">
+        <listOfProducts>
+          <speciesReference species="rGal4"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_11 </ci>
+                <ci> k_tc4 </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R13" name="rGal4 -&gt; null ; k_r4_degr">
+        <listOfReactants>
+          <speciesReference species="rGal4"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_12 </ci>
+                <ci> k_r4_degr </ci>
+                <ci> main </ci>
+                <ci> rGal4 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R14" name="rGal4   -&gt; rGal4 + Gal4p; k_tl4 ;">
+        <listOfReactants>
+          <speciesReference species="rGal4"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="rGal4"/>
+          <speciesReference species="Gal4p"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_13 </ci>
+                <ci> k_tl4 </ci>
+                <ci> main </ci>
+                <ci> rGal4 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R15" name="Gal4p  -&gt; null;   k4_degr ;">
+        <listOfReactants>
+          <speciesReference species="Gal4p"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_14 </ci>
+                <ci> Gal4p </ci>
+                <ci> k4_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R16" name="null  =&gt; rGal80;  k_tc80 = k_tc80_max * Cp*Kp * Gal4p_dim/(1+Cp*(Kp *Gal4p_dim+Cq*Kp * Gal4p_dim*Kq * Gal80p_dim))">
+        <listOfProducts>
+          <speciesReference species="rGal80"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_15 </ci>
+                <ci> k_tc80 </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R17" name="rGal80    -&gt; null;  k_r80_degr;">
+        <listOfReactants>
+          <speciesReference species="rGal80"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_16 </ci>
+                <ci> k_r80_degr </ci>
+                <ci> main </ci>
+                <ci> rGal80 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R18" name="rGal80   -&gt; rGal80 + Gal80p; k_tl80;">
+        <listOfReactants>
+          <speciesReference species="rGal80"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="rGal80"/>
+          <speciesReference species="Gal80p"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_17 </ci>
+                <ci> k_tl80 </ci>
+                <ci> main </ci>
+                <ci> rGal80 </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R19" name="Gal4p + Gal4p  -&gt; Gal4p_dim;  k_dim ">
+        <listOfReactants>
+          <speciesReference species="Gal4p" stoichiometry="2"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal4p_dim"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_18 </ci>
+                <ci> Gal4p </ci>
+                <ci> k_dim </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R20" name="Gal4p_dim -&gt; Gal4p + Gal4p ; k_mon">
+        <listOfReactants>
+          <speciesReference species="Gal4p_dim"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal4p" stoichiometry="2"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_19 </ci>
+                <ci> Gal4p_dim </ci>
+                <ci> k_mon </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R21" name="Gal4p_dim  -&gt; null;  k4_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal4p_dim"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_20 </ci>
+                <ci> Gal4p_dim </ci>
+                <ci> k4_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R22" name="Gal80p + Gal80p -&gt; Gal80p_dim; k_dim ">
+        <listOfReactants>
+          <speciesReference species="Gal80p" stoichiometry="2"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal80p_dim"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_21 </ci>
+                <ci> Gal80p </ci>
+                <ci> k_dim </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R23" name="Gal80p_dim -&gt; Gal80p + Gal80p ; k_mon">
+        <listOfReactants>
+          <speciesReference species="Gal80p_dim"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal80p" stoichiometry="2"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_22 </ci>
+                <ci> Gal80p_dim </ci>
+                <ci> k_mon </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R24" name="Gal80p   -&gt; null;  k80_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal80p"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_23 </ci>
+                <ci> Gal80p </ci>
+                <ci> k80_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R25" name="Gal80p_dim    -&gt; null;  k80_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal80p_dim"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_24 </ci>
+                <ci> Gal80p_dim </ci>
+                <ci> k80_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R27" name="galI  =&gt; null;  k_gal_met=k1_cat*Gal1p*galI/(K1_m+galI)">
+        <listOfReactants>
+          <speciesReference species="galI"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_25 </ci>
+                <ci> k_gal_met </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R28" name="Gal3p + galI  -&gt; Gal3pa; k3_act ">
+        <listOfReactants>
+          <speciesReference species="Gal3p"/>
+          <speciesReference species="galI"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal3pa"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_26 </ci>
+                <ci> Gal3p </ci>
+                <ci> galI </ci>
+                <ci> k3_act </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R29" name="Gal3pa -&gt; Gal3p + galI ; k3_deact">
+        <listOfReactants>
+          <speciesReference species="Gal3pa"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal3p"/>
+          <speciesReference species="galI"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_27 </ci>
+                <ci> Gal3pa </ci>
+                <ci> k3_deact </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R30" name="Gal3pa   -&gt; null;  k3_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal3pa"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_28 </ci>
+                <ci> Gal3pa </ci>
+                <ci> k3_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R31" name="Gal3pa + Gal80p_dim -&gt; Gal3paGal80p; k3a_80_bind ">
+        <listOfReactants>
+          <speciesReference species="Gal3pa"/>
+          <speciesReference species="Gal80p_dim"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal3paGal80p"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_29 </ci>
+                <ci> Gal3pa </ci>
+                <ci> Gal80p_dim </ci>
+                <ci> k3a_80_bind </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R32" name="Gal3paGal80p -&gt; Gal3pa + Gal80p_dim ; k3a_80_unbind">
+        <listOfReactants>
+          <speciesReference species="Gal3paGal80p"/>
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="Gal3pa"/>
+          <speciesReference species="Gal80p_dim"/>
+        </listOfProducts>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_30 </ci>
+                <ci> Gal3paGal80p </ci>
+                <ci> k3a_80_unbind </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+      <reaction id="R33" name="Gal3paGal80p  -&gt; null;  0.5*k3_degr;">
+        <listOfReactants>
+          <speciesReference species="Gal3paGal80p"/>
+        </listOfReactants>
+        <kineticLaw>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <times/>
+              <ci> main </ci>
+              <apply>
+                <ci> function_31 </ci>
+                <ci> Gal3paGal80p </ci>
+                <ci> k3_degr </ci>
+                <ci> main </ci>
+              </apply>
+            </apply>
+          </math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+    <listOfEvents>
+      <event id="event_1" name="Add Gal">
+        <trigger>
+          <math xmlns="http://www.w3.org/1998/Math/MathML">
+            <apply>
+              <gt/>
+              <csymbol encoding="text" definitionURL="http://www.sbml.org/sbml/symbols/time"> time </csymbol>
+              <cn> 1000 </cn>
+            </apply>
+          </math>
+        </trigger>
+        <listOfEventAssignments>
+          <eventAssignment variable="galI">
+            <math xmlns="http://www.w3.org/1998/Math/MathML">
+              <cn> 1000 </cn>
+            </math>
+          </eventAssignment>
+        </listOfEventAssignments>
+      </event>
+    </listOfEvents>
+  </model>
+</sbml>

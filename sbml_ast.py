@@ -247,7 +247,11 @@ class IdNamedElement(object):
   """
   def __init__(self, element):
     self.ident = element.getAttribute("id")
-    self.name = element.getAttribute("name")
+    name = element.getAttribute("name") 
+    if name:
+      self.name = name 
+    else:
+      self.name = self.ident
 
 class Species(IdNamedElement):
   """A simple class to represent a species within an sbml model"""

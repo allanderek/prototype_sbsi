@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sbml xmlns="http://www.sbml.org/sbml/level2/version3" level="2" version="3">
+	<model id="simple_mm">
+		<listOfCompartmentTypes>
+			<compartmentType id="Compartment"/>
+			<compartmentType id="Membrane"/>
+		</listOfCompartmentTypes>
+		<listOfCompartments>
+			<compartment id="main" size="1.0"/>
+		</listOfCompartments>
+		<listOfSpecies>
+			<species id="E" compartment="main" substanceUnits="item" hasOnlySubstanceUnits="true"/>
+			<species id="ES" compartment="main" substanceUnits="item" hasOnlySubstanceUnits="true"/>
+			<species id="P" compartment="main" substanceUnits="item" hasOnlySubstanceUnits="true"/>
+			<species id="S" compartment="main" substanceUnits="item" hasOnlySubstanceUnits="true"/>
+		</listOfSpecies>
+		<listOfParameters>
+			<parameter id="k1" value="0.69"/>
+			<parameter id="k2" value="0.076"/>
+			<parameter id="k3" value="0.91"/>
+		</listOfParameters>
+		<listOfInitialAssignments>
+			<initialAssignment symbol="E">
+				<math xmlns="http://www.w3.org/1998/Math/MathML">
+											<cn> 100.0 </cn>
+
+				</math>
+			</initialAssignment>
+
+			<initialAssignment symbol="ES">
+				<math xmlns="http://www.w3.org/1998/Math/MathML">
+											<cn> 0.0 </cn>
+
+				</math>
+			</initialAssignment>
+
+			<initialAssignment symbol="P">
+				<math xmlns="http://www.w3.org/1998/Math/MathML">
+											<cn> 0.0 </cn>
+
+				</math>
+			</initialAssignment>
+
+			<initialAssignment symbol="S">
+				<math xmlns="http://www.w3.org/1998/Math/MathML">
+											<cn> 100.0 </cn>
+
+				</math>
+			</initialAssignment>
+
+		</listOfInitialAssignments>
+		<listOfReactions>
+			<reaction id="a" reversible="false">
+				<listOfReactants>
+					<speciesReference species="E"/>
+					<speciesReference species="S"/>
+				</listOfReactants>
+				<listOfProducts>
+					<speciesReference species="ES"/>
+				</listOfProducts>
+				<kineticLaw>
+					<math xmlns="http://www.w3.org/1998/Math/MathML">
+						<apply>
+							<times/>
+							<ci> k1 </ci>
+							<ci> E </ci>
+							<ci> S </ci>
+						</apply>
+					</math>
+				</kineticLaw>
+			</reaction>
+			<reaction id="am" reversible="false">
+				<listOfReactants>
+					<speciesReference species="ES"/>
+				</listOfReactants>
+				<listOfProducts>
+					<speciesReference species="E"/>
+					<speciesReference species="S"/>
+				</listOfProducts>
+				<kineticLaw>
+					<math xmlns="http://www.w3.org/1998/Math/MathML">
+						<apply>
+							<times/>
+							<ci> k2 </ci>
+							<ci> ES </ci>
+						</apply>
+					</math>
+				</kineticLaw>
+			</reaction>
+			<reaction id="b" reversible="false">
+				<listOfReactants>
+					<speciesReference species="ES"/>
+				</listOfReactants>
+				<listOfProducts>
+					<speciesReference species="E"/>
+					<speciesReference species="P"/>
+				</listOfProducts>
+				<kineticLaw>
+					<math xmlns="http://www.w3.org/1998/Math/MathML">
+						<apply>
+							<times/>
+							<ci> k3 </ci>
+							<ci> ES </ci>
+						</apply>
+					</math>
+				</kineticLaw>
+			</reaction>
+		</listOfReactions>
+	</model>
+</sbml>
