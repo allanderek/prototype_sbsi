@@ -1,6 +1,8 @@
 """
 A module that implements a parser for the Bio-PEPA language
 """
+import copy
+
 import parcon
 from parcon import Translate, SignificantLiteral, OneOrMore, First
 
@@ -31,6 +33,7 @@ class RateLaw(object):
   def __init__(self):
     self.name = None
     self.value_expr = None
+
 def create_rate_law(parse_result):
   """The post-parsing method for rate laws"""
   rate_law = RateLaw()
@@ -58,11 +61,10 @@ def decide_how_many_rate_laws(parse_result):
   def add_single_rate_law(rate_law):
     reaction.kinetic_law = rate_law.value_expr
     return reaction
-  # Obviously this isn't doing the correct thing since we're
-  # essentially just ignoring the second rate law.
   def add_double_rate_law(rate_laws):
     rate_law = rate_laws[0]
     reaction.kinetic_law = rate_law.value_expr
+    reaction.reverse_kinetic_law = rate_laws[1].value_expr
     return reaction
 
   if parse_result[1] in [ "<->", "<=>" ]:
@@ -76,8 +78,6 @@ reaction_syntax = parcon.Bind (reaction_core_syntax,
 
 def create_reaction(parse_result):
   """The post-parse action for the reaction parser"""
-  print ("This is the reaction parse_result")
-  print (parse_result)
   reaction = sbml_ast.Reaction("reaction") 
   reaction.reactants = [ sbml_ast.ReactionParticipant(n, 1) 
                             for n in parse_result[0] ]
@@ -152,12 +152,19 @@ model_syntax = (equation_section_syntax +
                 init_cond_section_syntax +
                 parcon.End()
                )
+
+  
 def create_model(parse_result):
   """post parsing method for an entire facile model"""
   facile_model = FacileModel()
   eqn_section = parse_result[0]
-  facile_model.equations = [ s for s in eqn_section 
-                                 if isinstance(s, sbml_ast.Reaction) ]
+  # Arguably this mucking around with reverse reactions would be
+  # better suited to facile_to_sbml
+  equations = [ s for s in eqn_section 
+                    if isinstance(s, sbml_ast.Reaction) ]
+  reverse_equations = [ r.reverse_reaction() for r in equations
+                          if r.reverse_kinetic_law ]
+  facile_model.equations = equations + reverse_equations
   var_decs = [ s for s in eqn_section
                    if isinstance(s, sbml_ast.VariableDeclaration)
              ]

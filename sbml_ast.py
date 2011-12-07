@@ -4,6 +4,7 @@ A module to ease creation of sbml documents
 
 import sys
 import xml.dom.minidom as minidom
+import copy
 
 import utils
 
@@ -304,6 +305,7 @@ class Reaction(object):
     # of that call should be an object (possibly the same one) with
     # a method for creating an sbml element to represent the expression
     self.kinetic_law = None
+    self.reverse_kinetic_law = None
     self.location = None
 
   def add_reactant(self, reactant):
@@ -360,6 +362,19 @@ class Reaction(object):
       return True
     else:
       return False
+
+  def reverse_reaction(self):
+    """Creates a copy of this reaction but reversed"""
+    reversed_reaction = copy.copy(self)
+    # In theory actually we should copy these, rather than simply
+    # assign, on the basis that if we changed one do we want the
+    # other to also change?
+    reversed_reaction.reactants = self.products
+    reversed_reaction.products = self.reactants
+    reversed_reaction.kinetic_law = self.reverse_kinetic_law
+    reversed_reaction.reverse_kinetic_law = self.kinetic_law
+
+    return reversed_reaction
 
   def involves(self, species):
     """Returns true if the given species is involved with this reaction"""
