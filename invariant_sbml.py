@@ -18,12 +18,12 @@ class KinecticIndependenceGraph:
 
   def add_reaction_info(self, reaction):
     """Add a reaction to the kinectic independence graph"""
-    reactants = reaction.get_reactants()
-    column_index = self.reactions.index(reaction.get_name())
+    reactants = reaction.reactants
+    column_index = self.reactions.index(reaction.name)
     for reactant in reactants:
       value = - reactant.get_stoichiometry()
       self.rows[reactant.get_name()][column_index] = value
-    for product in reaction.get_products():
+    for product in reaction.products:
       value = product.get_stoichiometry()
       self.rows[product.get_name()][column_index] = value
 
@@ -186,7 +186,7 @@ def kig_of_model(model, ignore_sources, ignore_sinks):
                     if (not r.is_source() or not ignore_sources) 
                         and 
                        (not r.is_sink() or not ignore_sinks) ]
-  reaction_names = [ r.get_name() for r in reactions ]
+  reaction_names = [ r.name for r in reactions ]
   kig = KinecticIndependenceGraph(species_names, reaction_names)
   for reaction in reactions:
     kig.add_reaction_info(reaction)
