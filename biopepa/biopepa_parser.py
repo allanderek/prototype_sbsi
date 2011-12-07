@@ -9,6 +9,8 @@ import sbml_ast
 # A simply utility for creating parsers which accept a list of
 # somethings, separated by something elses.
 # Note here that the separator_parser should return None
+# Note also that I believe the latest version of parcon has this
+# (or similar functionality) included.
 def create_separated_by(element_parser, separator_parser):
   """A utility to create a parser for a list of elements which are
      separated by a given parser. This is useful for writing things

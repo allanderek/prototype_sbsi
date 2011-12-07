@@ -12,7 +12,9 @@ import sbml_ast
 
 name_syntax = parcon.Word(parcon.alphanum_chars + "_", 
                           init_chars=parcon.alpha_chars)
-list_of_species_syntax = create_separated_by(name_syntax, "+")
+empty_species_list = Translate(parcon.Literal("null"), lambda x : [])
+list_of_species_syntax = First (empty_species_list, 
+                                create_separated_by(name_syntax, "+"))
 
 # Using Longest might not be the fastest way to do this
 # another possibility is to use 'First' but ensure that the
@@ -25,27 +27,50 @@ reaction_arrow_syntax = parcon.Longest(SignificantLiteral ("->"),
                                        SignificantLiteral ("<->"),
                                        SignificantLiteral ("<=>"))
 
-rate_law_syntax = (parcon.Optional(name_syntax + "=") + 
-                   biopepa_parser.expr + ";"
-                  )
+
+# In facile a rate law can be written with an optional defining name
+# as in:
+# A -> B; k1 = 0.1 ;
+# Additionally the expression part (whether the name is there or not)
+# can be surrounded in quotes, this is to indicate that the implicit
+# 'fMA' function should not be applied to the rate law.
+# So we parse the expression part as a rate law leaving the 'name' part
+# of the rate law as undefined. A rate law has an optional name and if
+# this is applied then we simply update the 'rate_law' returned from
+# the expression parser to include the given name.
 class RateLaw(object):
   """A class representing the abstract syntax of a rate law in facile"""
   def __init__(self):
     self.name = None
     self.value_expr = None
+    self.no_implicit_fma = False
 
-def create_rate_law(parse_result):
-  """The post-parsing method for rate laws"""
+def rate_law_expr (expr):
   rate_law = RateLaw()
-  if isinstance(parse_result, sbml_ast.Expression):
-    rate_law.value_expr = parse_result
+  rate_law.value_expr = expr
+  return rate_law
+naked_expression = Translate(biopepa_parser.expr, rate_law_expr)
+def rate_law_explicit(expr):
+  rate_law = rate_law_expr(expr) 
+  rate_law.no_implicit_fma = True
+  return rate_law
+explicit_expression = Translate("\"" + biopepa_parser.expr + "\"",
+                                rate_law_explicit)
+rate_law_syntax = (parcon.Optional(name_syntax + "=") + 
+                   First (naked_expression, explicit_expression) +
+                   ";"
+                  )
+def add_rate_law_name(parse_result):
+  """The post-parsing method for rate laws"""
+  if isinstance(parse_result, RateLaw):
+    rate_law = parse_result
   else:
+    rate_law = parse_result[1]
     rate_law.name = parse_result[0]
-    rate_law.value_expr = parse_result[1]
 
   return rate_law
-rate_law_parser = rate_law_syntax[create_rate_law]
 
+rate_law_parser = rate_law_syntax[add_rate_law_name]
 reaction_core_syntax = (list_of_species_syntax +
                         reaction_arrow_syntax +
                         list_of_species_syntax +
@@ -59,12 +84,11 @@ def decide_how_many_rate_laws(parse_result):
                             for n in parse_result[2] ]
 
   def add_single_rate_law(rate_law):
-    reaction.kinetic_law = rate_law.value_expr
+    reaction.kinetic_law = rate_law
     return reaction
   def add_double_rate_law(rate_laws):
-    rate_law = rate_laws[0]
-    reaction.kinetic_law = rate_law.value_expr
-    reaction.reverse_kinetic_law = rate_laws[1].value_expr
+    reaction.kinetic_law = rate_laws[0]
+    reaction.reverse_kinetic_law = rate_laws[1]
     return reaction
 
   if parse_result[1] in [ "<->", "<=>" ]:
@@ -152,7 +176,6 @@ model_syntax = (equation_section_syntax +
                 init_cond_section_syntax +
                 parcon.End()
                )
-
   
 def create_model(parse_result):
   """post parsing method for an entire facile model"""
@@ -164,7 +187,32 @@ def create_model(parse_result):
                     if isinstance(s, sbml_ast.Reaction) ]
   reverse_equations = [ r.reverse_reaction() for r in equations
                           if r.reverse_kinetic_law ]
-  facile_model.equations = equations + reverse_equations
+  all_equations = equations + reverse_equations
+  # So first of all this should somehow check that the original
+  # rate law was not given surrounded by quotes (probably a simple)
+  # flag within 'reaction'. Additionally, again I sort of think this
+  # belongs in facile_to_sbml.py
+  def apply_fma(kinetic_law):
+    """Apply the fMA method to the given rate law as is implied
+       in the syntax of facile models"""
+    return sbml_ast.ApplyExpression("fMA", [kinetic_law])
+  # Note that this changes all equation kinetic laws from RateLaw
+  # to simple Expression which is expected by the formatter
+  # for the sbml ast.
+  for equation in all_equations:
+    kinetic_expr = equation.kinetic_law.value_expr
+    if equation.kinetic_law.no_implicit_fma:
+      equation.kinetic_law = kinetic_expr
+    else:
+      equation.kinetic_law = apply_fma(kinetic_expr)
+    if equation.reverse_kinetic_law:
+      rev_kin_expr = equation.reverse_kinetic_law.value_expr
+      if equation.reverse_kinetic_law.no_implicit_fma:
+        equation.reverse_kinetic_law = rev_kin_expr
+      else:
+        equation.reverse_kinetic_law = apply_fma(rev_kin_expr)
+
+  facile_model.equations = all_equations
   var_decs = [ s for s in eqn_section
                    if isinstance(s, sbml_ast.VariableDeclaration)
              ]
