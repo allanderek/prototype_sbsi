@@ -332,12 +332,12 @@ class Reaction(object):
   def is_sink(self):
     """returns true if the reaction is a sink,
        in that it has at least one reactant and no products"""
-    return self.reactants and not self.products
+    return bool (self.reactants and not self.products)
 
   def is_source(self):
     """returns true if the reaction is a source reaction,
        in that it has at least one product and no reactants"""
-    return self.products and not self.reactants
+    return bool(self.products and not self.reactants)
 
   def is_reverse(self, the_inverse):
     """Returns true if the given reaction is the reverse of

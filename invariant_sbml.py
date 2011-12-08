@@ -186,6 +186,7 @@ def kig_of_model(model, ignore_sources, ignore_sinks):
                     if (not r.is_source() or not ignore_sources) 
                         and 
                        (not r.is_sink() or not ignore_sinks) ]
+
   reaction_names = [ r.name for r in reactions ]
   kig = KinecticIndependenceGraph(species_names, reaction_names)
   for reaction in reactions:
