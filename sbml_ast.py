@@ -205,39 +205,6 @@ class VariableDeclaration:
 
     return init_assign
 
-class ReactionParticipant:
-  """A simple class to represent a reaction participant"""
-  def __init__(self, name, stoich=1):
-    self.name = name
-    self.stoich = stoich
-
-  def __cmp__(self, other):
-    """Implementation of comparison for general use"""
-    if self.name == other.name and self.stoich == other.stoich:
-      return 0
-    elif self.name == other.name:
-      return cmp(self.stoich, other.stoich)
-    else:
-      return cmp(self.name, other.name)
-
-  def get_name(self):
-    """Return the name of the reaction participant"""
-    return self.name
-  def get_stoichiometry(self):
-    """Return the stoichiometry of this reaction participant
-       within the reaction"""
-    return self.stoich
-
-  def format_participant(self):
-    """Returns a reasonable format of this reaction participant,
-       basically just the name if the stoichiometry is 1, or
-       (name, stoich) otherwise
-    """
-    if self.stoich == 1:
-      return self.get_name()
-    else:
-      return "(" + self.get_name() + ", " + str(self.stoich) + ")"
-
 
 class IdNamedElement(object):
   """Many of the classes below are a parsed representation of a
@@ -287,6 +254,41 @@ class Parameter(IdNamedElement):
     self.units = element.getAttribute("units")
     self.boolean = element.getAttribute("boolean")
 
+class ReactionParticipant:
+  """A simple class to represent a reaction participant"""
+  def __init__(self, name, stoich=1):
+    self.name = name
+    self.stoich = stoich
+    # If more members are added here we should consider how this
+    # affects Reaction.canonicalise_participants.
+
+  def __cmp__(self, other):
+    """Implementation of comparison for general use"""
+    if self.name == other.name and self.stoich == other.stoich:
+      return 0
+    elif self.name == other.name:
+      return cmp(self.stoich, other.stoich)
+    else:
+      return cmp(self.name, other.name)
+
+  def get_name(self):
+    """Return the name of the reaction participant"""
+    return self.name
+  def get_stoichiometry(self):
+    """Return the stoichiometry of this reaction participant
+       within the reaction"""
+    return self.stoich
+
+  def format_participant(self):
+    """Returns a reasonable format of this reaction participant,
+       basically just the name if the stoichiometry is 1, or
+       (name, stoich) otherwise
+    """
+    if self.stoich == 1:
+      return self.get_name()
+    else:
+      return "(" + self.get_name() + ", " + str(self.stoich) + ")"
+
 
 class Reaction(object):
   """A class which represents a reaction"""
@@ -319,6 +321,53 @@ class Reaction(object):
   def add_modifier(self, modifier):
     """Add a modifier to the reaction"""
     self.modifiers.append(modifier)
+
+  def canonicalise_participants(self):
+    """We look at the reaction participants and decide whether we could
+       more succintly represent them. For example if 'A' appears as
+       both a single reactant and product then it can be instead
+       represented as a modifier. Additionally if 'A' appears twice as
+       a reactant then we can simply increase its stoichiometry
+    """
+    # Note that as we are creating new 'ReactionParticipants' then this
+    # is a little helicoptor code, in that if change ReactantParticipant
+    # then we would need to change this as well. 
+    name_dict = dict()
+    for participant in self.reactants:
+      if participant.name in name_dict:
+        name_dict[participant.name] += participant.stoich
+      else:
+        name_dict[participant.name] = participant.stoich
+    for participant in self.products:
+      if participant.name in name_dict:
+        name_dict[participant.name] -= participant.stoich
+      else:
+        name_dict[participant.name] = -(participant.stoich)
+    # For modifiers then we essentially just make sure that the name
+    # is in the dictionary such that if it is unchanged it will be added
+    # in the final part of this method.
+    for participant in self.modifiers:
+      if participant.name not in name_dict:
+        name_dict[participant.name] = 0
+    
+
+    # Note that there is no stoichiometry on modifier species so for now
+    # can essentially get away with ignoring the stoichiometry on
+    # modifier species references.
+    self.reactants = []
+    self.products = []
+    self.modifiers = []
+    for name, value in name_dict.iteritems():
+      if value == 0:
+        participant = ReactionParticipant(name, value)
+        self.modifiers.append(participant)
+      elif value < 0:
+        participant = ReactionParticipant(name, - value)
+        self.products.append(participant)
+      else:
+        participant = ReactionParticipant(name, value)
+        self.reactants.append(participant)
+
 
   def get_mass_action_participants(self):
     """Return the left hand side participants which contribute to the
@@ -366,6 +415,7 @@ class Reaction(object):
   def reverse_reaction(self):
     """Creates a copy of this reaction but reversed"""
     reversed_reaction = copy.copy(self)
+    reversed_reaction.name = reversed_reaction.name + "_rev"
     # In theory actually we should copy these, rather than simply
     # assign, on the basis that if we changed one do we want the
     # other to also change?
@@ -397,13 +447,16 @@ class Reaction(object):
       results += "@" + self.location
 
     results += ": "
-    # so the first reactant has nothing attached to the front of it
+    reactant_names = [ r.format_participant() for r in self.reactants ]
+    modifier_names = [ "$" + r.format_participant() 
+                        for r in self.modifiers]
     reactants_and_modifiers = self.reactants + self.modifiers
-    results += ", ".join([ r.format_participant() 
-                           for r in reactants_and_modifiers])
+    results += ", ".join(reactant_names + modifier_names)
+                          
     results += " --> "
-    results += ", ".join([ p.format_participant() 
-                           for p in self.products])
+
+    product_names = [ r.format_participant() for r in self.products ]
+    results += ", ".join(product_names)
  
     return results
 

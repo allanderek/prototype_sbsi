@@ -181,38 +181,8 @@ def create_model(parse_result):
   """post parsing method for an entire facile model"""
   facile_model = FacileModel()
   eqn_section = parse_result[0]
-  # Arguably this mucking around with reverse reactions would be
-  # better suited to facile_to_sbml
-  equations = [ s for s in eqn_section 
-                    if isinstance(s, sbml_ast.Reaction) ]
-  reverse_equations = [ r.reverse_reaction() for r in equations
-                          if r.reverse_kinetic_law ]
-  all_equations = equations + reverse_equations
-  # So first of all this should somehow check that the original
-  # rate law was not given surrounded by quotes (probably a simple)
-  # flag within 'reaction'. Additionally, again I sort of think this
-  # belongs in facile_to_sbml.py
-  def apply_fma(kinetic_law):
-    """Apply the fMA method to the given rate law as is implied
-       in the syntax of facile models"""
-    return sbml_ast.ApplyExpression("fMA", [kinetic_law])
-  # Note that this changes all equation kinetic laws from RateLaw
-  # to simple Expression which is expected by the formatter
-  # for the sbml ast.
-  for equation in all_equations:
-    kinetic_expr = equation.kinetic_law.value_expr
-    if equation.kinetic_law.no_implicit_fma:
-      equation.kinetic_law = kinetic_expr
-    else:
-      equation.kinetic_law = apply_fma(kinetic_expr)
-    if equation.reverse_kinetic_law:
-      rev_kin_expr = equation.reverse_kinetic_law.value_expr
-      if equation.reverse_kinetic_law.no_implicit_fma:
-        equation.reverse_kinetic_law = rev_kin_expr
-      else:
-        equation.reverse_kinetic_law = apply_fma(rev_kin_expr)
-
-  facile_model.equations = all_equations
+  facile_model.equations = [ s for s in eqn_section 
+                                 if isinstance(s, sbml_ast.Reaction) ]
   var_decs = [ s for s in eqn_section
                    if isinstance(s, sbml_ast.VariableDeclaration)
              ]
