@@ -7,6 +7,24 @@ from outline_sbml import format_math_element
 import outline_sbml
 
 
+def output_reaction(output_file, reaction):
+  """Output the facile format of an sbml reaction"""
+  # We should look at the stoichiometry and possibly do P + P
+  # if the stoich is two for example.
+  reactant_names = [ r.name for r in reaction.reactants ]
+  modifier_names = [ m.name for m in reaction.modifiers ]
+  product_names = [ p.name for p in reaction.products ]
+  left = " + ".join(reactant_names + modifier_names)
+  right = " + ".join(product_names)
+  output_file.write(left) 
+  output_file.write(" -> ")
+  output_file.write(right)
+  output_file.write(" ; ")
+
+  output_file.write(format_math_element(reaction.kinetic_law))
+  output_file.write("\n")
+
+
 def convert_file(filename):
   """Given an sbml file convert it into a corresponding facile model"""
   dom = xml.dom.minidom.parse(filename)
@@ -27,21 +45,8 @@ def convert_file(filename):
   # Reactions
   reactions = outline_sbml.get_list_of_reactions(model)
   for reaction in reactions:
-    # We should look at the stoichiometry and possibly do P + P
-    # if the stoich is two for example.
-    reactant_names = [ r.name for r in reaction.reactants ]
-    modifier_names = [ m.name for m in reaction.modifiers ]
-    product_names = [ p.name for p in reaction.products ]
-    left = " + ".join(reactant_names + modifier_names)
-    right = " + ".join(product_names)
-    output_file.write(left) 
-    output_file.write(" -> ")
-    output_file.write(right)
-    output_file.write(" ; ")
-
-    output_file.write(format_math_element(reaction.kinetic_law))
-    output_file.write("\n")
-  
+    output_reaction(output_file, reaction)
+ 
   output_file.write("\nINIT\n")
   species = outline_sbml.get_list_of_species(model)
   init_assigns = outline_sbml.get_list_of_init_assigns(model)

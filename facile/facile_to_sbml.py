@@ -13,11 +13,11 @@ def uniquely_name_reactions(reactions):
   name_dictionary = dict()
   for reaction in reactions:
     if reaction.name in name_dictionary:
-       number = name_dictionary[reaction.name]
-       name_dictionary[reaction.name] = number + 1
-       reaction.name = reaction.name + "_" + str(number)
+      number = name_dictionary[reaction.name]
+      name_dictionary[reaction.name] = number + 1
+      reaction.name = reaction.name + "_" + str(number)
     else:
-       name_dictionary[reaction.name] = 1
+      name_dictionary[reaction.name] = 1
 
 def translate_facile_model(facile_model):
   """Translate the parsed facile model into an SBML xml document"""

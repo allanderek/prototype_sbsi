@@ -438,7 +438,6 @@ class Reaction(object):
     reactant_names = [ r.format_participant() for r in self.reactants ]
     modifier_names = [ "$" + r.format_participant() 
                         for r in self.modifiers]
-    reactants_and_modifiers = self.reactants + self.modifiers
     results += ", ".join(reactant_names + modifier_names)
                           
     results += " --> "

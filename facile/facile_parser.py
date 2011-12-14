@@ -1,8 +1,6 @@
 """
 A module that implements a parser for the Bio-PEPA language
 """
-import copy
-
 import parcon
 from parcon import Translate, SignificantLiteral, OneOrMore, First
 
@@ -46,11 +44,15 @@ class RateLaw(object):
     self.no_implicit_fma = False
 
 def rate_law_expr (expr):
+  """Parse a rate law which is not surrouned by quotes and therefore
+     does not implicitly require fMA added around it
+  """
   rate_law = RateLaw()
   rate_law.value_expr = expr
   return rate_law
 naked_expression = Translate(biopepa_parser.expr, rate_law_expr)
 def rate_law_explicit(expr):
+  """Parse an explicit rate law surrounded in quotes"""
   rate_law = rate_law_expr(expr) 
   rate_law.no_implicit_fma = True
   return rate_law
@@ -77,6 +79,11 @@ reaction_core_syntax = (list_of_species_syntax +
                         ";"
                        )
 def decide_how_many_rate_laws(parse_result):
+  """The 'binding' method for the reaction parser, once we have parsed
+     the reaction we know whether the reaction arrow is uni-directional
+     or bi-directional and hence whether to expect 1 or 2 rate laws.
+     This returns the appropriate parser
+  """
   reaction = sbml_ast.Reaction("reaction") 
   reaction.reactants = [ sbml_ast.ReactionParticipant(n, 1) 
                             for n in parse_result[0] ]
@@ -84,9 +91,11 @@ def decide_how_many_rate_laws(parse_result):
                             for n in parse_result[2] ]
 
   def add_single_rate_law(rate_law):
+    """The post parsing method for a uni-directional reaction"""
     reaction.kinetic_law = rate_law
     return reaction
   def add_double_rate_law(rate_laws):
+    """The post parsing function for a reversed reaction"""
     reaction.kinetic_law = rate_laws[0]
     reaction.reverse_kinetic_law = rate_laws[1]
     return reaction

@@ -346,9 +346,9 @@ def reaction_knockout_table(filename, ignore_sources, ignore_sinks):
   for (reaction_name, uncovered) in sorted_uncovereds:
     print ("----- " + reaction_name + " -------")
     if utils.equal_lists(orig_uncovered, uncovered):
-     print ("no change")
+      print ("no change")
     else:
-     print (", ".join(uncovered))
+      print (", ".join(uncovered))
 
 
 def calculate_invariant_timecourse(invariant, timecourse):

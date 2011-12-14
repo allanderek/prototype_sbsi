@@ -92,28 +92,30 @@ def equal_lists(left, right):
 
 # the function to calculate the GCD
 def gcd(num1, num2):
-    if num1 > num2:
-        for i in range(1,num2+1):
-            if num2 % i == 0:
-                if num1 % i == 0:
-                    result = i
-        return result
+  """Calculate the greatest common divisor of two numbers"""
+  if num1 > num2:
+    for i in range(1, num2 + 1):
+      if num2 % i == 0:
+        if num1 % i == 0:
+          result = i
+    return result
 
-    elif num2 > num1:
-        for i in range(1,num1+1):
-            if num1 % i == 0:
-                if num2 % i == 0:
-                    result = i
-        return result
+  elif num2 > num1:
+    for i in range(1, num1 + 1):
+      if num1 % i == 0:
+        if num2 % i == 0:
+          result = i
+    return result
 
-    else:
-        result = num1*num2/num1
-        return result
+  else:
+    result = num1*num2/num1
+    return result
 
 # the function to calculate the LCM
 def lcm(num1, num2):
-    result = num1*num2/gcd(num1,num2)
-    return result
+  """Calculate the least common multiple of two numbers"""
+  result = num1 * num2 / gcd(num1, num2)
+  return result
 
 
 
