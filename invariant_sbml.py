@@ -78,11 +78,13 @@ class InvariantInferer:
       print (str(self.species) + str(self.row))
 
      
-  def combine_invariant_rows(self, row1, row2):
-    """A (private) helper function to combine to rows into a
+  def combine_invariant_rows(self, row1, row2, coeff1=1, coeff2=1):
+    """A (private) helper function to combine two rows into a
        single row by summing the columns"""
-    species = utils.add_lists(row1.species, row2.species)
-    row = utils.add_lists(row1.row, row2.row)
+    species = utils.add_lists(row1.species, row2.species,
+                              left_scale=coeff1, right_scale=coeff2)
+    row = utils.add_lists(row1.row, row2.row,
+                          left_scale=coeff1, right_scale=coeff2)
     return self.InvRow(species, row)
 
   def calculate_initial_rows(self):
@@ -100,6 +102,7 @@ class InvariantInferer:
 
     return inv_rows
 
+
   def calculate_invariant_rows(self):
     """Calculate the rows of the invariant matrix"""
     inv_rows = self.calculate_initial_rows()
@@ -109,16 +112,22 @@ class InvariantInferer:
       new_inv_rows = []
       for i in range(num_rows):
         i_row   = inv_rows[i]
-        i_value = i_row.row[index]
+        i_value = int(i_row.row[index])
         if i_value == 0:
           new_inv_rows.append(i_row)
         else: 
           for j in range(i+1, num_rows):
             j_row   = inv_rows[j]
-            j_value = j_row.row[index]
-            sum_value = i_value + j_value 
-            if i_value != 0 and sum_value == 0:
-              new_row = self.combine_invariant_rows(i_row, j_row)
+            j_value = int(j_row.row[index])
+            if ((i_value < 0 and j_value > 0) or 
+                (i_value > 0 and j_value < 0)):
+              target_value = utils.lcm (abs(i_value), abs(j_value)) 
+              i_coeff = target_value / abs(i_value)
+              j_coeff = target_value / abs(j_value)
+
+              new_row = self.combine_invariant_rows(i_row, j_row, 
+                                                    coeff1=i_coeff,
+                                                    coeff2=j_coeff)
               new_inv_rows.append(new_row)
       # new_inv_rows = [ r for r in inv_rows if r.row[index] == 0 ]
       inv_rows = new_inv_rows
@@ -146,7 +155,7 @@ class InvariantInferer:
           if coeff == 1:
             items.append(name)
           else:
-            items.append("(" + str(coeff) + name + ")")
+            items.append("(" + str(coeff) + " * " + name + ")")
         
       return " + ".join(items)
 
@@ -215,7 +224,7 @@ def create_knocked_out_kig(reaction, reactions, species_names):
   """Create a kig from a set of reaction, but ignoring the given
      reaction. 
   """      
-  reaction_names = [ r.get_name() for r in reactions if r != reaction ]  
+  reaction_names = [ r.name for r in reactions if r != reaction ]  
   kig = KinecticIndependenceGraph(species_names, reaction_names)
   for other_reaction in reactions:
     if other_reaction != reaction:
@@ -245,7 +254,7 @@ def reaction_knockout_kigs(filename, ignore_sources, ignore_sinks):
   kig_dictionary = dict()
   for reaction in reactions:
     kig = create_knocked_out_kig(reaction, reactions, species_names)
-    kig_dictionary[reaction.get_name()] = kig
+    kig_dictionary[reaction.name] = kig
   return kig_dictionary
 
 
@@ -325,12 +334,21 @@ def reaction_knockout_table(filename, ignore_sources, ignore_sinks):
     inv_inferer = InvariantInferer(kig)
     return inv_inferer.get_uncovered()
 
+  orig_uncovered = get_uncovered_model_file(filename,
+                                            ignore_sources,
+                                            ignore_sinks)
+
   uncovered_map = [ (rname, get_uncovered(kig) )
                     for (rname, kig) in kig_dictionary.items() ]
   sorted_uncovereds = sorted(uncovered_map, key=get_length_uncovered)
+  print ("----- no reactions ignored -----")
+  print (", ".join(orig_uncovered))
   for (reaction_name, uncovered) in sorted_uncovereds:
     print ("----- " + reaction_name + " -------")
-    print (", ".join(uncovered))
+    if utils.equal_lists(orig_uncovered, uncovered):
+     print ("no change")
+    else:
+     print (", ".join(uncovered))
 
 
 def calculate_invariant_timecourse(invariant, timecourse):
