@@ -62,15 +62,59 @@ def get_non_ignored (all_names, in_names, ignored_names):
            ]
 
 
-def add_lists(left, right):
+def add_lists(left, right, left_scale=1, right_scale=1):
   """A utility function to add the elements of two lists together
      to form a new list. The result list will be the same length as
      the two given lists which must be of equal length"""
   assert(len(left) == len(right))
   result = []
   for i in range(len(left)):
-    result.append(left[i] + right[i])
+    left_value = left_scale * left[i]
+    right_value = right_scale * right[i]
+    result.append(left_value + right_value)
   return result
+
+def equal_lists(left, right):
+  """Checks if two lists are 'equal', equal if they are considered
+     to be sets
+  """
+  # Could check the lengths here, but I think we want
+  # 'l,l,r' to be equal to 'l,r', so we're ignoring duplicates.
+  # Not sure if that's correct to do so though.
+  for l_item in left:
+    if l_item not in right:
+      return False
+  for r_item in right :
+    if r_item not in left :
+      return False
+  return True
+
+
+# the function to calculate the GCD
+def gcd(num1, num2):
+    if num1 > num2:
+        for i in range(1,num2+1):
+            if num2 % i == 0:
+                if num1 % i == 0:
+                    result = i
+        return result
+
+    elif num2 > num1:
+        for i in range(1,num1+1):
+            if num1 % i == 0:
+                if num2 % i == 0:
+                    result = i
+        return result
+
+    else:
+        result = num1*num2/num1
+        return result
+
+# the function to calculate the LCM
+def lcm(num1, num2):
+    result = num1*num2/gcd(num1,num2)
+    return result
+
 
 
 class ListArgumentAction(argparse.Action):
