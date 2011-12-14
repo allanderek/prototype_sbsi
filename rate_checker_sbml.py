@@ -23,7 +23,7 @@ def get_rate_affectors(rate_element):
 def check_reaction(reaction, rate_analyser):
   """Check the kinetic law of a reaction"""
   num_warnings = 0
-  kin_law = reaction.get_kinetic_law()
+  kin_law = reaction.kinetic_law
   # All the identifiers which affect the rate of the reaction.
   # Of course some of these may just be rate constants, some may not
   # be species. Additionally some may be dynamic variables which are
@@ -36,10 +36,10 @@ def check_reaction(reaction, rate_analyser):
   identifiers = rate_analyser.get_rate_affectors(kin_law)
   referenced_species = [ s for s in identifiers if s in species_names ]
 
-  reactant_names = [ unicode(r.get_name()) 
-                     for r in reaction.get_reactants() ]
-  modifier_names = [ unicode(m.get_name())
-                     for m in reaction.get_modifiers() ]
+  reactant_names = [ unicode(r.name) 
+                     for r in reaction.reactants ]
+  modifier_names = [ unicode(m.name)
+                     for m in reaction.modifiers ]
   # by this I mean all names on the left-hand side of the reaction
   all_lhs_names = reactant_names + modifier_names
 
@@ -47,7 +47,7 @@ def check_reaction(reaction, rate_analyser):
     if reactant_name not in identifiers: # referenced_species?
       num_warnings += 1
       print (reactant_name + " is a reactant of reaction " +
-             reaction.get_name() + " but does not affect the rate")
+             reaction.name + " but does not affect the rate")
 
   for identifier in referenced_species:
     if identifier not in all_lhs_names:

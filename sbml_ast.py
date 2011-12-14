@@ -8,6 +8,8 @@ import copy
 
 import utils
 
+default_location_name = "default_compartment"
+
 def output_to_sbml_file(filename, arguments, document):
   """A utility function for consumers of this module to calculate
      the output file for given a set of parsed arguments which includes
@@ -392,22 +394,8 @@ class Reaction(object):
     """Returns true if the given reaction is the reverse of
        the current reaction
     """
-    def equal_lists(left, right):
-      """Checks if two lists are 'equal', equal if they are considered
-         to be sets
-      """
-      # Could check the lengths here, but I think we want
-      # 'l,l,r' to be equal to 'l,r', so we're ignoring duplicates.
-      # Not sure if that's correct to do so though.
-      for l_item in left:
-        if l_item not in right:
-          return False
-      for r_item in right :
-        if r_item not in left :
-          return False
-      return True
-    if (equal_lists(self.reactants, the_inverse.products) and
-        equal_lists(self.products, the_inverse.reactants)):
+    if (utils.equal_lists(self.reactants, the_inverse.products) and
+        utils.equal_lists(self.products, the_inverse.reactants)):
       return True
     else:
       return False
@@ -429,9 +417,9 @@ class Reaction(object):
   def involves(self, species):
     """Returns true if the given species is involved with this reaction"""
     name = species.name
-    reactant_names = [ r.get_name() for r in self.reactants ] 
-    product_names = [ p.get_name() for p in self.products ]
-    modifier_names = [ m.get_name() for m in self.modifiers ]
+    reactant_names = [ r.name for r in self.reactants ] 
+    product_names = [ p.name for p in self.products ]
+    modifier_names = [ m.name for m in self.modifiers ]
     if ( (name in reactant_names or
           name in product_names  or
           name in modifier_names) and
@@ -457,6 +445,11 @@ class Reaction(object):
 
     product_names = [ r.format_participant() for r in self.products ]
     results += ", ".join(product_names)
+
+    if self.is_source():
+      results += "  (is source)"
+    if self.is_sink():
+      results += "  (is sink)"
  
     return results
 
@@ -468,6 +461,8 @@ class Reaction(object):
     reaction_element.setAttribute("fast", "false")
     if self.location:
       reaction_element.setAttribute("compartment", self.location)
+    else:
+      reaction_element.setAttribute("compartment", default_location_name)
     if self.reactants:
       list_of_reactants = document.createElement("listOfReactants")
       reaction_element.appendChild(list_of_reactants)
@@ -565,7 +560,7 @@ class SBMLModel(object):
 
     if not self.compartments:
       default_compartment = document.createElement("compartment")
-      default_compartment.setAttribute("id", "default_compartment")
+      default_compartment.setAttribute("id", default_location_name)
       default_compartment.setAttribute("constant", "true")
       default_compartment.setAttribute("size", "1.0")
       list_of_compartments.appendChild(default_compartment)
@@ -593,7 +588,7 @@ class SBMLModel(object):
         species_element.setAttribute("name", name)
         compartment = comp_def.location
         if not compartment:
-          compartment = "default_compartment"
+          compartment = default_location_name
         species_element.setAttribute("compartment", compartment)
         if comp_def.initial_amount:
           species_element.setAttribute("initialAmount", 
