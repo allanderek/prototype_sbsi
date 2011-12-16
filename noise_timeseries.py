@@ -26,8 +26,7 @@ def run():
                       help="Specify a column to be in the output")
   parser.add_argument('--mcolumn', action=utils.ListArgumentAction,
                       help="Specify a column not to be in the output")
-  parser.add_argument('--output-file', action='store',
-                      help="Specify an output file location")
+  utils.add_output_file_arg(parser)
 
   arguments = parser.parse_args()
 

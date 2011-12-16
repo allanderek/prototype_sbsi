@@ -22,7 +22,7 @@ def react_partic_of_species_ref(spec_ref):
   if not stoich:
     return sbml_ast.ReactionParticipant(name)
   else :
-    return sbml_ast.ReactionParticipant(name, stoich=float(stoich))
+    return sbml_ast.ReactionParticipant(name, stoich=int(stoich))
   return name
 
 def get_reaction_of_element(reaction_element):

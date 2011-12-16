@@ -30,7 +30,7 @@ def check_reaction(reaction, rate_analyser):
   # the sum of some species. So 'get_rate_affectors' should be a 'deep'
   # method which chases variable definitions. And here we should filter
   # out any that are not species names.
-  species_names = [ unicode(s.get_name) for s in rate_analyser.species ]
+  species_names = [ unicode(s.name) for s in rate_analyser.species ]
   if not kin_law:
     return 0
   identifiers = rate_analyser.get_rate_affectors(kin_law)
@@ -53,9 +53,8 @@ def check_reaction(reaction, rate_analyser):
     if identifier not in all_lhs_names:
       num_warnings += 1
       print (identifier + " modifies the rate of reaction " +
-             reaction.get_name() + " but is not a reactant or modifier")
+             reaction.name + " but is not a reactant or modifier")
     
-
   return num_warnings
 
 

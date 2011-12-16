@@ -146,4 +146,7 @@ class ListArgumentAction(argparse.Action):
       # otherwise set the list to the current set of values
       setattr(namespace, self.dest, list_values)
 
-
+def add_output_file_arg(argument_parser):
+  """Adds an output file argument to an command-line argument parser"""
+  argument_parser.add_argument('--output-file', action='store',
+    help="""Specify an output filename; "stdout" to print to the console""")

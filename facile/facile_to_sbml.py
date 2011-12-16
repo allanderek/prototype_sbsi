@@ -4,6 +4,7 @@ import sys
 import argparse
 import parcon
 
+import utils
 import facile_parser
 import sbml_ast
 
@@ -85,8 +86,7 @@ def main():
    # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="A facile model file to translate")
-  parser.add_argument('--output-file', action='store',
-    help="""Specify an output filename; "stdout" to print to the console""")
+  utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
