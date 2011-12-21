@@ -1,0 +1,5 @@
+A -> null ; k = 0.1;
+null  -> B ; k2 = 0.2;
+INIT
+A = 100 N ;
+B = 100 N ;
