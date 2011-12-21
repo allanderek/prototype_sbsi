@@ -19,6 +19,12 @@ def get_rate_affectors(rate_element):
 
   return identifiers
 
+def get_referenced_species(kin_law, rate_analyser):
+  """Returns the species referenced by the given kinetic law"""
+  identifiers = rate_analyser.get_rate_affectors(kin_law)
+  species_names = [ unicode(s.name) for s in rate_analyser.species ]
+  referenced_species = [ s for s in identifiers if s in species_names ]
+  return referenced_species
 
 def check_reaction(reaction, rate_analyser):
   """Check the kinetic law of a reaction"""
@@ -30,25 +36,28 @@ def check_reaction(reaction, rate_analyser):
   # the sum of some species. So 'get_rate_affectors' should be a 'deep'
   # method which chases variable definitions. And here we should filter
   # out any that are not species names.
-  species_names = [ unicode(s.name) for s in rate_analyser.species ]
   if not kin_law:
     return 0
-  identifiers = rate_analyser.get_rate_affectors(kin_law)
-  referenced_species = [ s for s in identifiers if s in species_names ]
-
   reactant_names = [ unicode(r.name) 
                      for r in reaction.reactants ]
   modifier_names = [ unicode(m.name)
                      for m in reaction.modifiers ]
   # by this I mean all names on the left-hand side of the reaction
   all_lhs_names = reactant_names + modifier_names
+  referenced_species = get_referenced_species(kin_law, rate_analyser)
 
+  # First check if all of the left hand side names, that is reactants
+  # or modifiers are also referenced by the kinetic law, we could
+  # actually split this up into reactants and modifiers since we could
+  # give a slightly different warning.
   for reactant_name in all_lhs_names:
-    if reactant_name not in identifiers: # referenced_species?
+    if reactant_name not in referenced_species:
       num_warnings += 1
       print (reactant_name + " is a reactant of reaction " +
              reaction.name + " but does not affect the rate")
 
+  # Now check that for every referenced species it is in fact declared
+  # as either a reactant or modifier.
   for identifier in referenced_species:
     if identifier not in all_lhs_names:
       num_warnings += 1
@@ -58,10 +67,9 @@ def check_reaction(reaction, rate_analyser):
   return num_warnings
 
 
-class RateAnalyser:
+class RateAnalyser(object):
   """A class implementing rate analysis for an sbml model"""
   def __init__(self, model):
-    self.model = model
     self.species = outline_sbml.get_list_of_species(model)
     self.assignment_rules = outline_sbml.get_list_of_assignment_rules(model)
     self.assignments = dict()

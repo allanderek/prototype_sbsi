@@ -50,6 +50,12 @@ class Expression:
        by any class inheriting from this class"""
     raise NotImplementedError("Expression is really an abstract class")
 
+  def used_names(self):
+    """This is a virtual method stud, this method should be overridden
+       by any class inheriting from this class. The overriding method
+       should return a set of names used within the expression
+    """
+    raise NotImplementedError("Expression is really an abstract class")
 
   def convert_to_sbml(self):
     """This is a virtual method stub, this method should be overridden
@@ -77,6 +83,9 @@ class NumExpression(Expression):
   def show_expr(self):
     """Display the underlying number of the numerical expression"""
     return str(self.number)
+  def used_names(self):
+    """Return the set of used names, clearly here there are none"""
+    return []
   def create_sbml_element(self, document):
     """Create an sbml xml element for the sbml code for the expression"""
     cn_element = document.createElement("cn")
@@ -94,6 +103,10 @@ class NameExpression(Expression):
   def show_expr(self):
     """Format as a string the name expression"""
     return self.name
+
+  def used_names(self):
+    """Return the set of names used within this expression"""
+    return set([self.name])
 
   def convert_to_sbml(self):
     """Convert the variable(name) expression to SBML code for
@@ -127,6 +140,13 @@ class ApplyExpression(Expression):
     result += ")"
     return result
 
+  def used_names(self):
+    """Return the set of names used within this apply expression"""
+    result_set = set()
+    for expr in self.args:
+      result_set = result_set.union(expr.used_names())
+    return result_set
+    
   def convert_to_sbml(self):
     """return a string representing the sbml of an math apply expression"""
     result = "<apply>\n"
@@ -158,8 +178,18 @@ class ApplyExpression(Expression):
       mass_action_reactants = reaction.get_mass_action_participants()
       extra_args = [ NameExpression(reactant.get_name())
                        for reactant in mass_action_reactants ]
-      new_expr = ApplyExpression("times", new_args + extra_args)
-      return new_expr
+      all_args = new_args + extra_args
+      # fMA should have exactly one argument, the additional arguments
+      # are the populations of all the reactants/modifiers of the reaction.
+      # It could be that there are no such, in otherwords we have a
+      # source reaction
+      if len(all_args) > 1:
+        new_expr = ApplyExpression("times", new_args + extra_args)
+        return new_expr
+      else:
+        # If there is only the original argument then just return that
+        # even without the surrounding 'fMA' application.
+        return all_args[0]
     else:
       new_expr = ApplyExpression(self.name, new_args)
       return new_expr
@@ -314,15 +344,24 @@ class Reaction(object):
 
   def add_reactant(self, reactant):
     """add a reactant into the reaction definition"""
-    self.reactants.append(reactant)
+    if isinstance(reactant, ReactionParticipant):
+      self.reactants.append(reactant)
+    else:
+      self.reactants.append(ReactionParticipant(reactant, stoich=1))
 
   def add_product(self, product):
     """add a product to the reaction"""
-    self.products.append(product)
+    if isinstance(product, ReactionParticipant):
+      self.products.append(product)
+    else:
+      self.products.append(ReactionParticipant(product, stoich=1))
 
   def add_modifier(self, modifier):
     """Add a modifier to the reaction"""
-    self.modifiers.append(modifier)
+    if isinstance(modifier, ReactionParticipant):
+      self.modifiers.append(modifier)
+    else:
+      self.modifiers.append(ReactionParticipant(modifier, stoich=1))
 
   def canonicalise_participants(self):
     """We look at the reaction participants and decide whether we could
@@ -414,18 +453,46 @@ class Reaction(object):
 
     return reversed_reaction
 
+  def is_in_species_list(self, species_list, species):
+    """A helper method for is_reactant, is_modifier and is_product.
+       Essentially checks if the given species_list contains the given
+       species and that that species is in the correction location
+    """
+    # So if the species given is just a name, just check for that
+    if isinstance(species, str):
+      for species_item in species_list:
+        if species_item.name == species:
+          return True
+      return False
+    # If it's not just a name, assume it is a species with a compartment
+    # and hence check whether it is in the correct location
+    for species_item in species_list:
+      if (species.name == species_item.name and
+          species.compartment == self.location):
+        return True
+    return False
+
+  def is_reactant(self, species):
+    """Returns true if the given species is a reactant of this reaction
+    """
+    return self.is_in_species_list(self.reactants, species)
+
+  def is_modifier(self, species):
+    """Returns true if the given species is a product of this reaction
+    """
+    return self.is_in_species_list(self.modifiers, species)  
+
+  def is_product(self, species):
+    """Returns true if the given species is a product of this reaction
+    """
+    return self.is_in_species_list(self.products, species)
+
+
   def involves(self, species):
     """Returns true if the given species is involved with this reaction"""
-    name = species.name
-    reactant_names = [ r.name for r in self.reactants ] 
-    product_names = [ p.name for p in self.products ]
-    modifier_names = [ m.name for m in self.modifiers ]
-    if ( (name in reactant_names or
-          name in product_names  or
-          name in modifier_names) and
-         (species.compartment == self.location) ):
-      return True
-    return False
+    return (self.is_reactant(species) or
+            self.is_modifier(species) or
+            self.is_product(species))
 
   def format_reaction(self):
     """Return a string representing the reaction in a format 
