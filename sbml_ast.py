@@ -20,11 +20,7 @@ def output_to_sbml_file(filename, arguments, document):
      Note that the first argument is the filename of the file from which
      we have translated into sbml and not the sbml filename itself.
   """
-
-  if arguments.output_file:
-    sbml_filename = arguments.output_file
-  else:
-    sbml_filename = utils.change_filename_ext(filename, ".sbml")
+  sbml_filename = utils.get_output_filename(filename, arguments, ".sbml")
   if sbml_filename == "stdout":
     sbml_file = sys.stdout
   else:

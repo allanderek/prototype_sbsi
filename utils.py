@@ -150,3 +150,13 @@ def add_output_file_arg(argument_parser):
   """Adds an output file argument to an command-line argument parser"""
   argument_parser.add_argument('--output-file', action='store',
     help="""Specify an output filename; "stdout" to print to the console""")
+
+def get_output_filename(filename, arguments, new_ext):
+  """ A utility function for the above output-file argument. Essentially
+      we generally want to just change the extension of the input filename.
+  """
+  if arguments.output_file:
+    return arguments.output_file
+  else:
+    return change_filename_ext(filename, new_ext)
+

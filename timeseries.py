@@ -23,6 +23,10 @@ class Timeseries:
        order of the column names"""
     return self.rows
 
+  def remove_row(self, index):
+    """Remove a row from the timeseries"""
+    self.rows.pop(index)
+
   def get_times(self):
     """Return a list of all times"""
     return [ row[0] for row in self.rows ]
@@ -31,7 +35,7 @@ class Timeseries:
     """Return the final time from the timeseries"""
     last_row = self.rows[len(self.rows) - 1]
     return last_row[0]
-
+ 
   def get_column_names(self):
     """Returns the set of columns, however does not include the
        first column because that is the 'Time' column"""

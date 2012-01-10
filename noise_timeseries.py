@@ -6,53 +6,26 @@
    likely under-constrained
 """
 import argparse
-import sys
 
-import timeseries
 import random
-import utils
+import modify_timeseries_shell
 
 def run():
-  """perform the banalities of command-line argument processing and
-     then go ahead and compare the parameter results to the
-     initial parameter settings
+  """ The main method
   """ 
   description = "Add noise to a timeseries"
+  parent_arg_parser = modify_timeseries_shell.create_arguments_parser()
+  parser = argparse.ArgumentParser(description=description,
+                                   parents=[parent_arg_parser])
+                                    
+  def add_noise_function(timecourse):
+    """Simply adds the noise function to the timecourse and returns it"""
+    timecourse.apply_noise_function(dream_noise_function)
+    return timecourse
+  modify_timeseries_shell.run(parser, add_noise_function, False)
+
+
   parser = argparse.ArgumentParser(description=description)
-  # Might want to make the type of this 'FileType('r')'
-  parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="the input files, should be exactly two")
-  parser.add_argument('--column', action=utils.ListArgumentAction,
-                      help="Specify a column to be in the output")
-  parser.add_argument('--mcolumn', action=utils.ListArgumentAction,
-                      help="Specify a column not to be in the output")
-  utils.add_output_file_arg(parser)
-
-  arguments = parser.parse_args()
-
-  if len(arguments.filenames) < 1:
-    print ("Must provide at least one timeseries to add noise to")
-    sys.exit(1)
-
-  timecourse_file = arguments.filenames[0]
-  timecourse = timeseries.get_timecourse_from_file(timecourse_file)
-
-  all_names = timecourse.get_column_names()
-  used_names = utils.get_non_ignored(all_names,
-                                     arguments.column,
-                                     arguments.mcolumn)
-  for name in all_names:
-    if name not in used_names:
-      timecourse.remove_column(name)
-
-  timecourse.apply_noise_function(dream_noise_function)
- 
-  output_filename = "noise_timecourse.csv" 
-  if arguments.output_file:
-    output_filename = arguments.output_file
-  newfile = open (output_filename, "w")
-  timecourse.write_to_file(newfile)
-  newfile.close()
 
 def dream_noise_function(orig_value):
   """Transforms the given value using the noise function used in the
