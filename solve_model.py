@@ -436,8 +436,11 @@ def create_arguments_parser(add_help):
   parser.add_argument('--max-times', action='store',
                       type=int, default=10000000000,
                       help="Set the maximum number of computed times")
-  parser.add_argument('--column', action='append',
+  parser.add_argument('--column', action=utils.ListArgumentAction,
                       help="Specify a column to be plotted")
+  parser.add_argument('--mcolumn', action=utils.ListArgumentAction,
+                      help="Specify a column not to be plotted")
+
   parser.add_argument('--plot-results', action='store_true',
                       help="Plot the resulting timeseries to a pdf file")
   log_choices = [ "info", "warning", "error", "critical", "debug" ]
@@ -519,12 +522,16 @@ def run():
       solver.initialise_solver()
       solver.set_parameter_file(arguments.param_file)
       timecourse = solver.solve_model(configuration)
+      all_columns = timecourse.get_column_names()
+      used_names = utils.get_non_ignored(all_columns, 
+                                         arguments.column,
+                                         arguments.mcolumn)
+   
       if timecourse:
-        if arguments.column:
-          tc_columns = timecourse.get_column_names()
-          for tc_column in tc_columns:
-            if tc_column not in arguments.column:
-              timecourse.remove_column(tc_column)
+        # First remove any columns which are going to be plotted.
+        for tc_column in all_columns:
+          if tc_column not in used_names:
+            timecourse.remove_column(tc_column)
 
         results_filename = utils.change_filename_ext(filename, ".csv")
         results_file = open(results_filename, "w")
