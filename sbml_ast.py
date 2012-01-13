@@ -628,6 +628,26 @@ class AssignmentRule(Assignment):
   pass
 
 
+def find_element_after(top_element, candidate_names):
+  """Occasionally we need to insert an element in a given position
+     but the xml dom library only provides us with insertBefore.
+     Therefore we need to find the element that occurs directly after
+     the position we want. Sometimes those that follow are optional.
+     For example we wish to insert the listOfInitialAssignments, before
+     listOfRules, but there may not be any rules and hence no
+     listOfRules element, so we need to search for the next candidate
+     extra. So this method takes in an element and a list of candidiate
+     child elements and returns the first one that exists.
+  """
+  for candidate in candidate_names:
+    elements = top_element.getElementsByTagName(candidate)
+    if elements:
+      return elements[0]
+
+  # If none of the candidates are found, then there is no choice but
+  # to return None. 
+  return None
+
 class SBMLModel(object):
   """A class representing an SBML model which could be written
      out as an sbml document. This is primarily for writing the document
@@ -756,7 +776,13 @@ class SBMLModel(object):
         init_assigns.appendChild(init_assign)
       model_element.appendChild(init_assigns) 
     
-      # model_element.insertBefore(init_assigns, after_init_assigns)
+      after_init_assigns = find_element_after(model_element,
+                                              [ "listOfRules",
+                                                "listOfConstraints",
+                                                "listOfReactions",
+                                                "listOfEvents"
+                                              ])
+      model_element.insertBefore(init_assigns, after_init_assigns)
 
     return document
 
