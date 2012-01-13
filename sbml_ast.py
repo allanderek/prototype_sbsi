@@ -58,6 +58,21 @@ class Expression:
        by any class inheriting from this class"""
     raise NotImplementedError("Expression is really an abstract class")
 
+  def get_value(self):
+    """Returns the underlying value of this expression. For most
+       expressions that is not possible and so the value None is returned.
+       But for example for a literal Number expression this value is
+       returned. Compound expressions may or may not check whether they
+       can be reduced, for example 3 + 4 can be, but 3 + x cannot.
+       Additionally this only returns the number in the event that the
+       expression itself can be reduced, not whether or not it is possible
+       in general, eg if we somehow in a file we had defined x to be 3,
+       then this still returns None for the name expression 'x', even
+       though we may know that it can be reduced to 3.
+    """
+    return None
+
+
   def remove_rate_law_sugar(self, reaction):
     """This is a virtual method stub, this method should be overridden
        by any class inheriting from this class. In fact we should be
@@ -79,6 +94,11 @@ class NumExpression(Expression):
   def show_expr(self):
     """Display the underlying number of the numerical expression"""
     return str(self.number)
+
+  def get_value(self):
+    """Returns the underlying value of this expression"""
+    return self.number
+
   def used_names(self):
     """Return the set of used names, clearly here there are none"""
     return []
@@ -218,20 +238,29 @@ class VariableDeclaration:
   def create_initial_assignment(self, document):
     """Creates an sbml element for an initial assignment for the
        parameter corresponding to this variable declaration"""
-    init_assign = document.createElement("initialAssignment")
-    init_assign.setAttribute("symbol", self.variable)
+    return create_initial_assignment(document, 
+                                     self.variable,
+                                     self.expression)
 
-    math_element = document.createElement("math")
-    mathxmlns = "http://www.w3.org/1998/Math/MathML"
-    math_element.setAttribute("xmlns", mathxmlns)
-    mathxmlnssbml = "http://www.sbml.org/sbml/level3/"
-    math_element.setAttribute("xmlns:sbml", mathxmlnssbml)
-    init_assign.appendChild(math_element)
 
-    expr_element = self.expression.create_sbml_element(document)
-    math_element.appendChild(expr_element)
+def create_initial_assignment(document, name, expression):
+  """Create an initial assignment element which assigns the given
+     name to the given expression
+  """
+  init_assign = document.createElement("initialAssignment")
+  init_assign.setAttribute("symbol", name)
 
-    return init_assign
+  math_element = document.createElement("math")
+  mathxmlns = "http://www.w3.org/1998/Math/MathML"
+  math_element.setAttribute("xmlns", mathxmlns)
+  mathxmlnssbml = "http://www.sbml.org/sbml/level3/"
+  math_element.setAttribute("xmlns:sbml", mathxmlnssbml)
+  init_assign.appendChild(math_element)
+
+  expr_element = expression.create_sbml_element(document)
+  math_element.appendChild(expr_element)
+
+  return init_assign
 
 
 class IdNamedElement(object):
@@ -612,6 +641,7 @@ class SBMLModel(object):
     self.reactions = None
     self.component_defs = None
     self.var_decs = None
+    self.init_assign_elements = []
     
   def create_compartment_elements(self, document, model_element):
     """Create the elements to describe the compartments within
@@ -649,14 +679,17 @@ class SBMLModel(object):
         species_element.setAttribute("id", name)
         species_element.setAttribute("name", name)
         compartment = comp_def.location
+        expr = comp_def.initial_expression
         if not compartment:
           compartment = default_location_name
         species_element.setAttribute("compartment", compartment)
         if comp_def.initial_amount:
           species_element.setAttribute("initialAmount", 
                                        comp_def.initial_amount)
-        else:
+        elif expr:
           species_element.setAttribute("initialAmount", "0")
+          init_assign = create_initial_assignment(document, name, expr)
+          self.init_assign_elements.append(init_assign)
           
         species_element.setAttribute("hasOnlySubstanceUnits", "true")
         species_element.setAttribute("constant", "false")
@@ -670,15 +703,24 @@ class SBMLModel(object):
     if self.var_decs:
       list_of_params = document.createElement("listOfParameters")
       top_element.appendChild(list_of_params)
-   
-      init_assigns = document.createElement("listOfInitialAssignments")
-      top_element.appendChild(init_assigns)
+ 
+      # Variable declarations are often used inside things such as
+      # initial assignments for species, therefore we take care to
+      # put the variable assigns first. However we don't just insert
+      # each on at the head of the initial assignments since that would
+      # reverse the order of the variable declarations themselves which
+      # may be in a specific order. 
+      init_assigns = [] 
       for var_dec in self.var_decs:
         param_element = var_dec.create_parameter_element(document)
         list_of_params.appendChild(param_element)
 
         init_assign = var_dec.create_initial_assignment(document)
-        init_assigns.appendChild(init_assign)
+        init_assigns.append(init_assign)
+     
+      # So here we add the variable declaration initial assignments
+      # in order to the front of the overall initial assignments 
+      self.init_assign_elements = init_assigns + self.init_assign_elements
 
 
   def create_sbml_document(self):
@@ -706,6 +748,15 @@ class SBMLModel(object):
       for reaction in self.reactions:
         reaction_element = reaction.create_element(document)
         list_of_reactions.appendChild(reaction_element)
+
+   
+    if self.init_assign_elements: 
+      init_assigns = document.createElement("listOfInitialAssignments")
+      for init_assign in self.init_assign_elements:
+        init_assigns.appendChild(init_assign)
+      model_element.appendChild(init_assigns) 
+    
+      # model_element.insertBefore(init_assigns, after_init_assigns)
 
     return document
 
