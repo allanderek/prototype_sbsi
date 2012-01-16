@@ -118,8 +118,16 @@ def translate_facile_model(facile_model, arguments):
 
   sbml_model.reactions = all_equations
 
-  sbml_model.component_defs = facile_model.initial_conditions
+  def create_assign_init_cond(assign_rule):
+    init_cond = facile_parser.InitialCondition()
+    init_cond.name = assign_rule.variable
+    return init_cond
+  assign_species = [ create_assign_init_cond(a) 
+                       for a in facile_model.assign_rules ]
+  sbml_model.component_defs = (facile_model.initial_conditions + 
+                                assign_species )
   sbml_model.var_decs = facile_model.var_decs
+  sbml_model.assign_rules = facile_model.assign_rules
   document = sbml_model.create_sbml_document()
   return document
 

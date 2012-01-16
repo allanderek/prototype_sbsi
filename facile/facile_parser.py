@@ -136,8 +136,20 @@ def create_var_dec(parse_result):
   return var_dec
 var_dec_parser = Translate(var_dec_syntax, create_var_dec)
 
-reaction_or_var_dec_parser = First(var_dec_parser, reaction_parser)
-equation_section_syntax = OneOrMore(reaction_or_var_dec_parser)
+
+compound_var_syntax = name_syntax + "=" + biopepa_parser.expr + ";"
+def create_compound_var_dec(parse_result):
+  """post-parsing method for compound variable declarations"""
+  name = parse_result[0]
+  expression = parse_result[1]
+  return sbml_ast.AssignmentRule(name, expression)
+compound_var_parser = Translate(compound_var_syntax, 
+                                create_compound_var_dec)
+  
+equation_section_def = First(var_dec_parser,
+                             reaction_parser,
+                             compound_var_parser)
+equation_section_syntax = OneOrMore(equation_section_def)
 
 
 class InitialCondition(object):
@@ -181,6 +193,7 @@ class FacileModel(object):
   def __init__(self):
     self.equations = None
     self.var_decs = None
+    self.assign_rules = None
     self.initial_conditions = None
 
 model_syntax = (equation_section_syntax + 
@@ -198,7 +211,11 @@ def create_model(parse_result):
   var_decs = [ s for s in eqn_section
                    if isinstance(s, sbml_ast.VariableDeclaration)
              ]
+  assign_rules = [ s for s in eqn_section
+                       if isinstance(s, sbml_ast.AssignmentRule)
+                 ]
   facile_model.var_decs = var_decs
+  facile_model.assign_rules = assign_rules
   facile_model.initial_conditions = parse_result[1]
   return facile_model
 

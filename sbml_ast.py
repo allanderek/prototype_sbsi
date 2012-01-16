@@ -243,6 +243,15 @@ class VariableDeclaration:
                                      self.expression)
 
 
+def create_math_element(document):
+  math_element = document.createElement("math")
+  mathxmlns = "http://www.w3.org/1998/Math/MathML"
+  math_element.setAttribute("xmlns", mathxmlns)
+  mathxmlnssbml = "http://www.sbml.org/sbml/level3/"
+  math_element.setAttribute("xmlns:sbml", mathxmlnssbml)
+  return math_element
+  
+
 def create_initial_assignment(document, name, expression):
   """Create an initial assignment element which assigns the given
      name to the given expression
@@ -250,11 +259,7 @@ def create_initial_assignment(document, name, expression):
   init_assign = document.createElement("initialAssignment")
   init_assign.setAttribute("symbol", name)
 
-  math_element = document.createElement("math")
-  mathxmlns = "http://www.w3.org/1998/Math/MathML"
-  math_element.setAttribute("xmlns", mathxmlns)
-  mathxmlnssbml = "http://www.sbml.org/sbml/level3/"
-  math_element.setAttribute("xmlns:sbml", mathxmlnssbml)
+  math_element = create_math_element(document)
   init_assign.appendChild(math_element)
 
   expr_element = expression.create_sbml_element(document)
@@ -593,10 +598,8 @@ class Reaction(object):
     if self.kinetic_law:
       kinetic_law = document.createElement("kineticLaw")
       reaction_element.appendChild(kinetic_law)
-      math_element = document.createElement("math")
+      math_element = create_math_element(document)
       kinetic_law.appendChild(math_element)
-      mathxmlns = "http://www.w3.org/1998/Math/MathML"
-      math_element.setAttribute("xmlns", mathxmlns)
       simplified_rate = self.kinetic_law.remove_rate_law_sugar(self)
       expr_element = simplified_rate.create_sbml_element(document)
       math_element.appendChild(expr_element)
@@ -625,7 +628,18 @@ class InitialAssignment(Assignment):
 
 class AssignmentRule(Assignment):
   """A class representing an sbml assignment rule"""
-  pass
+  def create_element(self, document):
+    assign_rule = document.createElement("assignmentRule")
+    assign_rule.setAttribute("variable", self.variable)
+
+    math_element = create_math_element(document)
+    assign_rule.appendChild(math_element)
+
+    expr_element = self.expression.create_sbml_element(document)
+    math_element.appendChild(expr_element)
+
+    return assign_rule
+
 
 
 def find_element_after(top_element, candidate_names):
@@ -661,6 +675,7 @@ class SBMLModel(object):
     self.reactions = None
     self.component_defs = None
     self.var_decs = None
+    self.assign_rules = None
     self.init_assign_elements = []
     
   def create_compartment_elements(self, document, model_element):
@@ -706,10 +721,11 @@ class SBMLModel(object):
         if comp_def.initial_amount:
           species_element.setAttribute("initialAmount", 
                                        comp_def.initial_amount)
-        elif expr:
+        else:
           species_element.setAttribute("initialAmount", "0")
-          init_assign = create_initial_assignment(document, name, expr)
-          self.init_assign_elements.append(init_assign)
+          if expr:
+            init_assign = create_initial_assignment(document, name, expr)
+            self.init_assign_elements.append(init_assign)
           
         species_element.setAttribute("hasOnlySubstanceUnits", "true")
         species_element.setAttribute("constant", "false")
@@ -761,15 +777,20 @@ class SBMLModel(object):
     self.create_species_elements(document, model_element)
     self.convert_variable_declarations(document, model_element)
 
-    list_of_reactions = document.createElement("listOfReactions")
-    model_element.appendChild(list_of_reactions)
+    if self.assign_rules:
+      assign_rules = document.createElement("listOfRules")
+      for assign_rule in self.assign_rules:
+        assign_rule_element = assign_rule.create_element(document)
+        assign_rules.appendChild(assign_rule_element)
+      model_element.appendChild(assign_rules)
 
     if self.reactions:
+      list_of_reactions = document.createElement("listOfReactions")
       for reaction in self.reactions:
         reaction_element = reaction.create_element(document)
         list_of_reactions.appendChild(reaction_element)
+      model_element.appendChild(list_of_reactions)
 
-   
     if self.init_assign_elements: 
       init_assigns = document.createElement("listOfInitialAssignments")
       for init_assign in self.init_assign_elements:

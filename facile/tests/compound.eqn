@@ -1,0 +1,9 @@
+variable x = 100.0
+A + B -> AB ;    k1 = 1.0;
+A -> C; k2 = 0.8;
+ABC = AB + C;
+INIT
+A = x N ;
+B = x N ;
+AB = 10 N ;
+C = 10 N ;

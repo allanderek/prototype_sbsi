@@ -288,13 +288,13 @@ class ComponentPopulation:
   """A class to hold the representation of a system_equation component.
      This is essentially a name and initial population
   """
-  def __init__(self, name, population_expr):
+  def __init__(self, name, initial_expression):
     self.name = name
     # The 'create_sbml' module requires this to have an 'initial_amount'
     # field. In theory we could populate this if the expression is a
     # simple number.
     self.initial_amount = None
-    self.population_expr = population_expr
+    self.initial_expression = initial_expression
     self.location = "default location"
 
 def create_component_population(parse_result):
