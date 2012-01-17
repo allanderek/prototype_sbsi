@@ -5,7 +5,7 @@ import argparse
 import parcon
 
 import utils
-import biopepa_parser
+import biopepa.biopepa_parser as biopepa_parser
 import sbml_ast
 
 class Reaction(sbml_ast.Reaction):

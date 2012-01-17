@@ -1,7 +1,7 @@
 """A unit test module for the biopepa_parser module"""
 import unittest
 
-import biopepa_parser
+import biopepa.biopepa_parser as biopepa_parser
 
 class Arguments:
   """Emulates the arguments class which can be passed into
@@ -16,10 +16,10 @@ class TestCheckBiopepaParser(unittest.TestCase):
   """
   # Okay we can't do much about the unittest.TestCase having
   # some 45 public methods.k
-  # pylint: disable-msg=R0904
+  # pylint: disable=R0904
   def setUp(self):
     # Similarly we can't do much about the name 'setUp' 
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     pass 
 
   def test_check_biopepa_parser(self):

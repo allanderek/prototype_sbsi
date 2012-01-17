@@ -8,15 +8,8 @@ import argparse
 import timeseries
 import modify_timeseries_shell
 
-def add_derivatives_columns(timecourse):
-  """Given a timeseries add columns to the end which represent the
-     derivatives of all the original columns
-  """
-  # All the d_ prefixes here stand for 'derivative'
-  names = timecourse.get_column_names()
-  d_names = [ "Time" ] + [ "d_" + name for name in names ]
-
-  rows = timecourse.get_rows()
+def get_derivatives_columns(rows):
+  """Return the derivatives of all the given timecourse rows"""
   d_rows = []
   # index here goes up to the length of the rows minus 1, because
   # the final row cannot be calculated hence we will somehow fudge this.
@@ -33,11 +26,25 @@ def add_derivatives_columns(timecourse):
       derivative = (next_value - this_value) / time_gap
       new_d_row.append(derivative)
     d_rows.append(new_d_row)  
+  return d_rows
+
+
+
+def add_derivatives_columns(timecourse):
+  """Given a timeseries add columns to the end which represent the
+     derivatives of all the original columns
+  """
+  # All the d_ prefixes here stand for 'derivative'
+  names = timecourse.get_column_names()
+
+  rows = timecourse.get_rows()
+  d_rows = get_derivatives_columns(rows)
 
   # Remove the last column of the original timeseries such that
   # we can add the two timeseries together
   timecourse.remove_row(len(rows) - 1)
 
+  d_names = [ "Time" ] + [ "d_" + name for name in names ]
   d_timecourse = timeseries.Timeseries(d_names, d_rows)
   timecourse.add_timeseries(d_timecourse)
 

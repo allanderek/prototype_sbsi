@@ -5,7 +5,7 @@ import argparse
 import parcon
 
 import utils
-import facile_parser
+import facile.facile_parser as facile_parser
 import sbml_ast
 
 def uniquely_name_reactions(reactions):
@@ -119,6 +119,11 @@ def translate_facile_model(facile_model, arguments):
   sbml_model.reactions = all_equations
 
   def create_assign_init_cond(assign_rule):
+    """From an assignment rule create an initial condition, this ensures
+       that there will be a 'species' definition created for the
+       assignment rule, which will come from a compound species/variable
+       in facile, such as: ABC = AB + C;
+    """
     init_cond = facile_parser.InitialCondition()
     init_cond.name = assign_rule.variable
     return init_cond

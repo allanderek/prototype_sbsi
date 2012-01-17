@@ -15,10 +15,10 @@ class TestCheckParameters(unittest.TestCase):
   """
   # Okay we can't do much about the unittest.TestCase having
   # some 45 public methods.k
-  # pylint: disable-msg=R0904
+  # pylint: disable=R0904
   def setUp(self):
     # Similarly we can't do much about the name 'setUp' 
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     self.arguments = Arguments()
 
   def test_check_param(self):
@@ -26,12 +26,12 @@ class TestCheckParameters(unittest.TestCase):
     param_p1  = parameters.Parameter("p1", 1.0, 0.1, 10.0)
     p1_result = parameters.check_parameter(param_p1, 3.0,
                                            self.arguments) 
-    self.assertIsNone(p1_result)
+    self.assertTrue(p1_result == None)
 
     param_p2  = parameters.Parameter("p2", 1.0, 0.0, 10.0)
     p2_result = parameters.check_parameter(param_p2, 0.00001,
                                            self.arguments)
-    self.assertIsNotNone(p2_result)
+    self.assertFalse(p2_result == None)
     self.assertTrue(p2_result.too_low)
 
 if __name__ == '__main__':

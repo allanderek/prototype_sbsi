@@ -15,10 +15,10 @@ class TestCheckFunctionTranslator(unittest.TestCase):
   """
   # Okay we can't do much about the unittest.TestCase having
   # some 45 public methods.k
-  # pylint: disable-msg=R0904
+  # pylint: disable=R0904
   def setUp(self):
     # Similarly we can't do much about the name 'setUp' 
-    # pylint: disable-msg=C0103
+    # pylint: disable=C0103
     pass 
 
   def test_check_function_parser(self):

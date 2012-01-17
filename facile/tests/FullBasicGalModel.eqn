@@ -171,13 +171,14 @@ Gal3paGal80p_cyt 		->		null; 			0.5*k3_degr; # Degradation of complex added Aug 
 
 ###########################################################################################
 ###########################################################################################
-
+TotalGal80 = Gal80p_dim_cyt + Gal80p_nuc + Gal80p_cyt;
 
 #####################################################################
 ###################### INITIAL VALUES ###############################
 #####################################################################
 INIT
-# initial values chosen Aug 19, 2011. They are steady states reached when galE=galI=0
+# initial values chosen Aug 19, 2011.
+# They are steady states reached when galE=galI=0
 # galactose-  VALUES NOT TESTED
 galE	  	  = 2.365e19 N; # This comes out to 0.11M, which is 2% galactose
 galI 		  = 0 M;

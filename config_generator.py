@@ -142,7 +142,7 @@ class Element:
     # function, because it really makes sense here, in the the
     # subclasses that override this method they may well make use
     # of the instance variables so this cannot be a static method
-    # pylint: disable-msg=R0201
+    # pylint: disable=R0201
     return False
  
   def parse_method_name(self):

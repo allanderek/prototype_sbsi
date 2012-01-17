@@ -70,6 +70,7 @@ class Expression:
        then this still returns None for the name expression 'x', even
        though we may know that it can be reduced to 3.
     """
+    # pylint: disable=R0201
     return None
 
 
@@ -80,7 +81,7 @@ class Expression:
        yet fully groked visitor patterns for python.
        Well it's a bit more than a stub, all the very simple expressions
        which don't have sub-expressions do not need to override this."""
-    # pylint: disable-msg=W0613
+    # pylint: disable=W0613
     return self 
 
 class NumExpression(Expression):
@@ -244,6 +245,10 @@ class VariableDeclaration:
 
 
 def create_math_element(document):
+  """Creates a math element into which is generally stored some kind
+     of expression, for example it a math element is the child of a
+     kineticLaw element of a Reaction element.
+  """
   math_element = document.createElement("math")
   mathxmlns = "http://www.w3.org/1998/Math/MathML"
   math_element.setAttribute("xmlns", mathxmlns)
@@ -629,6 +634,8 @@ class InitialAssignment(Assignment):
 class AssignmentRule(Assignment):
   """A class representing an sbml assignment rule"""
   def create_element(self, document):
+    """Create an assignmentRule element representing this assignment rule
+    """
     assign_rule = document.createElement("assignmentRule")
     assign_rule.setAttribute("variable", self.variable)
 
