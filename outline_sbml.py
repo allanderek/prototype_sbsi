@@ -4,6 +4,9 @@ import argparse
 
 import sbml_ast
 
+
+   
+
 def name_of_species_reference(spec_ref):
   """Return the name of the species referred to within a
      speciesReference sbml element. This is also used for 
@@ -154,7 +157,9 @@ def get_init_assign_of_element(init_assign_element):
   math_elements = init_assign_element.getElementsByTagName("math")
   expression = None
   if math_elements:
-    expression = math_elements[0]
+    expr_builder = ExprBuilder()
+    expr_builder.visit_maths(math_elements[0])
+    expression = expr_builder.get_results()
 
   return sbml_ast.InitialAssignment(symbol_name, expression)
   
@@ -177,19 +182,16 @@ def print_amount(num, singular, plural):
     print(str(num) + " " + plural)
 
 
-class ExprVisitor: 
-  """A class which descends through SBML math expressions storing
-     a formatted string representing the math expression"""
+class ExprVisitor(object):
+  """A parent class for classes which descend through SBML
+     expression elements storing a result along the way.
+  """
   def __init__(self):
-    self.result = ""
+    self.result = None
 
   def get_results(self):
     """Return the string result of visiting the expression"""
     return self.result
-
-  def print_str(self, string):
-    """A (private) utility function for printing to the result string"""
-    self.result += string
 
   def generic_visit(self, element):
     """The main entry point, decides on the kind of element we have
@@ -203,9 +205,83 @@ class ExprVisitor:
       elif tag_name == "cn":
         self.visit_cn(element)
       else:
-        self.print_str("unknown-tag: " + tag_name)
+        raise ValueError("unknown-tag: " + tag_name)
     else: 
       return ""
+
+  def visit_maths(self, maths):
+    """Visit a 'maths' element"""
+    for child in maths.childNodes:
+      if child.nodeType == child.ELEMENT_NODE:
+        self.generic_visit(child)
+
+  ###################################
+  # These are the unimplemented methods that you would be likely
+  # to override for your expression visitor.
+  def visit_ci(self, element):
+    """Visit a 'ci' element"""
+    raise NotImplementedError("visit_ci element for expression visitor")
+
+  def visit_cn(self, element):
+    """Visit a 'cn' element"""
+    raise NotImplementedError("visit_cn element for expression visitor")
+
+  def visit_apply(self, element):
+    """Visit an 'apply' element"""
+    raise NotImplementedError("visit_apply element for expression visitor")
+
+
+ 
+def parse_expression(expr_element):
+  """Parse an sbml expression element into an sbml_ast.Expression
+     subclass
+  """
+  expr_builder = ExprBuilder()
+  expr_builder.generic_visit(expr_element)
+  return expr_builder.get_results()
+
+class ExprBuilder(ExprVisitor):
+  """An expression visitor class which will build an abstract syntax
+     representation of the expression defined by an sbml expression
+     element (typically under a math element).
+  """
+  def __init__(self):
+    ExprVisitor.__init__(self)
+    self.result = None
+
+  def visit_ci(self, element):
+    """Visit a 'ci' element"""
+    self.result = sbml_ast.NameExpression(element.firstChild.data)
+
+  def visit_cn(self, element):
+    """Visit a 'cn' element"""
+    self.result = sbml_ast.NumExpression(element.firstChild.data)
+
+  def visit_apply(self, element):
+    """Visit an 'apply' element"""
+    children = [ x for x in element.childNodes 
+                   if x.nodeType == x.ELEMENT_NODE
+               ]
+    function = children[0]
+    function_name = function.tagName
+ 
+    arguments = []
+    for child in children[1:]:
+      self.generic_visit(child)
+      arguments.append(self.result)
+    apply_expr = sbml_ast.ApplyExpression(function_name, arguments) 
+    self.result = apply_expr
+
+class ExprFormatter(ExprVisitor):
+  """A class which descends through SBML math expressions storing
+     a formatted string representing the math expression"""
+  def __init__(self):
+    ExprVisitor.__init__(self)
+    self.result = ""
+
+  def print_str(self, string):
+    """A (private) utility function for printing to the result string"""
+    self.result += string
 
   def visit_ci(self, element):
     """Visit a 'ci' element"""
@@ -241,16 +317,11 @@ class ExprVisitor:
         self.print_str (", ")
       self.print_str (")")
 
-  def visit_maths(self, maths):
-    """Visit a 'maths' element"""
-    for child in maths.childNodes:
-      if maths.nodeType == maths.ELEMENT_NODE:
-        self.generic_visit(child)
 
 def format_math_element(maths):
   """Format an math element as an expression
   """
-  expr_visitor = ExprVisitor()
+  expr_visitor = ExprFormatter()
   expr_visitor.visit_maths(maths)
   return expr_visitor.get_results()
  

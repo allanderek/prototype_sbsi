@@ -13,8 +13,15 @@ import biopepa
 import timeseries
 import utils
 import plotcsv
+import parameters
+import sbml_parametiser
 
-
+# for scipy ode solver which may be moved to a file on its own
+import outline_sbml
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.integrate import odeint
+import xml.dom.minidom
 
 class SolverError(Exception):
   """A simple exception to be raised when we recognise that the model
@@ -282,6 +289,121 @@ class SbmlCvodeSolver:
     csv_file.close()
     return timecourse
 
+class ScipyOdeSbmlSolver(object):
+  """A class which implements an ODE based solver for SBML models.
+     Based on scipy
+  """
+  def __init__(self, model_file):
+    self.model_file = model_file
+    self.model = None
+
+  def initialise_solver(self):
+    """Initialise the scipy ode solver, nothing special required here"""
+    pass
+
+  def set_parameter_file(self, param_file):
+    """This method is here to conform with the solver api, but cannot
+       actually be used with anything but 'None' and hence will never
+       have an effect.
+    """
+    # Ideally we should be able to parse in the param file and then
+    # simply call parameterise_model
+    if param_file:
+      logging.error("Cannot use a parameter file with the scpiy solver")
+      logging.info ("Model file : " + self.model_file)
+      logging.error("Try --solver cvodes")
+      raise ValueError
+
+  def parameterise_model(self, param_file):
+    """Given a parameter file modify the model (possibly in file)
+       to obtain a new model with the parameters as specified in the
+       param_file
+    """
+    dom = xml.dom.minidom.parse(self.model_file)
+    model = dom.getElementsByTagName("model")[0]
+    parameter_dict = parameters.parse_param_file(param_file)
+    sbml_parametiser.parameterise_model(model, parameter_dict)
+
+
+  def solve_model(self, configuration):
+    """Solve the model, this does not call 'parameterise_model' so
+       that should be called first if it is needed
+    """
+    if self.model:
+      model = self.model
+    else:
+      dom = xml.dom.minidom.parse(self.model_file)
+      model = dom.getElementsByTagName("model")[0]
+
+    species = outline_sbml.get_list_of_species(model)
+    reactions = outline_sbml.get_list_of_reactions(model)
+    species_names = [ s.name for s in species ]
+
+    def get_rhs(current_pops, time):
+      """The main function passed to the solver, it calculates from the
+         current populations of species, the rate of change of each
+         species. Also given a 'time' which may be used in the equations
+         Essentially then solves for each ODE the right hand side of
+         the ode at the given populations and time.
+      """
+      results = [0] * len(current_pops)
+      for reaction in reactions:
+        reactants = reaction.reactants
+        products = reaction.products
+        rate = 1
+        reactant_indices = [ species_names.index(reactant.name) 
+                               for reactant in reactants ]
+        for reactant_index in reactant_indices:
+          rate *= current_pops[reactant_index]
+        for reactant_index in reactant_indices:
+          results[reactant_index] -= rate
+        for product in products:
+          product_index = species_names.index(product.name)
+          results[product_index] += rate
+        
+      return results  
+
+    # The initial conditions
+    initials = [0] * len(species)
+    for spec in species:
+      if spec.initial_amount:
+        index = species_names.index(spec.name)
+        initials[index] = float(spec.initial_amount)
+
+
+    init_assigns = outline_sbml.get_list_of_init_assigns(model)
+    for init_assign in init_assigns:
+      name = init_assign.variable
+      index = species_names.index(name)
+      initials[index] = init_assign.expression.get_value()
+ 
+    # The time grid, I'm going to be honest I don't think I understand this.
+    time_grid  = np.linspace(0, 5., 1000)
+    # Solve the ODEs
+    soln = odeint(get_rhs, initials, time_grid)
+
+    # For debugging purposes we'll just quickly plot the results
+    plt.figure()
+    for index in range(len(species_names)):
+      name = species_names[index]
+      timecourse = soln[:, index]
+      plt.plot(time_grid, timecourse, label=name)
+
+    plt.xlabel('Time')
+    plt.ylabel('Population')
+    plt.title('Straight-forward MM')
+    plt.legend(loc=0)
+    plt.show()
+
+
+
+
+    timecourse = timeseries.Timeseries(species_names, soln)
+    return timecourse
+   
+
+ 
+
 class BioPEPASolver:
   """A solver which has as input Bio-PEPA files and simply uses
      the command-line version of the Bio-PEPA eclipse plugin to
@@ -408,7 +530,7 @@ def create_arguments_parser(add_help):
                                    description=description)
 
   parser.add_argument('--solver', action='store',
-                      choices=["cvodes", "biopepa"],
+                      choices=["cvodes", "biopepa", "scipy-ode" ],
                       help="Set the solver for numerical analysis")
 
   parser.add_argument('--start-time', action='store',
@@ -487,6 +609,9 @@ def get_solver(filename, arguments):
   elif solver_name == "biopepa":
     biopepajar = "biopepa.jar"
     solver = BioPEPASolver(filename, biopepajar)
+    return solver
+  elif solver_name == "scipy-ode":
+    solver = ScipyOdeSbmlSolver(filename)
     return solver
   else:
     logging.error("Unknown solver name: " + solver_name)
