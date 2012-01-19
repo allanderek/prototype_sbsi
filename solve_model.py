@@ -339,6 +339,9 @@ class ScipyOdeSbmlSolver(object):
     reactions = outline_sbml.get_list_of_reactions(model)
     species_names = [ s.name for s in species ]
 
+    population_dictionary = dict()
+    for param in outline_sbml.get_list_of_parameters(model):
+      population_dictionary[param.name] = float(param.value)
     def get_rhs(current_pops, time):
       """The main function passed to the solver, it calculates from the
          current populations of species, the rate of change of each
@@ -347,14 +350,19 @@ class ScipyOdeSbmlSolver(object):
          the ode at the given populations and time.
       """
       results = [0] * len(current_pops)
+      for index in range(len(species_names)):
+        population_dictionary[species_names[index]] = current_pops[index]
       for reaction in reactions:
         reactants = reaction.reactants
         products = reaction.products
-        rate = 1
+        expr_evaluator = outline_sbml.ExprEvaluator()
+        expr_evaluator.name_mapping = population_dictionary
+        expr_evaluator.visit_maths(reaction.kinetic_law) 
+        rate = expr_evaluator.get_results()
         reactant_indices = [ species_names.index(reactant.name) 
                                for reactant in reactants ]
-        for reactant_index in reactant_indices:
-          rate *= current_pops[reactant_index]
+        # for reactant_index in reactant_indices:
+        #   rate *= current_pops[reactant_index]
         for reactant_index in reactant_indices:
           results[reactant_index] -= rate
         for product in products:

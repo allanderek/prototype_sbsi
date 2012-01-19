@@ -318,6 +318,72 @@ class ExprFormatter(ExprVisitor):
       self.print_str (")")
 
 
+class ExprEvaluator(ExprVisitor):
+  """A class which descends through SBML math expressions to evaluate
+     the current value of the expression. It relies on a dictionary
+     mapping names to current values to evaluate symbolic names, this
+     should be set prior to visiting the expression element with
+     expr_eval.name_mapping = ...
+  """
+  def __init__(self):
+    ExprVisitor.__init__(self)
+    self.result = None
+    self.name_mapping = None
+
+
+  def visit_ci(self, element):
+    """Visit a 'ci' element"""
+    name = element.firstChild.data.lstrip().rstrip() 
+    self.result = self.name_mapping[name]
+
+  def visit_cn(self, element):
+    """Visit a 'cn' element"""
+    self.result = float(element.firstChild.data)
+
+  def visit_apply(self, element):
+    """Visit an 'apply' element"""
+    children = [ x for x in element.childNodes 
+                   if x.nodeType == x.ELEMENT_NODE
+               ]
+    function = children[0]
+    function_name = function.tagName
+    # Evaluate the first argument
+    self.generic_visit(children[1])
+    # first_argument = self.result
+
+    if function_name == "plus":
+      for child in children[2:]:
+        current = self.result
+        self.generic_visit(child)
+        self.result += current
+    elif function_name == "minus":
+      for child in children[2:]:
+        current = self.result
+        self.generic_visit(child)
+        self.result = current - self.result
+    elif function_name == "divide":
+       for child in children[2:]:
+        current = self.result
+        self.generic_visit(child)
+        self.result = current / self.result
+    elif function_name == "times":
+       for child in children[2:]:
+        current = self.result
+        self.generic_visit(child)
+        self.result *= current
+    elif function_name == "power":
+      # There must be some smart way to do this, it occurs like
+      # this because power 
+      first_argument = self.result
+      self.generic_visit(children[-1])
+      for child in reverse(children[2:len(children) -1]):
+        current = self.result
+        self.generic_visit(child)
+        self.result = self.result ** current
+      self.result = first_argument ** self.result
+    else:
+      raise ValueError("Unknown function: " + function_name)
+
 def format_math_element(maths):
   """Format an math element as an expression
   """
