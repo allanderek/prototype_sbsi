@@ -289,6 +289,21 @@ class SbmlCvodeSolver:
     csv_file.close()
     return timecourse
 
+
+def get_time_grid(configuration):
+  """From a solver configuration return the time points which should
+     be returned from the solver
+  """
+  start_time = configuration.start_time
+  stop_time = configuration.stop_time
+  out_interval = configuration.out_interval
+  # putting stop beyone the actual stop time means that the output
+  # will actually include the stop time. Note that in some cases this
+  # may result in stop_time + out_interval actually appearing in the
+  # output as well, see numpy.arange documentation.
+  return np.arange(start=start_time, stop=stop_time + out_interval,
+                   step=out_interval)
+ 
 class ScipyOdeSbmlSolver(object):
   """A class which implements an ODE based solver for SBML models.
      Based on scipy
@@ -350,6 +365,7 @@ class ScipyOdeSbmlSolver(object):
          the ode at the given populations and time.
       """
       results = [0] * len(current_pops)
+      population_dictionary["time"] = time
       for index in range(len(species_names)):
         population_dictionary[species_names[index]] = current_pops[index]
       for reaction in reactions:
@@ -384,9 +400,9 @@ class ScipyOdeSbmlSolver(object):
       name = init_assign.variable
       index = species_names.index(name)
       initials[index] = init_assign.expression.get_value()
- 
+    
     # The time grid, I'm going to be honest I don't think I understand this.
-    time_grid  = np.linspace(0, 5., 1000)
+    time_grid  = get_time_grid(configuration)
     # Solve the ODEs
     soln = odeint(get_rhs, initials, time_grid)
 

@@ -362,12 +362,12 @@ class ExprEvaluator(ExprVisitor):
         self.generic_visit(child)
         self.result = current - self.result
     elif function_name == "divide":
-       for child in children[2:]:
+      for child in children[2:]:
         current = self.result
         self.generic_visit(child)
         self.result = current / self.result
     elif function_name == "times":
-       for child in children[2:]:
+      for child in children[2:]:
         current = self.result
         self.generic_visit(child)
         self.result *= current
@@ -376,7 +376,7 @@ class ExprEvaluator(ExprVisitor):
       # this because power 
       first_argument = self.result
       self.generic_visit(children[-1])
-      for child in reverse(children[2:len(children) -1]):
+      for child in (children[2:len(children) -1]).reverse():
         current = self.result
         self.generic_visit(child)
         self.result = self.result ** current
