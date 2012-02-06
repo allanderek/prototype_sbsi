@@ -273,6 +273,12 @@ If we have a data file with E, S, P, Q and R columns then:
 will plot only the columns E and S, while
 --mcolumn P --mcolumn Q
 will plot all columns except P and Q, so E, S and R are plotted.
+
+Note also the --linestyle argument is a little fiddly, you have to give
+the string to come after 'w' part, so for example if you only wish to
+increase the line width you still have to specify that you want lines,
+so you would do this with '--linestyle "l lw 6"' or for line-points
+'--linestyle "lp lw 6"'
 """
 
   parser = argparse.ArgumentParser(description=description,
