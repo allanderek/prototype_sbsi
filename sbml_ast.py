@@ -10,6 +10,17 @@ import utils
 
 default_location_name = "default_compartment"
 
+
+class SBMLConfiguration(object):
+  """A class representing the SBML configuration which may be used to
+     configure the input/output of SBML models
+  """
+  def __init__(self):
+    self.sbml_level = 3
+    self.sbml_level_version = 1
+    self.copasi_spec_ref_workaround = False
+
+
 def output_to_sbml_file(filename, arguments, document):
   """A utility function for consumers of this module to calculate
      the output file for given a set of parsed arguments which includes
@@ -554,7 +565,7 @@ class Reaction(object):
  
     return results
 
-  def create_element(self, document):
+  def create_element(self, document, sbml_configuration):
     """Create an xml element representing this reaction"""
     reaction_element = document.createElement("reaction")
     reaction_element.setAttribute("id", self.name)
@@ -574,7 +585,8 @@ class Reaction(object):
         # for biopepa models the stoichiometry values cannot
         # change during the simulation so this 'constant' attribute is
         # always true.
-        spec_ref.setAttribute("constant", "true")
+        if not sbml_configuration.copasi_spec_ref_workaround:
+          spec_ref.setAttribute("constant", "true")
         spec_ref.setAttribute("stoichiometry", str(reactant.stoich))
         list_of_reactants.appendChild(spec_ref)
     if self.products:
@@ -587,7 +599,8 @@ class Reaction(object):
         # for biopepa models the stoichiometry values cannot
         # change during the simulation so this 'constant' attribute is
         # always true.
-        spec_ref.setAttribute("constant", "true")
+        if not sbml_configuration.copasi_spec_ref_workaround:
+          spec_ref.setAttribute("constant", "true")
         spec_ref.setAttribute("stoichiometry", str(product.stoich))
         list_of_products.appendChild(spec_ref)
     if self.modifiers:
@@ -684,6 +697,7 @@ class SBMLModel(object):
     self.var_decs = None
     self.assign_rules = None
     self.init_assign_elements = []
+    self.sbml_configuration = SBMLConfiguration()
     
   def create_compartment_elements(self, document, model_element):
     """Create the elements to describe the compartments within
@@ -794,7 +808,8 @@ class SBMLModel(object):
     if self.reactions:
       list_of_reactions = document.createElement("listOfReactions")
       for reaction in self.reactions:
-        reaction_element = reaction.create_element(document)
+        reaction_element = reaction.create_element(document,
+                                                   self.sbml_configuration)
         list_of_reactions.appendChild(reaction_element)
       model_element.appendChild(list_of_reactions)
 

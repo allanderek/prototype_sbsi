@@ -4,6 +4,8 @@ import sys
 import argparse
 import parcon
 
+
+# sys.path.append("/home/aclark6/Source/prototype_sbsi")
 import utils
 import facile.facile_parser as facile_parser
 import sbml_ast
@@ -133,6 +135,10 @@ def translate_facile_model(facile_model, arguments):
                                 assign_species )
   sbml_model.var_decs = facile_model.var_decs
   sbml_model.assign_rules = facile_model.assign_rules
+
+  if arguments.copasi_spec_ref_workaround:
+    sbml_model.sbml_configuration.copasi_spec_ref_workaround = True
+
   document = sbml_model.create_sbml_document()
   return document
 
@@ -162,6 +168,8 @@ def main():
                       help="A facile model file to translate")
   parser.add_argument('--add-modifiers', action='store_true',
     help="Species mentioned in kinetic law added as modifiers")
+  parser.add_argument('--copasi-spec-ref-workaround', action='store_true',
+    help="Works around a copasi bug by not setting a constant attribute")
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 

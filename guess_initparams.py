@@ -95,14 +95,14 @@ def run():
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="an sbml file to guess init params for")
- 
+  parser.add_argument('--factor', action='store',
+                      type=float, default=10.0,
+                      help="Set the factor either side for min-max")
+
   arguments = parser.parse_args()
 
-  # factor should be a command-line option
-  factor = 10.0
-
   for filename in arguments.filenames:
-    create_init_params_file(filename, factor)
+    create_init_params_file(filename, arguments.factor)
 
 if __name__ == "__main__":
   run()

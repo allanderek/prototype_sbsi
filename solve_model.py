@@ -275,6 +275,14 @@ class SbmlCvodeSolver:
       logging.warning(message)
       raise SolverError(message)
 
+    logging.debug("stop-time == " + str(configuration.stop_time))
+    logging.debug("start-time == " + str(configuration.start_time))
+    logging.debug("max-times == " + str(configuration.max_times))
+    logging.debug("interval == " + str(configuration.interval))
+    logging.debug("out-interval == " + str(configuration.out_interval))
+    logging.debug("atol == " + str(configuration.atol))
+    logging.debug("reltol == " + str(configuration.reltol))
+
     # We should remove the parameter overrides file here in case
     # we wish to simply solve the model on its own later.
     # This is actually solved because we have updated the solver file

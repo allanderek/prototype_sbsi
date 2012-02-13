@@ -89,7 +89,14 @@ name_expr = Translate (variable_name, make_name_expression)
 apply_expr = Translate (variable_name + "(" + argument_list + ")",
                         make_apply_expression)
 
-signed_number = (Optional(parcon.CharIn("+-")) + parcon.number)["".join]
+
+my_number_syntax = parcon.Exact(Optional(parcon.CharIn("+-")) + 
+                                parcon.OneOrMore(parcon.digit) + 
+                                Optional(parcon.SignificantLiteral(".")) + 
+                                parcon.OneOrMore(parcon.digit))
+my_number = parcon.number # my_number_syntax[parcon.flatten]["".join](name="number")
+signed_number = my_number 
+# (Optional(parcon.CharIn("+-")) + my_number)["".join]
 exponent_end = (parcon.CharIn("Ee") + signed_number)["".join]
 scientific_number = (signed_number + Optional(exponent_end))["".join]
 
