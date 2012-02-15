@@ -241,6 +241,7 @@ class VariableDeclaration:
   def __init__(self, variable, expression):
     self.variable = variable
     self.expression = expression
+    self.init_assign = None
 
   def get_name(self):
     """Return the name of the variable being declared"""
@@ -256,16 +257,26 @@ class VariableDeclaration:
     # initial assignment (or here as the 'value' attribute) so I think it
     # is reasonable here to set it to true.
     parameter.setAttribute("constant", "true")
-    if isinstance(self.expression, NumExpression):
-      parameter.setAttribute("value", self.expression.show_expr())
+    number = self.expression.get_value()
+
+    # I would quite like it to be configurable such that we could
+    # ALWAYS create an initial assignment, not just if there is no
+    # number value.
+    if number != None:
+      parameter.setAttribute("value", str(number))
+    else:
+      self.init_assign = create_initial_assignment(document,
+                                                   self.variable,
+                                                   self.expression)
+          
     return parameter
  
-  def create_initial_assignment(self, document):
-    """Creates an sbml element for an initial assignment for the
-       parameter corresponding to this variable declaration"""
-    return create_initial_assignment(document, 
-                                     self.variable,
-                                     self.expression)
+  # def create_initial_assignment(self, document):
+  #   """Creates an sbml element for an initial assignment for the
+  #      parameter corresponding to this variable declaration"""
+  #   return create_initial_assignment(document, 
+  #                                    self.variable,
+  #                                    self.expression)
 
 
 def create_math_element(document):
@@ -786,8 +797,8 @@ class SBMLModel(object):
         param_element = var_dec.create_parameter_element(document)
         list_of_params.appendChild(param_element)
 
-        init_assign = var_dec.create_initial_assignment(document)
-        init_assigns.append(init_assign)
+        if var_dec.init_assign != None:
+          init_assigns.append(var_dec.init_assign)
      
       # So here we add the variable declaration initial assignments
       # in order to the front of the overall initial assignments 
