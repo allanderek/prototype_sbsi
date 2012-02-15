@@ -103,11 +103,12 @@ term = ( scientific_number[create_number_expression]
          | apply_expr
          | name_expr
        )
+
+term = InfixExpr(term, [("^", make_power_expression)])
 term = InfixExpr(term, [("*", make_times_expression), 
                         ("/", make_divide_expression)])
 term = InfixExpr(term, [("+", make_plus_expression), 
                         ("-", make_minus_expression)])
-term = InfixExpr(term, [("^", make_power_expression)])
 expr.set(term(name="expr"))
 
 
