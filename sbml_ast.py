@@ -85,7 +85,7 @@ class Expression:
     return None
 
 
-  def remove_rate_law_sugar(self, reaction):
+  def remove_rate_law_sugar(self, reaction=None):
     """This is a virtual method stub, this method should be overridden
        by any class inheriting from this class. In fact we should be
        doing this with something like a visitor pattern, but I have not
@@ -94,6 +94,7 @@ class Expression:
        which don't have sub-expressions do not need to override this."""
     # pylint: disable=W0613
     return self 
+
 
 class NumExpression(Expression):
   """A class to represent the AST of an number literal expression"""
@@ -195,12 +196,12 @@ class ApplyExpression(Expression):
     
     return apply_el
 
-  def remove_rate_law_sugar(self, reaction):
+  def remove_rate_law_sugar(self, reaction=None):
     # First apply this to all of the argument expressions.
     new_args = [ arg.remove_rate_law_sugar(reaction) for arg in self.args ]
     self.args = new_args
  
-    if self.name == "fMA":
+    if reaction != None and self.name == "fMA":
       # Should do some more error checking, eg if there is exactly
       # one argument.
       mass_action_reactants = reaction.get_mass_action_participants()
@@ -218,6 +219,18 @@ class ApplyExpression(Expression):
         # If there is only the original argument then just return that
         # even without the surrounding 'fMA' application.
         return all_args[0]
+    # I'm not really comfortable having this here, it's really only for
+    # COPASI and should be a separate and configurable expression
+    # transformer.
+    elif self.name == "sqrt":
+      if len(new_args) != 1:
+        # This is a terrible way to error as well!
+        print ("sqrt function takes only a single argument")
+        sys.exit(1)
+      argument = new_args[0]
+      half_expr = NumExpression(0.5)
+      new_expr = ApplyExpression("power", [argument, half_expr])
+      return new_expr
     else:
       new_expr = ApplyExpression(self.name, new_args)
       return new_expr
@@ -278,6 +291,7 @@ def create_initial_assignment(document, name, expression):
   math_element = create_math_element(document)
   init_assign.appendChild(math_element)
 
+  expression = expression.remove_rate_law_sugar()
   expr_element = expression.create_sbml_element(document)
   math_element.appendChild(expr_element)
 
