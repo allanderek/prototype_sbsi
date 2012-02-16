@@ -167,7 +167,7 @@ def create_initial_condition(parse_result):
   init_cond.name = parse_result[0]
   init_cond.initial_expression = parse_result[1]
   init_amount = init_cond.initial_expression.get_value()
-  if init_amount:
+  if init_amount != None:
     init_cond.initial_amount = str(init_amount)
   init_cond.units = parse_result[2]
   return init_cond
