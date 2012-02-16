@@ -27,6 +27,10 @@ class Timeseries:
     """Remove a row from the timeseries"""
     self.rows.pop(index)
 
+  def remove_final_row(self):
+    """Remove the final row from a timeseries"""
+    self.rows.pop(len(self.rows) - 1)
+
   def get_times(self):
     """Return a list of all times"""
     return [ row[0] for row in self.rows ]

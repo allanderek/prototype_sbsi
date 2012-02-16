@@ -28,24 +28,35 @@ def get_derivatives_columns(rows):
     d_rows.append(new_d_row)  
   return d_rows
 
+def get_derivatives_timecourse(timecourse, prefix):
+  """Return a time series similar to the input one but with the
+     derivative for each column instead of the original data. The
+     prefix argument determines how to rename the columns, and an
+     empty string argument there will leave the column names as
+     they are.
+  """
+  names = timecourse.get_column_names()
 
+  rows = timecourse.get_rows()
+  d_rows = get_derivatives_columns(rows)
+
+  d_names = [ "Time" ] + [ prefix + name for name in names ]
+  d_timecourse = timeseries.Timeseries(d_names, d_rows)
+
+  return d_timecourse
+
+ 
 
 def add_derivatives_columns(timecourse):
   """Given a timeseries add columns to the end which represent the
      derivatives of all the original columns
   """
   # All the d_ prefixes here stand for 'derivative'
-  names = timecourse.get_column_names()
-
-  rows = timecourse.get_rows()
-  d_rows = get_derivatives_columns(rows)
-
+  d_timecourse = get_derivatives_timecourse(timecourse, "d_")
   # Remove the last column of the original timeseries such that
   # we can add the two timeseries together
-  timecourse.remove_row(len(rows) - 1)
+  timecourse.remove_final_row()
 
-  d_names = [ "Time" ] + [ "d_" + name for name in names ]
-  d_timecourse = timeseries.Timeseries(d_names, d_rows)
   timecourse.add_timeseries(d_timecourse)
 
   return timecourse
