@@ -16,19 +16,20 @@ def run():
      an initparams file
   """
   description = "Create random parameters from an init params file"
-  parser = argparse.ArgumentParser(description=description)
-  # Might want to make the type of this 'FileType('r')'
-  parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="An initial parameters file")
-  arguments = parser.parse_args()
 
+  parent_parser = guess_initparams.get_argument_parser()
+  parser = argparse.ArgumentParser(add_help=False,
+                                   parents=[parent_parser],
+                                   description=description)
+ 
+  arguments = parser.parse_args()
   if len(arguments.filenames) < 1:
     print ("Must provide an initial parameters file")
     sys.exit(1)
 
   filename = arguments.filenames[0]
   if utils.has_xml_or_sbml_ext(filename):
-    params = guess_initparams.init_params_model_file(filename)
+    params = guess_initparams.init_params_model_file(filename, arguments)
   else:
     params = parameters.get_init_param_parameters(filename)
 

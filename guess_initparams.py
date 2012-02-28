@@ -8,19 +8,33 @@ import utils
 
 class Parameter:
   """A simple class to represent a parameter description"""
-  def __init__(self, identifier, name, value):
+  def __init__(self, identifier):
     self.identifier = identifier
-    self.name = name
-    self.value = value 
+    self.name = identifier
+    self.value = None 
+    self.high = None
+    self.low = None
+    self.initial_step = None
+    self.use = True
 
   def format_init(self, factor):
     """Format the parameter specifically for an sbsi initparams file.
        Note that this entails calculating the high and low values"""
-    high = self.value * factor
-    low  = self.value / factor
+    if not self.high:
+      high = self.value * factor
+    else:
+      high = self.high
+    if not self.low:
+      low  = self.value / factor
+    else:
+      low = self.low
+    if not self.initial_step:
+      initial_step = (self.high - self.low) / 100
+    else:
+      initial_step = self.initial_step
     line = (self.name + "\t" + str(low) + "\t" +
                                str(high) + "\t" +
-                               str(self.value))
+                               str(initial_step))
     return line        
 
 def get_parameter_of_element(param_element):
@@ -31,7 +45,10 @@ def get_parameter_of_element(param_element):
   value_str = param_element.getAttribute("value") 
   if value_str:
     value = float(value_str)
-    parameter = Parameter(ident, name, value)
+    parameter = Parameter(ident)
+    parameter.value = value 
+    if name:
+      parameter.name = name
     return parameter
   return None
 
@@ -64,32 +81,97 @@ def get_assignment_rules_from_model(model):
                model)
   return arules
 
-def init_params_model_file(filename):
+
+def float_from_attribute(element, attribute):
+  """Returns the float value from a named attribute of the given
+     element. None if the attribute doesn't exist or is empty.
+  """
+  value_str = element.getAttribute(attribute)
+  if not value_str:
+    return None
+  return float(value_str)
+
+
+def get_param_of_history(history_element):
+  """Returns a parameter description from a parameterHistory element"""
+  identifier = history_element.getAttribute("id")
+  parameter = Parameter(identifier)
+  name = history_element.getAttribute("name")
+  if name:
+    parameter.name = name
+
+  parameter.low = float_from_attribute(history_element, "min")
+  parameter.high = float_from_attribute(history_element, "max")
+  parameter.initial_step = float_from_attribute(history_element, 
+                                                "initialstep")
+  use = history_element.getAttribute("use")
+  if use == "No":
+    parameter.use = False
+  else:
+    parameter.use = True
+
+  return parameter
+
+
+def params_from_param_histories(model):
+  """Get all the parameter histories in the model file and parse
+     these into parameter descriptions suitable for creating an
+     init params file
+  """
+  annotations = model.getElementsByTagName("annotation")
+  params = []
+  for annotation in annotations:
+    list_name = "listOfParameterHistories"
+    annot_params = outline_sbml.get_elements_from_lists_of_list(list_name,
+                      "parameterHistory",
+                      get_param_of_history,
+                      annotation)
+    params += [ p for p in annot_params if p.use ]
+                      
+   
+  return params 
+
+def init_params_model_file(filename, arguments):
   """Parse in a file as an SBML model, and extract the probably
      optimisable parameters from it. Essentially then that is all
      the parameters which are not associated with an assignment rule"""
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("model")[0]
+
+  # So first we attempt to get the parameters from parameter histories
+  # assuming that hasn't been disabled by the user
+  if not arguments.ignore_param_histories:
+    params = params_from_param_histories(model)
+  # If we got any parameters from the parameter histories then go
+  # ahead and return those, otherwise we continue and just get them
+  # from the parameter definitions
+  if params:
+    return params
+ 
   params = get_parameters_from_model(model)
+
+  # We ignore parameters that are specifically assigned to via an
+  # initial assignment since it is likely that these will not be
+  # optimised for, in particular they are likely to be some combination
+  # of parameters which are to be optimised for.
   arules = get_assignment_rules_from_model(model)
   arule_names = [ arule.variable for arule in arules ]
-
   return [ p for p in params if p.name not in arule_names ]
 
 
-def create_init_params_file(filename, factor):
+
+def create_init_params_file(filename, arguments):
   """Get the parameters of an sbml file which we think are likely to
      be 'optimisable' and based on that create an initparams file"""
-  params = init_params_model_file(filename)
   output_filename = utils.change_filename_ext(filename, ".initparams")
   output_file = open (output_filename, "w") 
+  params = init_params_model_file(filename, arguments)
   for param in params:
-    output_file.write (param.format_init(factor) + "\n")
+    output_file.write (param.format_init(arguments.factor) + "\n")
   output_file.close()
- 
-def run():
-  """Perform the banalities of command-line argument processing
-     and try to guess the initparams for the given SBML model"""
+
+def get_argument_parser():
+  """Return the arguments parser for guess_initparams"""
   description = "Analyse SBML files for invariants"
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
@@ -98,11 +180,19 @@ def run():
   parser.add_argument('--factor', action='store',
                       type=float, default=10.0,
                       help="Set the factor either side for min-max")
+  parser.add_argument('--ignore-param-histories', action='store_true',
+                      help="Ignore any parameter histories in the SBML")
+  return parser
 
+
+def run():
+  """Perform the banalities of command-line argument processing
+     and try to guess the initparams for the given SBML model"""
+  parser = get_argument_parser()
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
-    create_init_params_file(filename, arguments.factor)
+    create_init_params_file(filename, arguments)
 
 if __name__ == "__main__":
   run()
