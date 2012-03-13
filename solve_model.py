@@ -423,7 +423,6 @@ class ScipyOdeSbmlSolver(object):
 
     plt.xlabel('Time')
     plt.ylabel('Population')
-    plt.title('Straight-forward MM')
     plt.legend(loc=0)
     plt.show()
 
