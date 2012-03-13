@@ -204,7 +204,11 @@ class Behaviour:
 
   def show_behaviour(self):
     """Print out the behaviour as a string in Bio-PEPA format"""
-    return self.reaction_name + " " + self.operator
+    if self.stoichiometry == 1:
+      return self.reaction_name + " " + self.operator
+    else:
+      return ("(" + self.reaction_name + ", " + 
+              str(self.stoichiometry) + ") " + self.operator)
 
   def set_location (self, location):
     """Sets the location of this behaviour"""
