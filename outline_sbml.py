@@ -304,11 +304,19 @@ class ExprFormatter(ExprVisitor):
                       "times" : "*",
                       "power" : "^",
                      }
-    if function_name in function_dict :
+    # The check on the length of children is just in case someone
+    # has managed to say apply 'times' to no arguments which would
+    # otherwise cause an error when we attempt to print the first one.
+    # It's unclear what we should do in that case, but for now I fall
+    # through to the generic case and basically you'll end up with
+    # just the 'times' (named as 'times' not as *) printed out.
+    if function_name in function_dict and len(children) > 1 :
       self.print_str("(")
       self.generic_visit(children[1])
-      self.print_str(" " + function_dict[function_name] + " ")
-      self.generic_visit(children[2])
+      prefix = " " + function_dict[function_name] + " "
+      for child in children[2:]:
+        self.print_str(prefix)
+        self.generic_visit(child)
       self.print_str(")") 
     else:
       self.print_str (function_name + "(")

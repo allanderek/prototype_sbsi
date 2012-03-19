@@ -5,7 +5,7 @@ import argparse
 import parcon
 
 
-# sys.path.append("/home/aclark6/Source/prototype_sbsi")
+sys.path.append("/home/aclark6/Source/prototype_sbsi")
 import utils
 import facile.facile_parser as facile_parser
 import sbml_ast

@@ -28,11 +28,18 @@ def output_system_equation(output_file, species, init_assigns):
       if init_assign.variable == component.name:
         init_string = format_math_element(init_assign.expression)
         break
-    output_file.write(prefix)
-    prefix = "<*> "
-    output_file.write(component.name)
-    output_file.write("[" + init_string + "]")
-    output_file.write("\n")
+
+    # Essentially we could check if it is an assignment rule, when
+    # a species is defined by an assignment rule essentially it is
+    # a variable, rather than actual species in which case we do not
+    # want it in the system equation, we should of course though have
+    # it in the biopepa file as a dynamic variable
+    if init_string != None and init_string != "":
+      output_file.write(prefix)
+      prefix = "<*> "
+      output_file.write(component.ident)
+      output_file.write("[" + init_string + "]")
+      output_file.write("\n")
 
 
 def calculate_component_defs(reactions):
@@ -95,7 +102,7 @@ def convert_file(filename, arguments):
   for reaction in reactions:
     output_file.write(reaction.name + " = [ ")
     output_file.write(format_math_element(reaction.kinetic_law))
-    output_file.write(reaction.name + " ] ;\n")
+    output_file.write(" ] ;\n")
 
   output_file.write("\n\n// Component Definitions\n")
 
