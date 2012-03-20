@@ -84,6 +84,18 @@ class Expression:
     # pylint: disable=R0201
     return None
 
+  def munge_names(self, f):
+    """Munges the names used within the expression using the function
+       supplied. This is a virtual method stud, see below on our comment
+       of the remove_rate_law_sugar method. Essentially I think I should
+       be able to do something much nicer, using a visitor pattern.
+       Again here this is a bit more than a stub since all the simple
+       expressions which cannot contain any names do not need to override
+       this stub implementation.
+    """
+    # pylint: disable=W0613
+    return None
+
 
   def remove_rate_law_sugar(self, reaction=None):
     """This is a virtual method stub, this method should be overridden
@@ -137,6 +149,9 @@ class NameExpression(Expression):
     """Return the set of names used within this expression"""
     return set([self.name])
 
+  def munge_names(self, f):
+    self.name = f(self.name)
+
   def convert_to_sbml(self):
     """Convert the variable(name) expression to SBML code for
        the expression"""
@@ -150,6 +165,37 @@ class NameExpression(Expression):
     return ci_element
 
 
+def show_apply_expression(function_name, children):
+   function_dict = { "plus" : "+", 
+                      "minus" : "-",
+                      "divide" : "/",
+                      "times" : "*",
+                      "power" : "^",
+                   }
+   # The check on the length of children is just in case someone
+   # has managed to say apply 'times' to no arguments which would
+   # otherwise cause an error when we attempt to print the first one.
+   # It's unclear what we should do in that case, but for now I fall
+   # through to the generic case and basically you'll end up with
+   # just the 'times' (named as 'times' not as *) printed out.
+
+   result = ""
+
+   if function_name in function_dict and len(children) > 1 :
+     result += "("
+     # Could just put the spaces in the dictionary above?
+     operator = " " + function_dict[function_name] + " "
+     result += operator.join(children)
+     result += ")"
+   else:
+     result += function_name + "("
+     result += ", ".join(children) 
+     result += ")"
+
+   return result
+
+
+
 class ApplyExpression(Expression):
   """A class to represent the AST of an apply expression, applying a
      named function to a list of argument expressions"""
@@ -160,14 +206,8 @@ class ApplyExpression(Expression):
 
   def show_expr(self):
     """Format as a string the application expression"""
-    result = self.name + "("
-    prefix = ""
-    for arg in self.args:
-      result += prefix
-      result += arg.show_expr()
-      prefix = ", "
-    result += ")"
-    return result
+    arg_strings = [ arg.show_expr() for arg in self.args ]
+    return show_apply_expression(self.name, arg_strings)
 
   def used_names(self):
     """Return the set of names used within this apply expression"""
@@ -176,6 +216,13 @@ class ApplyExpression(Expression):
       result_set = result_set.union(expr.used_names())
     return result_set
     
+  def munge_names(self, f):
+    """Must munge all the names, we do not munge the name of the
+       function of the apply expression however.
+    """
+    for child in self.args:
+      child.munge_names(f)
+
   def convert_to_sbml(self):
     """return a string representing the sbml of an math apply expression"""
     result = "<apply>\n"
@@ -236,7 +283,7 @@ class ApplyExpression(Expression):
       return new_expr
 
 
-class VariableDeclaration:
+class VariableDeclaration(object):
   """A class to represent the AST of a variable declaration in Bio-PEPA"""
   def __init__(self, variable, expression):
     self.variable = variable
@@ -277,7 +324,6 @@ class VariableDeclaration:
   #   return create_initial_assignment(document, 
   #                                    self.variable,
   #                                    self.expression)
-
 
 def create_math_element(document):
   """Creates a math element into which is generally stored some kind

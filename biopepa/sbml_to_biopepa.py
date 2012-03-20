@@ -48,6 +48,10 @@ def calculate_component_defs(reactions):
   """
   def_map = dict()
   for reaction in reactions:
+    # haha this is wrong, stoichiometry and operator should be
+    # a list and furthermore we should check if the same named
+    # component is listed as both a reactant and product / modifier.
+    # And essentially just do the correct thing.
     def add_behaviour(participant, operator):
       name = participant.name 
       if name in def_map:
@@ -56,8 +60,8 @@ def calculate_component_defs(reactions):
         comp_def = biopepa.ComponentDefinition(name, [])
         def_map[name] = comp_def
     
-      behaviour = biopepa.Behaviour(reaction.name, operator)
-      behaviour.stoichiometry = participant.stoich 
+      behaviour = biopepa.Behaviour(reaction.name, [ operator ])
+      behaviour.stoichiometry = [ participant.stoich ]
       comp_def.behaviours.append(behaviour) 
 
     for participant in reaction.reactants:

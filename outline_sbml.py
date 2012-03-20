@@ -293,37 +293,48 @@ class ExprFormatter(ExprVisitor):
 
   def visit_apply(self, element):
     """Visit an 'apply' element"""
+    
     children = [ x for x in element.childNodes 
                    if x.nodeType == x.ELEMENT_NODE
                ]
     function = children[0]
     function_name = function.tagName
-    function_dict = { "plus" : "+", 
-                      "minus" : "-",
-                      "divide" : "/",
-                      "times" : "*",
-                      "power" : "^",
-                     }
-    # The check on the length of children is just in case someone
-    # has managed to say apply 'times' to no arguments which would
-    # otherwise cause an error when we attempt to print the first one.
-    # It's unclear what we should do in that case, but for now I fall
-    # through to the generic case and basically you'll end up with
-    # just the 'times' (named as 'times' not as *) printed out.
-    if function_name in function_dict and len(children) > 1 :
-      self.print_str("(")
-      self.generic_visit(children[1])
-      prefix = " " + function_dict[function_name] + " "
-      for child in children[2:]:
-        self.print_str(prefix)
-        self.generic_visit(child)
-      self.print_str(")") 
-    else:
-      self.print_str (function_name + "(")
-      for child in children[1:]:
-        self.generic_visit(child)
-        self.print_str (", ")
-      self.print_str (")")
+    arg_strings = []
+    for child in children[1:]:
+      current_result = self.result
+      self.generic_visit(child)
+      arg_strings.append(self.result)
+      self.result = current_result
+
+    format = sbml_ast.show_apply_expression(function_name, arg_strings)
+    self.print_str(format)
+
+#     function_dict = { "plus" : "+", 
+#                       "minus" : "-",
+#                       "divide" : "/",
+#                       "times" : "*",
+#                       "power" : "^",
+#                      }
+#     # The check on the length of children is just in case someone
+#     # has managed to say apply 'times' to no arguments which would
+#     # otherwise cause an error when we attempt to print the first one.
+#     # It's unclear what we should do in that case, but for now I fall
+#     # through to the generic case and basically you'll end up with
+#     # just the 'times' (named as 'times' not as *) printed out.
+#     if function_name in function_dict and len(children) > 1 :
+#       self.print_str("(")
+#       self.generic_visit(children[1])
+#       prefix = " " + function_dict[function_name] + " "
+#       for child in children[2:]:
+#         self.print_str(prefix)
+#         self.generic_visit(child)
+#       self.print_str(")") 
+#     else:
+#       self.print_str (function_name + "(")
+#       for child in children[1:]:
+#         self.generic_visit(child)
+#         self.print_str (", ")
+#       self.print_str (")")
 
 
 class ExprEvaluator(ExprVisitor):

@@ -85,7 +85,9 @@ argument_list = Optional(create_separated_by(expr, ","))
 # be alphchar followed by alphanum_word, or something like that.
 variable_name = parcon.Word(parcon.alphanum_chars + "_", 
                             init_chars=parcon.alpha_chars)
-name_expr = Translate (variable_name, make_name_expression)
+location_suffix = parcon.SignificantLiteral("@") + variable_name
+located_name = (variable_name + Optional(location_suffix))["".join]
+name_expr = Translate (located_name, make_name_expression)
 apply_expr = Translate (variable_name + "(" + argument_list + ")",
                         make_apply_expression)
 
@@ -112,9 +114,20 @@ term = InfixExpr(term, [("+", make_plus_expression),
 expr.set(term(name="expr"))
 
 
+class VariableDeclaration(sbml_ast.VariableDeclaration):
+  """A class to represent Bio-PEPA variable declarations"""
+  def __init__(self, variable, expression):
+    super(VariableDeclaration, self).__init__(variable, expression)
+
+  def format_declaration(self):
+    """A function to return a Bio-PEPA formatted string representation
+       of this variable declaration
+    """
+    return self.variable + " = " + self.expression.show_expr() + " ;"
+
 def create_variable_dec(parse_result):
   """The parse action for the variable_definition parser"""
-  return sbml_ast.VariableDeclaration (parse_result[0], parse_result[1])
+  return VariableDeclaration (parse_result[0], parse_result[1])
 
 variable_definition = Translate(variable_name + "=" + expr + ";",
                                 create_variable_dec)
@@ -158,6 +171,10 @@ class RateDefinition:
     """Return the rate expression part of the rate definition"""
     return self.rate
 
+  def format_rate_def(self):
+    """Return a string of a Bio-PEPA formatted rate definition"""
+    return self.name + " = [ " + self.rate.show_expr() + " ] ;"
+
 def create_rate_def(parse_result):
   """Post parsing method for rate definitions"""
   return RateDefinition(parse_result[0], parse_result[1])
@@ -181,7 +198,8 @@ class ComponentDefinition:
 
   def show_definition(self):
     """Prints out the component definition in Bio-PEPA format"""
-    behaviour_strings = [ x.show_behaviour() for x in self.behaviours ]
+    behaviour_strings = [ x.show_behaviour(self.name) 
+                            for x in self.behaviours ]
     return self.name + " = " + " + ".join(behaviour_strings) + " ;"
 
 class Behaviour:
@@ -190,7 +208,7 @@ class Behaviour:
   def __init__(self, reaction, operator):
     self.reaction_name = reaction
     self.operator = operator
-    self.stoichiometry = 1
+    self.stoichiometry = ['1']
     self.location = None
 
   def get_name(self):
@@ -202,13 +220,20 @@ class Behaviour:
     """Set the stoichiometry"""
     self.stoichiometry = stoich
 
-  def show_behaviour(self):
+  def show_behaviour(self, component_name):
     """Print out the behaviour as a string in Bio-PEPA format"""
-    if self.stoichiometry == 1:
-      return self.reaction_name + " " + self.operator
+    if self.stoichiometry == ['1']:
+      result = self.reaction_name + " " + self.operator[0]
     else:
-      return ("(" + self.reaction_name + ", " + 
-              str(self.stoichiometry) + ") " + self.operator)
+      stoichs = ", ".join([str(s) for s in self.stoichiometry])
+      opers = " ".join(self.operator)
+      result =  ("(" + self.reaction_name + ", " + 
+             stoichs + ") " + opers)
+
+    if self.location != None:
+      result += " " + component_name + "@" + self.location
+
+    return result
 
   def set_location (self, location):
     """Sets the location of this behaviour"""
@@ -237,7 +262,7 @@ def make_behaviour(parse_result):
 
 stoich_list = create_separated_by(parcon.number, ",")
 explicit_stoich_syntax = "(" + variable_name + "," + stoich_list + ")"
-implicit_stoich_syntax = Translate(variable_name, lambda x : (x, [1]))
+implicit_stoich_syntax = Translate(variable_name, lambda x : (x, ['1']))
 name_and_stoich = parcon.First(implicit_stoich_syntax,
                                explicit_stoich_syntax)
                                
@@ -279,8 +304,8 @@ behaviour_list_parser = create_separated_by(behaviour_syntax, "+")
 
 def make_component_def(parse_result):
   """The parse action for the component definition parser"""
-  print ("component def parse result")
-  print (parse_result)
+  # print ("component def parse result")
+  # print (parse_result)
   return ComponentDefinition(parse_result[0], parse_result[1])
 component_definition_syntax = (variable_name + "=" + 
                                behaviour_list_parser + ";")
@@ -307,6 +332,15 @@ class ComponentPopulation:
     self.initial_expression = initial_expression
     self.location = "default location"
 
+  def format(self):
+    """Return a string of a Bio-PEPA formatted component population"""
+    result = self.name
+    if self.location != "default location":
+      result += "@" + self.location
+    result += "[" + self.initial_expression.show_expr() + "]"
+    return result
+  
+
 def create_component_population(parse_result):
   """A post-parsing function to create a component population"""
   component_location = parse_result[0]
@@ -329,13 +363,51 @@ class BioPEPAModel:
     self.component_defs = None
     self.system_equation = None
 
+  def output_model(self, file):
+    """Output the model to the given file"""
+
+    if self.var_decs != None and self.var_decs:
+      file.write("// Variable declarations\n")
+      for var_dec in self.var_decs:
+        file.write(var_dec.format_declaration())
+        file.write("\n")
+      file.write("\n")
+ 
+    # Admittedly it would be a strange Bio-PEPA file indeed which
+    # contained no rate definitions and the same goes for component
+    # definitions, but there is nothing wrong with a bit of defensive
+    # programming, what if someone is extracting a module or something?
+    if self.rate_defs != None and self.rate_defs:
+      file.write("// Rate definitions\n")
+      for rate_def in self.rate_defs:
+        file.write(rate_def.format_rate_def())
+        file.write("\n")
+      file.write("\n")
+
+    if self.component_defs != None and self.component_defs:
+      file.write("// Component defintions\n")
+      for component_def in self.component_defs:
+        file.write(component_def.show_definition())
+        file.write("\n")
+      file.write("\n")
+
+    comp_pops = [ comp_pop.format() for comp_pop in self.system_equation ]
+    system_equation = " <*>\n".join(comp_pops)
+
+    file.write ("// The system equation\n")
+    file.write (system_equation)
+    file.write ("\n")
+
+    
+    
+
 def make_model(parse_result):
   """Simple post-parsing creation function for the model parser"""
   biopepa_model = BioPEPAModel()
   definitions = parse_result[0]
 
   var_decs = [ x for x in definitions
-                     if isinstance(x, sbml_ast.VariableDeclaration) ]
+                     if isinstance(x, VariableDeclaration) ]
   rate_defs = [ x for x in definitions
                       if isinstance(x, RateDefinition) ]
   components = [ x for x in definitions
