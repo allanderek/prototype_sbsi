@@ -196,6 +196,20 @@ class FacileModel(object):
     self.assign_rules = None
     self.initial_conditions = None
 
+  def all_species_names(self):
+    """Returns the names of all species in the model"""
+    if self.assign_rules:
+      names = [ assignment.get_variable_name() 
+                  for assignment in self.assign_rules ]
+    else:
+      names = []
+    
+    if self.initial_conditions:
+      names.extend([i.name for i in self.initial_conditions])
+
+    return names
+    
+
 model_syntax = (equation_section_syntax + 
                 "INIT" +
                 init_cond_section_syntax +

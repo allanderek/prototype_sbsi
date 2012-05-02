@@ -42,7 +42,7 @@ def add_implicit_modifiers(reactions, facile_model):
   # makes calls to element tags etc.
   # First we must determine all the species' names since we cannot
   # simply add any name since it might be a variable name.
-  all_species_names = [ i.name for i in facile_model.initial_conditions ]
+  all_species_names = facile_model.all_species_names()
   # Now we get the names referenced by the kinetic law, this is
   # currently incomplete since it is only returning those names which
   # are literally used within the kinetic law, but we may have variables
