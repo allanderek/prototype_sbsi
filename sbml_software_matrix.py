@@ -144,6 +144,8 @@ def analyse_file(filename):
     percentage = get_percentage(of_have_contact, in_general)
     print(str(percentage) + "% of " + desc + " have recent contact")
 
+  print ("----In General-----")
+  report_recent_contact(lambda x: True, "of all")
 
   print ("----Cabilities-----")
   report_recent_contact(lambda x: x.creation, "creation")
@@ -176,11 +178,15 @@ def analyse_file(filename):
   report_recent_contact(lambda x: x.linux, "linux available")
   report_recent_contact(lambda x: x.windows, "windows available")
   report_recent_contact(lambda x: x.web_browser, "web available")
+  def has_at_least_one_platform(package):
+    """Returns true if the package has at least one specified platform"""
+    return (package.linux or package.mac or 
+            package.windows or package.web_browser)
   def has_no_platform(package):
     """Returns true if the package has no specified platform"""
-    return not(package.linux or package.mac or 
-               package.windows or package.web_browser)
+    return not has_at_least_one_platform(package)
   report_recent_contact(has_no_platform, "no platform available")
+  report_recent_contact(has_at_least_one_platform, "at least one platform")
 
   def has_multiple_platforms(package):
     """returns true if the package is available for multiple platforms"""
