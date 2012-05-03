@@ -1,12 +1,10 @@
 """A module implementing a transformation from biopepa to xml"""
 
-import sys
 import argparse
-import parcon
+import sys
 
-import utils
 import biopepa.biopepa_parser as biopepa_parser
-import sbml_ast
+import utils
 
 def flatten_model(loc_model):
   """Removes the locations from the given model"""
@@ -14,6 +12,7 @@ def flatten_model(loc_model):
 
 
   def munge_name(name):
+    """Helper function to munge a located name"""
     return name.replace("@", "__")
 
   # Rate definitions
@@ -24,6 +23,12 @@ def flatten_model(loc_model):
   # Component definitions
   for component_def in loc_model.component_defs:
     def add_behaviour(name, behaviour):
+      """Adds the given behaviour to the component definition of that
+         name. If there already exists a component definition for that
+         name in the definition map then it adds the behaviour to that
+         existing definition, otherwise it creates a new definition with
+         the given behaviour and adds that definition to the def map.
+      """
       if name in def_map:
         comp_def = def_map[name]
       else:
@@ -54,15 +59,12 @@ def flatten_model(loc_model):
 
 
 def process_file(filename, arguments):
-  """Parse in a Bio-PEPA file, translate to SBML and create an
-     SBML file which should be the translated Bio-PEPA model.
+  """Parse in a Bio-PEPA file and convert to an equivalent Bio-PEPA
+     file that is flattened in the sense that it uses no compartments
+     and hence no compartment-related rules.
   """
   model_file = open(filename, "r")
-  try:
-    parse_result = biopepa_parser.parse_model_file(model_file)
-  except parcon.ParseException as parse_except:
-    print parse_except
-    sys.exit(1)
+  parse_result = biopepa_parser.parse_model_file_exit_on_error(model_file)
   model_file.close()
 
   output_filename = utils.get_output_filename(filename, arguments,

@@ -1,11 +1,10 @@
 """A module to convert SBML models into facile models where possible"""
-import xml.dom.minidom
 import argparse
 import sys
 
 import utils
-from outline_sbml import format_math_element
 import outline_sbml
+from outline_sbml import format_math_element
 
 
 def output_reaction(output_file, reaction):
@@ -37,8 +36,7 @@ def output_reaction(output_file, reaction):
 
 def convert_file(filename, arguments):
   """Given an sbml file convert it into a corresponding facile model"""
-  dom = xml.dom.minidom.parse(filename)
-  model = dom.getElementsByTagName("model")[0]
+  model = outline_sbml.get_model_from_sbml_file(filename)
 
   if arguments.output_file:
     eqn_filename = arguments.output_file
@@ -52,13 +50,8 @@ def convert_file(filename, arguments):
   # We also need to do the same for variables and parameters
   parameters = outline_sbml.get_list_of_parameters(model)
   for param in parameters:
-    output_file.write("variable " +
-                      param.name +
-                      " = " +
-                      param.value +
-                      " ;"
-                      )
-    output_file.write("\n")
+    output_file.write(" ".join(["variable",
+                                 param.name, "=", param.value, ";\n"]))
   # Reactions
   reactions = outline_sbml.get_list_of_reactions(model)
   for reaction in reactions:
@@ -89,7 +82,7 @@ def run():
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an SBML file to translate")
+                      help="an SBML file to translate to facile")
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 

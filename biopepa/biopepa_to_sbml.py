@@ -2,7 +2,6 @@
 
 import sys
 import argparse
-import parcon
 
 import utils
 import biopepa.biopepa_parser as biopepa_parser
@@ -132,16 +131,12 @@ def translate_biopepa_model(biopepa_model):
 
   return sbml_model.create_sbml_document()
 
-def process_file(filename, arguments):
+def convert_file(filename, arguments):
   """Parse in a Bio-PEPA file, translate to SBML and create an
      SBML file which should be the translated Bio-PEPA model.
   """
   model_file = open(filename, "r")
-  try:
-    parse_result = biopepa_parser.parse_model_file(model_file)
-  except parcon.ParseException as parse_except:
-    print parse_except
-    sys.exit(1)
+  parse_result = biopepa_parser.parse_model_file_exit_on_error(model_file)
   model_file.close()
 
   document = translate_biopepa_model(parse_result)
@@ -158,8 +153,9 @@ def main():
                       help="A Bio-PEPA model file to translate")
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
+
   for filename in arguments.filenames:
-    process_file(filename, arguments)
+    convert_file(filename, arguments)
 
 
 if __name__ == '__main__':

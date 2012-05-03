@@ -84,7 +84,7 @@ class Expression:
     # pylint: disable=R0201
     return None
 
-  def munge_names(self, f):
+  def munge_names(self, function):
     """Munges the names used within the expression using the function
        supplied. This is a virtual method stud, see below on our comment
        of the remove_rate_law_sugar method. Essentially I think I should
@@ -94,6 +94,7 @@ class Expression:
        this stub implementation.
     """
     # pylint: disable=W0613
+    # pylint: disable=R0201
     return None
 
 
@@ -149,8 +150,8 @@ class NameExpression(Expression):
     """Return the set of names used within this expression"""
     return set([self.name])
 
-  def munge_names(self, f):
-    self.name = f(self.name)
+  def munge_names(self, function):
+    self.name = function(self.name)
 
   def convert_to_sbml(self):
     """Convert the variable(name) expression to SBML code for
@@ -166,33 +167,37 @@ class NameExpression(Expression):
 
 
 def show_apply_expression(function_name, children):
-   function_dict = { "plus" : "+", 
-                      "minus" : "-",
-                      "divide" : "/",
-                      "times" : "*",
-                      "power" : "^",
-                   }
-   # The check on the length of children is just in case someone
-   # has managed to say apply 'times' to no arguments which would
-   # otherwise cause an error when we attempt to print the first one.
-   # It's unclear what we should do in that case, but for now I fall
-   # through to the generic case and basically you'll end up with
-   # just the 'times' (named as 'times' not as *) printed out.
-
-   result = ""
-
-   if function_name in function_dict and len(children) > 1 :
-     result += "("
-     # Could just put the spaces in the dictionary above?
-     operator = " " + function_dict[function_name] + " "
-     result += operator.join(children)
-     result += ")"
-   else:
-     result += function_name + "("
-     result += ", ".join(children) 
-     result += ")"
-
-   return result
+  """Formats an apply expression as a string and returns that string.
+     Checks for common arithmetic operators and outputs the appropriate
+     infix expression in the case that it finds one.
+  """
+  function_dict = { "plus" : "+", 
+                    "minus" : "-",
+                    "divide" : "/",
+                    "times" : "*",
+                    "power" : "^",
+                  }
+  # The check on the length of children is just in case someone
+  # has managed to say apply 'times' to no arguments which would
+  # otherwise cause an error when we attempt to print the first one.
+  # It's unclear what we should do in that case, but for now I fall
+  # through to the generic case and basically you'll end up with
+  # just the 'times' (named as 'times' not as *) printed out.
+ 
+  result = ""
+ 
+  if function_name in function_dict and len(children) > 1 :
+    result += "("
+    # Could just put the spaces in the dictionary above?
+    operator = " " + function_dict[function_name] + " "
+    result += operator.join(children)
+    result += ")"
+  else:
+    result += function_name + "("
+    result += ", ".join(children) 
+    result += ")"
+ 
+  return result
 
 
 
@@ -216,12 +221,12 @@ class ApplyExpression(Expression):
       result_set = result_set.union(expr.used_names())
     return result_set
     
-  def munge_names(self, f):
+  def munge_names(self, function):
     """Must munge all the names, we do not munge the name of the
        function of the apply expression however.
     """
     for child in self.args:
-      child.munge_names(f)
+      child.munge_names(function)
 
   def convert_to_sbml(self):
     """return a string representing the sbml of an math apply expression"""

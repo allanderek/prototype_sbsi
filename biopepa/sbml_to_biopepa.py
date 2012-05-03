@@ -1,12 +1,11 @@
 """A module to convert SBML models into Bio-PEPA models where possible"""
-import xml.dom.minidom
 import argparse
 import sys
 
 import utils
 from outline_sbml import format_math_element
 import outline_sbml
-import biopepa_parser as biopepa
+import biopepa.biopepa_parser as biopepa
 
 
 def output_system_equation(output_file, species, init_assigns):
@@ -48,11 +47,17 @@ def calculate_component_defs(reactions):
   """
   def_map = dict()
   for reaction in reactions:
-    # haha this is wrong, stoichiometry and operator should be
-    # a list and furthermore we should check if the same named
+    # This is wrong we should check if the same named
     # component is listed as both a reactant and product / modifier.
-    # And essentially just do the correct thing.
+    # And essentially just do the correct thing, which would be to have
+    # a proper list of operators and stoichiometries rather than the
+    # singleton lists used here.
     def add_behaviour(participant, operator):
+      """Creates a behaviour from the participant and adds it to the
+         corresponding component definition in the def map. If there is no
+         current definition of this process in the def map then a new one
+         created and added.
+      """
       name = participant.name 
       if name in def_map:
         comp_def = def_map[name]
@@ -74,29 +79,24 @@ def calculate_component_defs(reactions):
 
   return def_map.values()
 
-def convert_file(filename, arguments):
+def translate_file(filename, arguments):
   """Given an sbml file convert it into a corresponding Bio-PEPA model"""
-  dom = xml.dom.minidom.parse(filename)
-  model = dom.getElementsByTagName("model")[0]
+  model = outline_sbml.get_model_from_sbml_file(filename)
 
   if arguments.output_file:
-    eqn_filename = arguments.output_file
+    biopepa_filename = arguments.output_file
   else:
-    eqn_filename = utils.change_filename_ext(filename, ".biopepa")
-  if eqn_filename == "stdout":  
+    biopepa_filename = utils.change_filename_ext(filename, ".biopepa")
+  if biopepa_filename == "stdout":  
     output_file = sys.stdout
   else:
-    output_file = open(eqn_filename, "w")
+    output_file = open(biopepa_filename, "w")
 
   output_file.write("\n\n// Parameters\n")
   # We also need to do the same for variables and parameters
   parameters = outline_sbml.get_list_of_parameters(model)
   for param in parameters:
-    output_file.write(param.name +
-                      " = " +
-                      param.value +
-                      " ;"
-                      )
+    output_file.write(" ".join([param.name, "=", param.value, ";\n"]))
     output_file.write("\n")
 
   # Reactions
@@ -121,7 +121,7 @@ def convert_file(filename, arguments):
 
   output_system_equation(output_file, species, init_assigns)
 
-  if eqn_filename != "stdout":
+  if biopepa_filename != "stdout":
     output_file.close()
 
 
@@ -132,12 +132,12 @@ def run():
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an SBML file to translate")
+                      help="an SBML file to translate to Bio-PEPA")
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
-    convert_file(filename, arguments)
+    translate_file(filename, arguments)
 
 if __name__ == "__main__":
   run()

@@ -306,8 +306,8 @@ class ExprFormatter(ExprVisitor):
       arg_strings.append(self.result)
       self.result = current_result
 
-    format = sbml_ast.show_apply_expression(function_name, arg_strings)
-    self.print_str(format)
+    formatted = sbml_ast.show_apply_expression(function_name, arg_strings)
+    self.print_str(formatted)
 
 #     function_dict = { "plus" : "+", 
 #                       "minus" : "-",
@@ -450,11 +450,18 @@ def outline_model(model, arguments):
 
   outline_rate_rules(model)
 
+def get_model_from_sbml_file(filename):
+  """Parses the sbml file as an xml file and then returns the appropriate
+     model element
+  """
+  dom = xml.dom.minidom.parse(filename)
+  model = dom.getElementsByTagName("model")[0]
+  return model
+ 
 def outline_sbml_file(filename, arguments):
   """parse in a file as an sbml model, extract the outline information
      and then format that information and print it out"""
-  dom = xml.dom.minidom.parse(filename)
-  model = dom.getElementsByTagName("model")[0]
+  model = get_model_from_sbml_file(filename)
   outline_model(model, arguments)
   
 def run():
