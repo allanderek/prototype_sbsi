@@ -9,6 +9,7 @@ sys.path.append("/home/aclark6/Source/prototype_sbsi")
 import utils
 import facile.facile_parser as facile_parser
 import sbml_ast
+import static_analyser_sbml
 
 def uniquely_name_reactions(reactions):
   """Give a unique name to each reaction, this is currently rather
@@ -153,6 +154,8 @@ def translate_file(filename, arguments):
   model_file.close()
 
   document = translate_facile_model(facile_model, arguments)
+  if not arguments.no_static_analysis:
+    static_analyser_sbml.analyse_document(document)
   sbml_ast.output_to_sbml_file(filename, arguments, document)
 
 
@@ -170,6 +173,8 @@ def main():
     help="Species mentioned in kinetic law added as modifiers")
   parser.add_argument('--copasi-spec-ref-workaround', action='store_true',
     help="Works around a copasi bug by not setting a constant attribute")
+  parser.add_argument('--no-static-analysis', action='store_true',
+    help="Suppresses post-translation static analysis")
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 

@@ -1,6 +1,7 @@
 """
 A module that implements a parser for the Bio-PEPA language
 """
+import sys
 import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
 
@@ -363,40 +364,40 @@ class BioPEPAModel:
     self.component_defs = None
     self.system_equation = None
 
-  def output_model(self, file):
-    """Output the model to the given file"""
+  def output_model(self, outfile):
+    """Output the model to the given outfile"""
 
     if self.var_decs != None and self.var_decs:
-      file.write("// Variable declarations\n")
+      outfile.write("// Variable declarations\n")
       for var_dec in self.var_decs:
-        file.write(var_dec.format_declaration())
-        file.write("\n")
-      file.write("\n")
+        outfile.write(var_dec.format_declaration())
+        outfile.write("\n")
+      outfile.write("\n")
  
-    # Admittedly it would be a strange Bio-PEPA file indeed which
+    # Admittedly it would be a strange Bio-PEPA outfile indeed which
     # contained no rate definitions and the same goes for component
     # definitions, but there is nothing wrong with a bit of defensive
     # programming, what if someone is extracting a module or something?
     if self.rate_defs != None and self.rate_defs:
-      file.write("// Rate definitions\n")
+      outfile.write("// Rate definitions\n")
       for rate_def in self.rate_defs:
-        file.write(rate_def.format_rate_def())
-        file.write("\n")
-      file.write("\n")
+        outfile.write(rate_def.format_rate_def())
+        outfile.write("\n")
+      outfile.write("\n")
 
     if self.component_defs != None and self.component_defs:
-      file.write("// Component defintions\n")
+      outfile.write("// Component defintions\n")
       for component_def in self.component_defs:
-        file.write(component_def.show_definition())
-        file.write("\n")
-      file.write("\n")
+        outfile.write(component_def.show_definition())
+        outfile.write("\n")
+      outfile.write("\n")
 
     comp_pops = [ comp_pop.format() for comp_pop in self.system_equation ]
     system_equation = " <*>\n".join(comp_pops)
 
-    file.write ("// The system equation\n")
-    file.write (system_equation)
-    file.write ("\n")
+    outfile.write ("// The system equation\n")
+    outfile.write (system_equation)
+    outfile.write ("\n")
 
     
     
@@ -435,4 +436,16 @@ def parse_model_file(model_file):
   parse_result = model_parser.parse_string(model_file.read())
   return parse_result
 
-
+def parse_model_file_exit_on_error(model_file):
+  """Calls the above parse_model_file and if there is a parse error
+     prints the error report to the screen and then exits. Generally we
+     expect callers of parse_model_file will do something more
+     sophisticated but this works well for a quick script.
+  """
+  try:
+    parse_result = parse_model_file(model_file)
+  except parcon.ParseException as parse_except:
+    print (parse_except)
+    sys.exit(1)
+  return parse_result
+ 

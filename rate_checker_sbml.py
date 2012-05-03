@@ -104,10 +104,8 @@ class RateAnalyser(object):
 
    
 
-def check_rates_sbml_file(filename):
+def check_rates_sbml_model(model):
   """Perform analysis over the rate definitions of an SBML model"""
-  dom = xml.dom.minidom.parse(filename)
-  model = dom.getElementsByTagName("model")[0]
   reactions = outline_sbml.get_list_of_reactions(model)
   rate_analyser = RateAnalyser(model)
 
@@ -118,11 +116,17 @@ def check_rates_sbml_file(filename):
 
   return num_warnings
 
- 
-  
-def run():
-  """perform the banalities of command-line argument processing and
-     then go ahead and calculate the outline for each model file"""
+
+def check_rates_sbml_file(filename):
+  """Perform analysis over the rate definitions of an SBML file"""
+  dom = xml.dom.minidom.parse(filename)
+  model = dom.getElementsByTagName("model")[0]
+
+  num_warnings = check_rates_sbml_model(model)
+  return num_warnings
+
+def create_arguments_parser():
+  """Create the parser for the command-line arguments""" 
   description = "Print out an outline of an SBML file"
   parser = argparse.ArgumentParser(description=description)
   # Might want to make the type of this 'FileType('r')'
@@ -135,6 +139,13 @@ def run():
   parser.add_argument("--ignore-sinks",
                       action="store_true", default=False,
     help="Ignore sink reactions")
+
+  return parser
+ 
+def run():
+  """perform the banalities of command-line argument processing and
+     then go ahead and calculate the outline for each model file"""
+  parser = create_arguments_parser()
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
