@@ -73,6 +73,40 @@ def get_reaction_of_element(reaction_element):
   return reaction
    
 
+def get_fundef_of_element(fundef_element):
+  """Return a FunctionDefinition object from a functionDefinition
+     element
+  """
+  fundef = sbml_ast.FunctionDefinition()
+  name = fundef_element.getAttribute("name")
+  fundef.name = name
+
+  lambda_elements = fundef_element.getElementsByTagName("lambda")
+  if lambda_elements:
+    lambda_element = lambda_elements[0]
+
+    bvar_elements = []
+    other_children = []
+    for child_node in lambda_element.childNodes:
+      if child_node.nodeType == child_node.ELEMENT_NODE:
+        # is this case-sensitive?
+        if child_node.tagName == "bvar":
+          bvar_elements.append(child_node)
+        else:
+          other_children.append(child_node)
+
+    for bvar_element in bvar_elements:
+      ci_elements = bvar_element.getElementsByTagName("ci")
+      if ci_elements:
+        name = ci_elements[0].firstChild.data.lstrip().rstrip() 
+        fundef.parameters.append(name)
+    if other_children:
+      fundef.body = parse_expression(other_children[0])
+
+  return fundef
+
+  
+
 def get_elements_from_lists_of_list(list_element_name,
                                     element_name,
                                     extract_fun,
@@ -90,6 +124,15 @@ def get_elements_from_lists_of_list(list_element_name,
       result_obj = extract_fun(element)
       result_objects.append(result_obj)
   return result_objects
+
+
+def get_list_of_fundefs(model):
+  """Returns a list or FunctionDefinition objects from an sbml model"""
+  fundefs = get_elements_from_lists_of_list("listOfFunctionDefinitions",
+                                            "functionDefinition",
+                                            get_fundef_of_element,
+                                            model)
+  return fundefs 
 
 def get_list_of_reactions(model, ignore_sources=False, ignore_sinks=False):
   """Returns a list of reaction objects from an sbml model"""
@@ -157,9 +200,7 @@ def get_init_assign_of_element(init_assign_element):
   math_elements = init_assign_element.getElementsByTagName("math")
   expression = None
   if math_elements:
-    expr_builder = ExprBuilder()
-    expr_builder.visit_maths(math_elements[0])
-    expression = expr_builder.get_results()
+    expression = parse_expression(math_elements[0])
 
   return sbml_ast.InitialAssignment(symbol_name, expression)
   
@@ -434,6 +475,13 @@ def outline_model(model, arguments):
   reactions = get_list_of_reactions(model,
                   ignore_sources = arguments.ignore_sources,
                   ignore_sinks = arguments.ignore_sinks)
+
+  fundefs = get_list_of_fundefs(model)
+
+  print_amount(len(fundefs), "function definition", "function definitions")
+  for fundef in fundefs:
+    print (fundef.format_fundef())
+
   print_amount(len(reactions), "reaction", "reactions")
   for reaction in reactions:
     print("  " + reaction.format_reaction())

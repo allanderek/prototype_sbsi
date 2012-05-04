@@ -288,6 +288,22 @@ class ApplyExpression(Expression):
       return new_expr
 
 
+class FunctionDefinition(object):
+  """A class to represent a function definition in SBML"""
+  def __init__(self):
+    self.name = None
+    self.parameters = []
+    self.body = None
+
+  def format_fundef(self):
+    """A method to format the function definition as a string"""
+    params_string = "(" + ", ".join(self.parameters) + ")"
+    body_string = ""
+    if self.body != None:
+      body_string = self.body.show_expr()
+    result = " ".join ([ "fundef", params_string, "=", body_string ])
+    return result
+
 class VariableDeclaration(object):
   """A class to represent the AST of a variable declaration in Bio-PEPA"""
   def __init__(self, variable, expression):
