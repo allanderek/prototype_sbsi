@@ -22,11 +22,11 @@ def get_rate_affectors(rate_element):
 def get_referenced_species(kin_law, rate_analyser):
   """Returns the species referenced by the given kinetic law"""
   identifiers = rate_analyser.get_rate_affectors(kin_law)
-  species_names = [ unicode(s.name) for s in rate_analyser.species ]
+  species_names = [ unicode(s.ident) for s in rate_analyser.species ]
   referenced_species = [ s for s in identifiers if s in species_names ]
   return referenced_species
 
-def check_reaction(reaction, rate_analyser):
+def check_reaction(reaction, rate_analyser, allow_reversible=False):
   """Check the kinetic law of a reaction"""
   num_warnings = 0
   kin_law = reaction.kinetic_law
@@ -43,7 +43,7 @@ def check_reaction(reaction, rate_analyser):
   modifier_names = [ unicode(m.name)
                      for m in reaction.modifiers ]
   # by this I mean all names on the left-hand side of the reaction
-  all_lhs_names = reactant_names + modifier_names
+  all_lhs_names = reactant_names + modifier_names 
   referenced_species = get_referenced_species(kin_law, rate_analyser)
 
   # First check if all of the left hand side names, that is reactants
@@ -58,8 +58,14 @@ def check_reaction(reaction, rate_analyser):
 
   # Now check that for every referenced species it is in fact declared
   # as either a reactant or modifier.
+  involved_species = all_lhs_names
+  if allow_reversible:
+    product_names = [ unicode(p.name)
+                       for p in reaction.products ]
+    involved_species += product_names
+  
   for identifier in referenced_species:
-    if identifier not in all_lhs_names:
+    if identifier not in all_lhs_names + product_names:
       num_warnings += 1
       print (identifier + " modifies the rate of reaction " +
              reaction.name + " but is not a reactant or modifier")
@@ -80,10 +86,11 @@ class RateAnalyser(object):
   def get_rate_affectors(self, rate_element):
     """Returns the identifiers used within a rate (or math expression)
        element. This is deep in that it checks the names used for
-       assignments which may themselve use other names.
+       assignments which may themselves use other names.
     """
     ci_elements = rate_element.getElementsByTagName("ci")
     identifiers = []
+    
     for ident_element in ci_elements:
       name = ident_element.firstChild.data
       identifiers.append(name.lstrip().rstrip())
@@ -104,7 +111,7 @@ class RateAnalyser(object):
 
    
 
-def check_rates_sbml_model(model):
+def check_rates_sbml_model(model, arguments):
   """Perform analysis over the rate definitions of an SBML model"""
   reactions = outline_sbml.get_list_of_reactions(model)
   rate_analyser = RateAnalyser(model)
@@ -112,33 +119,35 @@ def check_rates_sbml_model(model):
   num_warnings = 0
  
   for reaction in reactions:
-    num_warnings += check_reaction(reaction, rate_analyser)
+    allow_products = arguments.allow_reversible_products
+    num_warnings += check_reaction(reaction, rate_analyser,
+                                   allow_reversible=allow_products)
 
   return num_warnings
 
 
-def check_rates_sbml_file(filename):
+def check_rates_sbml_file(filename, arguments):
   """Perform analysis over the rate definitions of an SBML file"""
   dom = xml.dom.minidom.parse(filename)
   model = dom.getElementsByTagName("model")[0]
 
-  num_warnings = check_rates_sbml_model(model)
+  num_warnings = check_rates_sbml_model(model, arguments)
   return num_warnings
 
 def create_arguments_parser():
   """Create the parser for the command-line arguments""" 
-  description = "Print out an outline of an SBML file"
+  description = "Statically check the rates in an SBML file"
   parser = argparse.ArgumentParser(description=description)
-  # Might want to make the type of this 'FileType('r')'
-  # This should instead just be a child of the outline parser.
-  parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="an sbml file to outline")
   parser.add_argument("--ignore-sources",
                       action="store_true", default=False,
     help="Ingore source reactions")
   parser.add_argument("--ignore-sinks",
                       action="store_true", default=False,
     help="Ignore sink reactions")
+  parser.add_argument("--allow-reversible-products",
+                      action="store_true", default=False,
+    # Basically this is useful for reversible reactions
+    help="Allow products to be treated as reactants")
 
   return parser
  
@@ -146,10 +155,15 @@ def run():
   """perform the banalities of command-line argument processing and
      then go ahead and calculate the outline for each model file"""
   parser = create_arguments_parser()
+  # Might want to make the type of this 'FileType('r')'
+  # This should instead just be a child of the outline parser.
+  parser.add_argument('filenames', metavar='F', nargs='+',
+                      help="an sbml file to outline")
+ 
   arguments = parser.parse_args()
 
   for filename in arguments.filenames:
-    check_rates_sbml_file(filename)
+    check_rates_sbml_file(filename, arguments)
 
 if __name__ == "__main__":
   run()

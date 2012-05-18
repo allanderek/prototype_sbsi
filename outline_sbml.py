@@ -22,7 +22,11 @@ def react_partic_of_species_ref(spec_ref):
   """
   name = spec_ref.getAttribute("species")
   stoich = spec_ref.getAttribute("stoichiometry")
-  if not stoich:
+  try:
+    stoich = int(stoich)
+  except ValueError:
+    stoich = None
+  if stoich == None:
     return sbml_ast.ReactionParticipant(name)
   else :
     return sbml_ast.ReactionParticipant(name, stoich=int(stoich))

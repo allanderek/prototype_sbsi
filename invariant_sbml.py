@@ -189,7 +189,8 @@ def kig_of_model(model, ignore_sources, ignore_sinks):
      a model. The kig is simply a mapping from reactions to
      their effects on the population of each species"""
   species = outline_sbml.get_list_of_species(model)
-  species_names = [ spec.get_name() for spec in species ]
+  # species_names = [ spec.get_name() for spec in species ]
+  species_names = [ spec.ident for spec in species ]
   all_reactions = outline_sbml.get_list_of_reactions(model)
   reactions = [ r for r in all_reactions 
                     if (not r.is_source() or not ignore_sources) 
