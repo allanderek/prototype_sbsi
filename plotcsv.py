@@ -115,8 +115,11 @@ def create_gnuplot_file(basename, arguments, datafiles):
 
   if arguments.output_format == "pdf" or arguments.output_format == "eps":
     epsfilename = basename + ".eps"
-    set_gnuplot_option(gnuplotfile, "term",
-                       "post eps color enhanced", quote=False)
+    if arguments.no_enhanced:
+      terminal_args = "post eps color"
+    else:
+      terminal_args = "post eps color enhanced"
+    set_gnuplot_option(gnuplotfile, "term", terminal_args, quote=False)
     set_gnuplot_option(gnuplotfile, "output", epsfilename)
     outputfilename = epsfilename
   elif arguments.output_format == "png":
@@ -215,6 +218,11 @@ def write_gnuplot_plotting_commands(gnuplotfile,
   colour_dictionary = ColourDict()
 
   plottables = get_datafiles_plottables(datafiles, arguments, separator)
+
+  # So basically we'll alias the colours if any data file has more than
+  # one plottable, if they all have only one plottable then we'll assume
+  # we want them to be different colours even if they are the same name.
+  should_alias_colours = any([len(p.headers) != 1 for p in plottables])
   for plottable in plottables:
     headers = plottable.headers
     # The first column must be printed out a little differently to
@@ -224,12 +232,25 @@ def write_gnuplot_plotting_commands(gnuplotfile,
     # any other line (which is to end the previous line and indent).
     for i in range (1, len(headers)):
       header = headers[i]
-      header_title = header_aliaser.get_unique_name(header)
+      if arguments.filename_suffix_key:
+        # the suffix of the key not the suffix of the datafile
+        # essentially the datafile name without the extension.
+        suffix = os.path.splitext(plottable.datafile)[0]
+        header_title = header + "_" + suffix
+      else:
+        header_title = header_aliaser.get_unique_name(header)
       if header in plottable.columns:
         # getting the colour comes after we decide whether or not
-        # we're going to actually plot the line. Otherwise we use wide
-        # apart colour numbers.
-        colour = colour_dictionary.get_name_colour(header)
+        # we're going to actually plot the line. Otherwise we use 
+        # colour numbers which are far apart.
+        # Additionally sometimes we do not wish to map the same name from
+        # different files to the same colour, most often this is because we
+        # are only plotting a single name from each file, if this is the
+        # case then we plot that is what we do.
+        if should_alias_colours:
+          colour = colour_dictionary.get_name_colour(header_title)
+        else:
+          colour = colour_dictionary.get_name_colour(header)
         line = (line_prefix + "\"" + plottable.datafile + "\"" + 
                 " using 1:" +
                 str(i + 1) + " w " + arguments.linestyle +
@@ -278,7 +299,12 @@ Note also the --linestyle argument is a little fiddly, you have to give
 the string to come after 'w' part, so for example if you only wish to
 increase the line width you still have to specify that you want lines,
 so you would do this with '--linestyle "l lw 6"' or for line-points
-'--linestyle "lp lw 6"'
+'--linestyle "lp lw 6"' By default gnuplot will give each line a slightly
+different type (dashes, dots etc) in order that they are distinguishable
+when printed out in black and white. If you want all solid lines
+(presumably in different colours) which tends to look better for a
+presentation then you should do '--linestyle "l lt 1"' and possibly make
+them wider as well with '--linestyle "l lt 1 lw 5"'
 """
 
   parser = argparse.ArgumentParser(description=description,
@@ -314,6 +340,10 @@ so you would do this with '--linestyle "l lw 6"' or for line-points
                       choices=["pdf", "png"],
                       default="pdf",
                       help="Set the output format image file")
+  parser.add_argument('--filename-suffix-key', action='store_true',
+    help="add the filename as a suffix to the key for each column")
+  parser.add_argument('--no-enhanced', action='store_true',
+    help="suppress the use of enhanced (LaTeX like column names)")
 
   parser.add_argument('--no-gnuplot', action='store_true',
                       help="Just generate the gnuplot script, " +
