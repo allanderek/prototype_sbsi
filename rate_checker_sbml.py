@@ -65,7 +65,7 @@ def check_reaction(reaction, rate_analyser, allow_reversible=False):
     involved_species += product_names
   
   for identifier in referenced_species:
-    if identifier not in all_lhs_names + product_names:
+    if identifier not in involved_species:
       num_warnings += 1
       print (identifier + " modifies the rate of reaction " +
              reaction.name + " but is not a reactant or modifier")
