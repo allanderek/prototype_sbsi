@@ -429,6 +429,9 @@ def parse_model(model_source):
      of the source of a Bio-PEPA model and return the parse result
      of parsing the model
   """
+  # This code is nearly identical to code in the facile parser, we
+  # should factor out the ability to easily add a line comment
+  # facility to any parser.
   newline_syntax = parcon.CharIn("\n\r")
   not_new_line = parcon.Except(parcon.AnyChar(), newline_syntax)
   line_comment = "//" + parcon.ZeroOrMore(not_new_line)
