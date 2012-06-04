@@ -29,7 +29,7 @@ class Parameter:
     else:
       low = self.low
     if not self.initial_step:
-      initial_step = (self.high - self.low) / 100
+      initial_step = (high - low) / 100
     else:
       initial_step = self.initial_step
     line = (self.name + "\t" + str(low) + "\t" +
