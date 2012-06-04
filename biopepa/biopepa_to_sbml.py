@@ -21,6 +21,7 @@ class Reaction(sbml_ast.Reaction):
        the rate part so we set up a property to mimic that.
     """
     return self.kinetic_law
+
   @rate.setter
   def rate(self, rate):
     """The setter for the rate property"""

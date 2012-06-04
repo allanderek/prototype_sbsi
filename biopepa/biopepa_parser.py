@@ -429,11 +429,18 @@ def parse_model(model_source):
      of the source of a Bio-PEPA model and return the parse result
      of parsing the model
   """
-  return model_parser.parse_string(model_source)
+  newline_syntax = parcon.CharIn("\n\r")
+  not_new_line = parcon.Except(parcon.AnyChar(), newline_syntax)
+  line_comment = "//" + parcon.ZeroOrMore(not_new_line)
+  either_or = parcon.First(parcon.Whitespace(), line_comment) 
+  comments_and_whitespace = parcon.OneOrMore(either_or)
+  return model_parser.parse_string(model_source,
+                                   whitespace=comments_and_whitespace)
 
 def parse_model_file(model_file):
   """Parse an entire Bio-PEPA model file"""
-  parse_result = model_parser.parse_string(model_file.read())
+  # parse_result = model_parser.parse_string(model_file.read())
+  parse_result = parse_model(model_file.read())
   return parse_result
 
 def parse_model_file_exit_on_error(model_file):
