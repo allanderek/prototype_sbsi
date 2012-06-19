@@ -268,9 +268,7 @@ name_and_stoich = parcon.First(implicit_stoich_syntax,
                                explicit_stoich_syntax)
                                
 component_name_syntax = variable_name
-component_name_placement = (component_name_syntax +
-                            Optional ("@" + location_name_syntax)
-                           )
+component_name_placement = located_name
 
 class ComponentLocation(object):
   """A class representing a component as well as a location, which
@@ -284,12 +282,17 @@ def create_component_with_location(parse_result):
   """Post-parsing method for a component with a location,
      eg "A@M".
   """
-  component = parse_result[0]
-  if len(parse_result) > 1:
-    location = parse_result[1]
+  names = parse_result.split("@") 
+  component = names[0]
+  if len(names) == 1:
+    location = None
   else:
-    location = None  
+    # I must admit I'd be a little happier to check that it's not
+    # longer than two long, in which case we had multiple @ symbols
+    # and I wouldn't be sure about what to do.
+    location = names[1]
   return ComponentLocation(component, location)
+
 component_with_location = Translate(component_name_placement,
                                     create_component_with_location)
 optional_component_placement = Optional (component_with_location)
