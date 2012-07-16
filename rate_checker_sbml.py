@@ -38,12 +38,11 @@ def check_reaction(reaction, rate_analyser, allow_reversible=False):
   # out any that are not species names.
   if not kin_law:
     return 0
-  reactant_names = [ unicode(r.name) 
-                     for r in reaction.reactants ]
-  modifier_names = [ unicode(m.name)
-                     for m in reaction.modifiers ]
-  # by this I mean all names on the left-hand side of the reaction
-  all_lhs_names = reactant_names + modifier_names 
+
+  # by all_lhs_names I mean all names on the left-hand side of the reaction
+  all_lhs_names = [ unicode(r.name)
+                      for r in reaction.reactants + reaction.modifiers ]
+
   referenced_species = get_referenced_species(kin_law, rate_analyser)
 
   # First check if all of the left hand side names, that is reactants
