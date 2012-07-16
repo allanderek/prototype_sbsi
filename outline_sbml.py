@@ -5,7 +5,22 @@ import argparse
 import sbml_ast
 
 
-   
+def get_element_children(node):
+  """A utility function for dealing with xml. Often you wish to deal
+     with the children of an element, but only those that are actually
+     nodes, not the text children. For example
+     <math>
+       <cn>0.1</cn>
+     </math>
+     The math element has three children, the node child <cn> plus the text
+     childrend representing the whitespace either side of the <cn> child.
+     So this method picks out only those children which are nodes.
+  """
+  if node.hasChildNodes():
+    return [ x for x in node.childNodes
+                 if x.nodeType == x.ELEMENT_NODE ]
+  else:
+    return []
 
 def name_of_species_reference(spec_ref):
   """Return the name of the species referred to within a
@@ -249,6 +264,8 @@ class ExprVisitor(object):
         self.visit_ci(element)
       elif tag_name == "cn":
         self.visit_cn(element)
+      elif tag_name == "math":
+        self.visit_maths(element)
       else:
         raise ValueError("unknown-tag: " + tag_name)
     else: 
@@ -256,9 +273,13 @@ class ExprVisitor(object):
 
   def visit_maths(self, maths):
     """Visit a 'maths' element"""
-    for child in maths.childNodes:
-      if child.nodeType == child.ELEMENT_NODE:
-        self.generic_visit(child)
+    element_children = get_element_children(maths)
+    no_chilren = len(element_children)
+    if no_chilren == 1: 
+      self.generic_visit(element_children[0])
+    else:
+      raise ValueError("math element with: " +
+                        str(no_chilren) + " children")
 
   ###################################
   # These are the unimplemented methods that you would be likely
@@ -291,16 +312,18 @@ class ExprBuilder(ExprVisitor):
      element (typically under a math element).
   """
   def __init__(self):
-    ExprVisitor.__init__(self)
+    super(ExprBuilder, self).__init__()
     self.result = None
 
   def visit_ci(self, element):
     """Visit a 'ci' element"""
-    self.result = sbml_ast.NameExpression(element.firstChild.data)
+    name = element.firstChild.data.lstrip().rstrip()
+    self.result = sbml_ast.NameExpression(name)
 
   def visit_cn(self, element):
     """Visit a 'cn' element"""
-    self.result = sbml_ast.NumExpression(element.firstChild.data)
+    number_string =  element.firstChild.data.lstrip().rstrip()
+    self.result = sbml_ast.NumExpression(float(number_string))
 
   def visit_apply(self, element):
     """Visit an 'apply' element"""
@@ -321,7 +344,7 @@ class ExprFormatter(ExprVisitor):
   """A class which descends through SBML math expressions storing
      a formatted string representing the math expression"""
   def __init__(self):
-    ExprVisitor.__init__(self)
+    super(ExprFormatter, self).__init__()
     self.result = ""
 
   def print_str(self, string):
@@ -382,6 +405,47 @@ class ExprFormatter(ExprVisitor):
 #       self.print_str (")")
 
 
+def evaluate_function_application(function_name, arguments):
+  """Takes in the function name and the arguments which we will assume
+     are numbers and returns the result of the application.
+  """
+  if function_name == "plus":
+    return sum(arguments)
+  elif function_name == "minus":
+    answer = arguments[0]
+    for arg in arguments[1:]:
+      answer -= arg
+    return answer
+  elif function_name == "times":
+    answer = arguments[0]
+    for arg in arguments[1:]:
+      answer *= arg
+    return answer
+  elif function_name == "div":
+    answer = arguments[0]
+    for arg in arguments[1:]:
+      answer /= arg
+    return answer
+  elif function_name == "power":
+    # power is interesting because it associates to the right
+    exponent = 1
+    # counts downwards from the last index to the 0.
+    # As an example, consider power(3,2,3), the answer should be
+    # 3 ** (2 ** 3) = 3 ** 8 = 6561, not (3 ** 2) ** 3 = 9 ** 3 = 81
+    # going through our loop here we have
+    # exp = 1
+    # exp = 3 ** exp = 3
+    # exp = 2 ** exp = 2 ** 3 = 8
+    # exp = 3 ** exp = 3 ** 8 = 6561
+    for i in range(len(arguments) - 1, -1, -1):
+      exponent = arguments[i] ** exponent
+    return exponent 
+  else:
+    raise ValueError("Unknown function: " + function_name)
+
+ 
+      
+
 class ExprEvaluator(ExprVisitor):
   """A class which descends through SBML math expressions to evaluate
      the current value of the expression. It relies on a dictionary
@@ -390,7 +454,7 @@ class ExprEvaluator(ExprVisitor):
      expr_eval.name_mapping = ...
   """
   def __init__(self):
-    ExprVisitor.__init__(self)
+    super(ExprEvaluator, self).__init__()
     self.result = None
     self.name_mapping = None
 
@@ -411,43 +475,35 @@ class ExprEvaluator(ExprVisitor):
                ]
     function = children[0]
     function_name = function.tagName
-    # Evaluate the first argument
-    self.generic_visit(children[1])
-    # first_argument = self.result
 
-    if function_name == "plus":
-      for child in children[2:]:
-        current = self.result
-        self.generic_visit(child)
-        self.result += current
-    elif function_name == "minus":
-      for child in children[2:]:
-        current = self.result
-        self.generic_visit(child)
-        self.result = current - self.result
-    elif function_name == "divide":
-      for child in children[2:]:
-        current = self.result
-        self.generic_visit(child)
-        self.result = current / self.result
-    elif function_name == "times":
-      for child in children[2:]:
-        current = self.result
-        self.generic_visit(child)
-        self.result *= current
-    elif function_name == "power":
-      # There must be some smart way to do this, it occurs like
-      # this because power 
-      first_argument = self.result
-      self.generic_visit(children[-1])
-      for child in (children[2:len(children) -1]).reverse():
-        current = self.result
-        self.generic_visit(child)
-        self.result = self.result ** current
-      self.result = first_argument ** self.result
-    else:
-      raise ValueError("Unknown function: " + function_name)
+    # Evaluate all the arguments to the function
+    def evaluate_argument(arg):
+      """Quick helper function to evaluate an argument"""
+      self.generic_visit(arg)
+      return self.result
 
+    arguments = [ evaluate_argument(a) for a in children[1:] ]
+    self.result = evaluate_function_application(function_name, arguments)
+ 
+def evaluate_expression(population_dictionary, expression):
+  """ Expressions are evaluated via an ExprEvaluator. This is just a
+      utility function which creates the evaluator, initialises it, calls
+      the visit function, obtains the result and returns it.
+  """
+  expr_evaluator = ExprEvaluator()
+  expr_evaluator.name_mapping = population_dictionary
+  expr_evaluator.generic_visit(expression)
+  value = expr_evaluator.get_results()
+  return value 
+
+def format_expression(expr):
+  """ A utility function which creates an expression formattor and then
+      applies that to an expression returning the results.
+  """
+  expr_visitor = ExprFormatter()
+  expr_visitor.generic_visit(expr)
+  return expr_visitor.get_results()
+ 
 def format_math_element(maths):
   """Format an math element as an expression
   """
@@ -476,15 +532,23 @@ def outline_rate_rules(model):
 
 def outline_model(model, arguments):
   """format and print out an outline for the given model"""
-  reactions = get_list_of_reactions(model,
-                  ignore_sources = arguments.ignore_sources,
-                  ignore_sinks = arguments.ignore_sinks)
+  parameters = get_list_of_parameters(model)
+  
+  print_amount(len(parameters), "parameter", "parameters")
+  for param in parameters:
+    print ("  " + param.format_param())
+
 
   fundefs = get_list_of_fundefs(model)
 
   print_amount(len(fundefs), "function definition", "function definitions")
   for fundef in fundefs:
     print (fundef.format_fundef())
+
+  reactions = get_list_of_reactions(model,
+                  ignore_sources = arguments.ignore_sources,
+                  ignore_sinks = arguments.ignore_sinks)
+
 
   print_amount(len(reactions), "reaction", "reactions")
   for reaction in reactions:
