@@ -69,18 +69,14 @@ class Expression:
        by any class inheriting from this class"""
     raise NotImplementedError("Expression is really an abstract class")
 
-  def get_value(self):
-    """Returns the underlying value of this expression. For most
-       expressions that is not possible and so the value None is returned.
-       But for example for a literal Number expression this value is
-       returned. Compound expressions may or may not check whether they
-       can be reduced, for example 3 + 4 can be, but 3 + x cannot.
-       Additionally this only returns the number in the event that the
-       expression itself can be reduced, not whether or not it is possible
-       in general, eg if we somehow in a file we had defined x to be 3,
-       then this still returns None for the name expression 'x', even
-       though we may know that it can be reduced to 3.
+  def get_value(self, environment=None):
+    """Returns the underlying value of this expression. For complex
+       expressions a dictionary mapping names to values may be supplied.
+       We return None, the value cannot be derived, generally this will
+       mean that it uses a name which is not defined by the provided
+       variabile dictionary (or one was not provided).
     """
+    # pylint: disable=W0613
     # pylint: disable=R0201
     return None
 
@@ -121,7 +117,7 @@ class NumExpression(Expression):
     """Display the underlying number of the numerical expression"""
     return str(self.number)
 
-  def get_value(self):
+  def get_value(self, environment=None):
     """Returns the underlying value of this expression"""
     return self.number
 
@@ -145,6 +141,17 @@ class NameExpression(Expression):
   def show_expr(self):
     """Format as a string the name expression"""
     return self.name
+
+  def get_value(self, environment=None):
+    """Evalutes this expression based on the given variable_dictionary,
+       returns None if the variable diction is absent or does not define
+       the name used in this expression.
+    """
+    if environment:
+      return environment[self.name]
+    else:
+      return None
+      
 
   def used_names(self):
     """Return the set of names used within this expression"""
@@ -423,6 +430,14 @@ class Parameter(IdNamedElement):
     self.value = element.getAttribute("value")
     self.units = element.getAttribute("units")
     self.boolean = element.getAttribute("boolean")
+
+  def format_param(self):
+    """Format this parameter as an assignment if there is a value and
+       just as the name otherwise"""
+    result = self.name
+    if self.value != None:
+      result += " = " + str(self.value)
+    return result
 
 class ReactionParticipant:
   """A simple class to represent a reaction participant"""
