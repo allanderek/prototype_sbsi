@@ -177,7 +177,7 @@ def parse_param_file(param_filename, dictionary=None):
      values. In other words a simple dictionary, it is not the parsing
      of the initparams file which has information on ranges etc.
   """
-  if not dictionary:
+  if dictionary == None:
     dictionary = dict()
   param_file = open(param_filename, "r")
 
