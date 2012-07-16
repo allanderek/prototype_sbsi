@@ -7,6 +7,8 @@ import sys
 import os.path
 from subprocess import Popen, PIPE
 import logging
+import random
+import math
 
 
 import biopepa
@@ -19,7 +21,6 @@ import sbml_parametiser
 # for scipy ode solver which may be moved to a file on its own
 import outline_sbml
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.integrate import odeint
 import xml.dom.minidom
 
@@ -305,20 +306,38 @@ def get_time_grid(configuration):
   start_time = configuration.start_time
   stop_time = configuration.stop_time
   out_interval = configuration.out_interval
-  # putting stop beyone the actual stop time means that the output
+  # putting stop beyond the actual stop time means that the output
   # will actually include the stop time. Note that in some cases this
   # may result in stop_time + out_interval actually appearing in the
   # output as well, see numpy.arange documentation.
   return np.arange(start=start_time, stop=stop_time + out_interval,
                    step=out_interval)
- 
-class ScipyOdeSbmlSolver(object):
-  """A class which implements an ODE based solver for SBML models.
-     Based on scipy
+
+
+class SBMLSolver(object):
+  """Essentially an abstract class for SBML solvers which actually do
+     the work internally. In particular we are trying to put any of the
+     common work in here such that we don't repeat ourselves.
   """
   def __init__(self, model_file):
     self.model_file = model_file
     self.model = None
+
+  def get_model(self):
+    """Return the associated model, if the model file has already been
+       parsed then we return the stored parsed model, if not then we first
+       parse the model file and store the result before returning it.
+    """
+    if self.model:
+      model = self.model
+    else:
+      dom = xml.dom.minidom.parse(self.model_file)
+      model = dom.getElementsByTagName("model")[0]
+      self.model = model
+
+    return model
+
+
 
   def initialise_solver(self):
     """Initialise the scipy ode solver, nothing special required here"""
@@ -347,24 +366,107 @@ class ScipyOdeSbmlSolver(object):
     parameter_dict = parameters.parse_param_file(param_file)
     sbml_parametiser.parameterise_model(model, parameter_dict)
 
+  def initialise_populations(self, population_dictionary,
+                             rounded_species_names=None):
+    """Initialises the population dictionary based on the SBML file.
+       In particular we include, parameter definitions,
+       species definitions and initial assignments.
+       The third argument is the list of species names which you wish to
+       have an integer population. So if you are implementing an ODE solver
+       you probably don't wish to have any names here as a non-integer
+       population is okay for an ODE solver. However if implementing a
+       stochastic algorithm most populations should be integers. If you put
+       the name in this list then here we choose an integer either above or
+       below the given value with probability relative to how close, so for
+       example the value 1.25 will 3/4 of the time be set to 1 and 1/4 of
+       the time be set to 2.
+    """
+    # To avoid always having to check for None:
+    if rounded_species_names == None:
+      rounded_species_names = []
+    # This superficially solves a problem with species taking a negative
+    # value. What happened was if we had a value such as A = 120.3343
+    # if A is decreased (always by 1 say) then eventually it gets to the
+    # point where it the population of A is 0.3343, which means a reaction
+    # in which A is involved is still enabled since the rate is not zero.
+    # So we make all initial populations of species to be integer values.
+    # However this does not completely solve the problem since the
+    # stoichiometry may be greater than one, in which case if there is
+    # exactly 1 left, then the reaction fires and now the population is -1.
+    # I think the way to do this, without significantly affecting the speed
+    # of the simulation is to first determine all the reactions in which
+    # each species is a reactant. Then we take the least common multiple
+    # of all the stoichiometries and then make sure that the initial
+    # population is a multiple of these values. But actually that doesn't
+    # work either. As long as 1 is a stoichiometry then at any time the
+    # population may be any value, including 1. In particular if the
+    # species is a product of a reaction with stoichiometry 1 and its
+    # initial population is 0, then if we fire that reaction it will have
+    # popultion 1, if it is then a reactant in a reaction with a
+    # stoichiometry above 1 we're in trouble. So this needs some thought
+    # and it may be that we can only solve this during the simulation. This
+    # is slightly annoying as you may well have a value which can go below
+    # zero.
+    def round_initial_value(name, value):
+      """If a value is a species then we assume that it should be given
+         an integer value, this rounds the value appropriately if the
+         name is in the list of species names.
+      """
+      if not name in rounded_species_names:
+        return value
+      else:
+        floored = math.floor(value)
+        remainder = value - floored
+        # A value such as 2.3 should sometimes be rounded to 2 and
+        # sometimes be rounded to 3. We take a random number and if it is
+        # higher than the remainder part we round down and otherwise we
+        # round up.
+        if random.random() < remainder:
+          return floored + 1
+        else:
+          return floored
+
+    model = self.get_model()
+    for param in outline_sbml.get_list_of_parameters(model):
+      # If the parameter value is not set here, we assume that it
+      # is set in an initial assignment (if it isn't then we will later
+      # fail if the parameter is used).
+      if param.value:
+        value = round_initial_value(param.name, float(param.value))
+        population_dictionary[param.name] = value
+
+    species = outline_sbml.get_list_of_species(model)
+    for spec in species:
+      if spec.initial_amount:
+        population_dictionary[spec.name] = float(spec.initial_amount)
+
+    init_assigns = outline_sbml.get_list_of_init_assigns(model)
+    for init_assign in init_assigns:
+      name   = init_assign.variable
+      expr   = init_assign.expression
+      value  = expr.get_value(environment=population_dictionary)
+      value  = round_initial_value(name, value)
+      population_dictionary[name] = value
+
+   
+class ScipyOdeSbmlSolver(SBMLSolver):
+  """A class which implements an ODE based solver for SBML models.
+     Based on scipy
+  """
+  def __init__(self, model_file):
+    super(ScipyOdeSbmlSolver, self).__init__(model_file)
 
   def solve_model(self, configuration):
     """Solve the model, this does not call 'parameterise_model' so
        that should be called first if it is needed
     """
-    if self.model:
-      model = self.model
-    else:
-      dom = xml.dom.minidom.parse(self.model_file)
-      model = dom.getElementsByTagName("model")[0]
+    model = self.get_model()
 
-    species = outline_sbml.get_list_of_species(model)
     reactions = outline_sbml.get_list_of_reactions(model)
-    species_names = [ s.name for s in species ]
-
+    
     population_dictionary = dict()
-    for param in outline_sbml.get_list_of_parameters(model):
-      population_dictionary[param.name] = float(param.value)
+    self.initialise_populations(population_dictionary)
+
     def get_rhs(current_pops, time):
       """The main function passed to the solver, it calculates from the
          current populations of species, the rate of change of each
@@ -395,45 +497,191 @@ class ScipyOdeSbmlSolver(object):
         
       return results  
 
-    # The initial conditions
-    initials = [0] * len(species)
-    for spec in species:
-      if spec.initial_amount:
-        index = species_names.index(spec.name)
-        initials[index] = float(spec.initial_amount)
-
-
-    init_assigns = outline_sbml.get_list_of_init_assigns(model)
-    for init_assign in init_assigns:
-      name = init_assign.variable
-      index = species_names.index(name)
-      initials[index] = init_assign.expression.get_value()
-    
+    # We must set up the initial 'array' (here actually just a list,
+    # perhaps we can speed this up using an actual array) we must initial
+    # each species with the initial population, but we have already
+    # initialised the population dictionary so all we need to do is for
+    # each species look it up in the population dictionary and we need
+    # not mind whether this initialisation is due to the species spec
+    # or an initial assignment.
+    species_names = [ s.name 
+                      for s in outline_sbml.get_list_of_species(model)]
+    initials = [0] * len(species_names)
+    for name, value in population_dictionary.items():
+      # If the name is not in the species name then it is likely a
+      # parameter or other value we need not concern outselves with here.
+      if name in species_names:
+        index = species_names.index(name)
+        initials[index] = value
+   
     # The time grid, I'm going to be honest I don't think I understand this.
     time_grid  = get_time_grid(configuration)
     # Solve the ODEs
     soln = odeint(get_rhs, initials, time_grid)
 
-    # For debugging purposes we'll just quickly plot the results
-    plt.figure()
-    for index in range(len(species_names)):
-      name = species_names[index]
-      timecourse = soln[:, index]
-      plt.plot(time_grid, timecourse, label=name)
-
-    plt.xlabel('Time')
-    plt.ylabel('Population')
-    plt.legend(loc=0)
-    plt.show()
-
-
-
-
     timecourse = timeseries.Timeseries(species_names, soln)
+    # For debugging purposes we'll just quickly plot the results
+    timecourse.plot_timecourse()
+
     return timecourse
    
 
- 
+def exponential_delay(mean):
+  """From the given average length samples randomly to give an
+     exponentially distributed delay.
+     Remember, the argument here is the average *delay* so if you have
+     a *rate* then take the recipriocal to get the average delay, eg:
+     delay = exponential_delay(1.0 / rate)
+  """
+  return -mean * math.log(random.random())
+
+
+def get_time_points(configuration):
+  """From the configuration, start_time, stop_time and out_interval
+     figure out the list of times which should be reported.
+  """
+  new_times = []
+  current_time = configuration.start_time
+  stop_time = configuration.stop_time
+  out_interval = configuration.out_interval
+  while current_time < stop_time:
+    new_times.append(current_time)
+    current_time += out_interval 
+
+  return new_times
+
+class SimpleProgressIndicator(object):
+  """This is a very simple progress indicator which I will use
+     for keeping the user updated about the amount of a simulation done
+  """
+  def __init__(self, stop_amount):
+    self.stop_amount = stop_amount
+    self.last_reported = 0
+    self.precision = 100.0
+
+  def done_work(self, amount):
+    """To be called upon completing some amount of work, the amount
+       reported is the total amount done, so for example it would be
+       the time in a simulation.
+    """
+    proportion_done = (amount / self.stop_amount) * self.precision
+    proportion_done = math.floor(proportion_done)
+
+    percentage_done = (100.0 / self.precision) * proportion_done
+
+    if percentage_done > self.last_reported:
+      self.last_reported = percentage_done
+      print (str(percentage_done) + "% done")
+    
+
+class StochasticSimulationSolver(SBMLSolver):
+  """A class which implements a solver as stochastic simulation algorithm
+  """
+  def __init__(self, model_file):
+    super(StochasticSimulationSolver, self).__init__(model_file)
+
+  def solve_model(self, configuration):
+    """Solve the model, this does not call 'parameterise_model' so
+       that should be called first if it is needed
+    """
+    model = self.get_model()
+
+    reactions = outline_sbml.get_list_of_reactions(model)
+    species_names = [ s.name 
+                        for s in outline_sbml.get_list_of_species(model)
+                    ]
+
+    population_dictionary = dict()
+    self.initialise_populations(population_dictionary,
+                                rounded_species_names=species_names)
+
+
+
+    # Note that for the progress indicator we don't have to worry about
+    # subtracting the start time from the stop time, since the start time
+    # only affects what we record, not what we actually have to simulate.
+    progress_indicator = SimpleProgressIndicator(configuration.stop_time)
+    progress_indicator.precision = 1000
+
+    # now the actual ssa algorithm
+    time = configuration.start_time
+    timecourse_rows = []
+
+    while time < configuration.stop_time:
+      # add up all the rates of all the reactions
+      rates = []
+      for reaction in reactions:
+        rate = outline_sbml.evaluate_expression(population_dictionary,
+                                                reaction.kinetic_law)
+        # A negative rate is always possible, but it is usually because
+        # a given species has been allowed to reduce to a negative
+        # population. It is not quite clear what we should do in this
+        # circumstance.
+        if rate < 0:
+          print ("This rate is negative: " + str(rate))
+          print ("  " +
+                 outline_sbml.format_expression(reaction.kinetic_law))
+          for name, value in population_dictionary.items():
+            print (name + " = " + str(value))
+          # print ("Exiting!")
+          # sys.exit(1)
+          rate = 0.0
+        rates.append(rate)
+
+      overall_rate = sum(rates)
+      if overall_rate <= 0:
+        print ("No reactions are live")
+        time = configuration.stop_time
+        break
+      overall_delay = exponential_delay(1.0 / overall_rate)
+      time += overall_delay
+      progress_indicator.done_work(time)
+
+      if time < 0:
+        print ("--------")
+        print (overall_rate)
+        print (overall_delay)
+        print (time)
+        sys.exit(1)
+
+      dice_roll = random.uniform(0, overall_rate)
+      accumulated_probability = 0.0
+      for index in range(len(rates)):
+        accumulated_probability += rates[index]
+        if dice_roll < accumulated_probability:
+          chosen_reaction = reactions[index]
+          break
+      else:
+        message = "Very bad, got to the end of all the reactions????"
+        raise Exception(message)
+
+      # Update population dictionary based on chosen reaction
+      for reactant in chosen_reaction.reactants:
+        population_dictionary[reactant.name] -= reactant.stoich
+      for product in chosen_reaction.products:
+        population_dictionary[product.name] += product.stoich
+        
+      # Record the time row, we could instead use the new times to
+      # only record those times which we will ultimately report.
+      this_row = [ time ]
+      for name in species_names:
+        this_row.append(population_dictionary[name])
+      timecourse_rows.append(this_row)
+    
+    column_names = [ "Time" ] + species_names
+    timecourse = timeseries.Timeseries(column_names, timecourse_rows)
+
+    # We could instead figure these time points out before the simulation
+    # and then only record the times we will ultimately use.
+    new_times = get_time_points(configuration)
+    timecourse.re_timealise(new_times)
+    # timecourse.write_to_file(sys.stdout)
+
+    # For debugging purposes we'll just quickly plot the results
+    # timecourse.plot_timecourse()
+
+    return timecourse
+
 
 class BioPEPASolver:
   """A solver which has as input Bio-PEPA files and simply uses
@@ -560,8 +808,9 @@ def create_arguments_parser(add_help):
   parser = argparse.ArgumentParser(add_help=add_help, 
                                    description=description)
 
+  solver_choices = ["cvodes", "biopepa", "scipy-ode", "ssa"]
   parser.add_argument('--solver', action='store',
-                      choices=["cvodes", "biopepa", "scipy-ode" ],
+                      choices=solver_choices,
                       help="Set the solver for numerical analysis")
 
   parser.add_argument('--start-time', action='store',
@@ -643,6 +892,9 @@ def get_solver(filename, arguments):
     return solver
   elif solver_name == "scipy-ode":
     solver = ScipyOdeSbmlSolver(filename)
+    return solver
+  elif solver_name == "ssa":
+    solver = StochasticSimulationSolver(filename)
     return solver
   else:
     logging.error("Unknown solver name: " + solver_name)
