@@ -3,6 +3,7 @@
 
 import sys
 import logging
+import matplotlib.pyplot as plt
 
 class Timeseries:
   """This class represents a time series, that is the result of a
@@ -177,6 +178,72 @@ class Timeseries:
     best_rows = [ (self.get_best_matching_time_row(gold_row[0]), gold_row)
                   for gold_row in gold_standard.rows ]
     return best_rows
+
+  def re_timealise(self, new_times):
+    """This is a fairly bad name, the idea is for this to used to take
+       a timeseries straight from a stochastic simulation and create a
+       timeseries which has the desired time points. So for each time point
+       in the set of desired time points, we create a row with the
+       populations as they were at that point. Note that this means it may
+       not choose the closest time for any particular time point. Suppose
+       we have the time series from a simulation as:
+       0.05, 0.11, 0.23, 0.25, 0.27, 0.29
+       and the desired times:
+       0.1, 0.2, 0.3
+       then it will pick out the rows: 0.05, 0.11 and 0.29.
+       Essentially for each time point it picks out the latest time point
+       which is not higher than the requested time point.
+    """
+    latest_row = self.rows[0]
+    new_rows = []
+    index = 1
+    index_limit = len(self.rows)
+
+    # Okay so for each time in the set of new times we have to add
+    # exactly one row to the new rows.
+    for time in new_times:
+      # For each new time, check if the current index into the old
+      # list of rows points to a row with a time that is less than the
+      # new time.
+      while self.rows[index][0] < time:
+        # If it is, update the 'latest_row' variable to point to that
+        # row since we know that it has a time which is before the one
+        # we are currently looking for.
+        latest_row = self.rows[index]
+        # THEN, we should update the index, however we better check
+        # that the index is still within the acceptable ranges first,
+        # the reason we do this before updating the index is that this
+        # may not be the last 'new time' hence we still need the while
+        # loop condition to work even though we would be breaking out of
+        # this one.
+        if index <= index_limit + 1:
+          index += 1
+        else:
+          break
+      # Regardless of whether we broke out of the loop because of the
+      # index becoming out of range or because of the loop condition
+      # we add the latest row to the list of new rows, but we have to
+      # substitute in the new time for the row's previous time.
+      new_rows.append([time] + latest_row[1:])
+
+    self.rows = new_rows
+
+  def plot_timecourse(self):
+    """ Using matplotlib plot the time course """
+    plt.figure()
+
+    column_names = self.get_column_names()
+    times = self.get_times()
+    for name in column_names:
+      timeline = self.get_column_data(name)
+      plt.plot(times, timeline, label=name)
+
+    plt.xlabel('Time')
+    plt.ylabel('Population')
+    plt.legend(loc=0)
+    plt.show()
+
+    
 
 def parse_csv(csv, separator=None):
   """Parse a comma-separated value file into a timeseries"""
