@@ -155,7 +155,7 @@ def translate_file(filename, arguments):
 
   document = translate_facile_model(facile_model, arguments)
   if not arguments.no_static_analysis:
-    static_analyser_sbml.analyse_document(document)
+    static_analyser_sbml.analyse_document(document, arguments)
   sbml_ast.output_to_sbml_file(filename, arguments, document)
 
 
@@ -164,8 +164,11 @@ def main():
      as facile model file
   """
   description = "Translate facile model file(s) into sbml"
-  parser = argparse.ArgumentParser(add_help=True,
-                                   description=description)
+  parent_arg_parser = static_analyser_sbml.create_arguments_parser()
+  parser = argparse.ArgumentParser(description=description,
+                                   parents=[parent_arg_parser]
+                                  )
+
    # Might want to make the type of this 'FileType('r')'
   parser.add_argument('filenames', metavar='F', nargs='+',
                       help="A facile model file to translate")
