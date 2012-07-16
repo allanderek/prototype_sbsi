@@ -52,6 +52,12 @@ def set_gnuplot_option(gnuplotfile, option_name, option_value, quote=True):
 
 def set_gnuplot_options(gnuplotfile, arguments):
   """Set up some of the available options in the gnuplot file"""
+
+  if arguments.set_option:
+    for option in arguments.set_option:
+      gnuplotfile.write(option)
+      gnuplotfile.write("\n")
+
   set_gnuplot_option(gnuplotfile, "title", arguments.title)
   set_gnuplot_option(gnuplotfile, "xlabel", arguments.x_label)
   set_gnuplot_option(gnuplotfile, "ylabel", arguments.y_label)
@@ -305,6 +311,13 @@ when printed out in black and white. If you want all solid lines
 (presumably in different colours) which tends to look better for a
 presentation then you should do '--linestyle "l lt 1"' and possibly make
 them wider as well with '--linestyle "l lt 1 lw 5"'
+
+Finally if you just want something to be put in the gnuplot file, such as
+set size 0.5,0.5
+one can use the --set-option, this just copies the entire argument as line
+into the gnuplot file, so you will likely have to use quotes in your shell
+such as:
+--set-option "set size 0.5,0.5"
 """
 
   parser = argparse.ArgumentParser(description=description,
@@ -330,6 +343,8 @@ them wider as well with '--linestyle "l lt 1 lw 5"'
                       help="Set the key option in gnuplot")
   parser.add_argument('--linestyle', action='store', default="l lw 4",
                       help="Set the line style to be used with all lines")
+  parser.add_argument('--set-option', action='append',
+                      help="Set an arbitrary option in gnuplot")
   parser.add_argument('--only-common', action='store_true',
                       help="Only plot columns common to all data files")
   parser.add_argument('--column', action=utils.ListArgumentAction,
