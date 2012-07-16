@@ -62,7 +62,8 @@ def run():
 
   dictionary = dict()
   for param_file in param_files:
-    parameters.parse_param_file(param_file, dictionary)
+    dictionary = parameters.parse_param_file(param_file, dictionary)
+
   for biopepa_file in biopepa_files:
     parameterise_model_file(dictionary, biopepa_file, "stdout")
 
