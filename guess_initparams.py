@@ -52,6 +52,8 @@ def get_parameter_of_element(param_element):
     return parameter
   return None
 
+# TODO: this and 'get_parameter_of_element' are somewhat similarly defined
+# in outline_sbml, merge the two definitions and have only one.
 def get_parameters_from_model(model):
   """Get all the SBML parameters from the model"""
   params = outline_sbml.get_elements_from_lists_of_list("listOfParameters",
