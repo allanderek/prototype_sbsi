@@ -610,8 +610,24 @@ class StochasticSimulationSolver(SBMLSolver):
     # As a speed up, let's parse the reaction kinetic laws, we should
     # potentially do this in SBMLSolver as it may help the ODE solver
     # as well.
+    # We now increase our optimisation by reducing the expressions based
+    # upon a mapping for constant values. This allows us to reduce say:
+    # R * (factor ^ 2)
+    # to something like:
+    # R * 4
+    # if 'factor' is a constant with value '2'.
+    # So first we must calculate the constant dictionary.
+    constant_dictionary = dict()
+    for param in outline_sbml.get_list_of_parameters(model):
+      # If the parameter value is not set here, we assume that it
+      # is set in an initial assignment (if it isn't then we will later
+      # fail if the parameter is used).
+      if param.value and param.constant:
+        constant_dictionary[param.name] = float(param.value)
+
     for reaction in reactions:
       expr = outline_sbml.parse_expression(reaction.kinetic_law)
+      expr = expr.reduce(constant_dictionary)
       reaction.kinetic_law = expr
 
     while time < configuration.stop_time:
