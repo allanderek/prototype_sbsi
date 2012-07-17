@@ -607,20 +607,26 @@ class StochasticSimulationSolver(SBMLSolver):
     time = configuration.start_time
     timecourse_rows = []
 
+    # As a speed up, let's parse the reaction kinetic laws, we should
+    # potentially do this in SBMLSolver as it may help the ODE solver
+    # as well.
+    for reaction in reactions:
+      expr = outline_sbml.parse_expression(reaction.kinetic_law)
+      reaction.kinetic_law = expr
+
     while time < configuration.stop_time:
       # add up all the rates of all the reactions
       rates = []
       for reaction in reactions:
-        rate = outline_sbml.evaluate_expression(population_dictionary,
-                                                reaction.kinetic_law)
+        expr = reaction.kinetic_law
+        rate = expr.get_value(environment=population_dictionary)
         # A negative rate is always possible, but it is usually because
         # a given species has been allowed to reduce to a negative
         # population. It is not quite clear what we should do in this
         # circumstance.
         if rate < 0:
           print ("This rate is negative: " + str(rate))
-          print ("  " +
-                 outline_sbml.format_expression(reaction.kinetic_law))
+          print ("  " + expr.show_expr())
           for name, value in population_dictionary.items():
             print (name + " = " + str(value))
           # print ("Exiting!")
