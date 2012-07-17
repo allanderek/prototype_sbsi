@@ -294,6 +294,50 @@ class ApplyExpression(Expression):
       new_expr = ApplyExpression(self.name, new_args)
       return new_expr
 
+  def get_value(self, environment=None):
+    """Return the value to which the expression evaluates. If any
+       environment is given it should be used to resolve any names in
+       the sub-expressions of this expression. If the expression is
+       irreducible, generally because it contains a name which is not
+       in the given environment (or none is given) then None is returned.
+    """
+    arg_values = [ arg.get_value(environment=environment)
+                     for arg in self.args ]
+    # if None in arg_values:
+    #   return None
+    if self.name == "plus":
+      return sum(arg_values)
+    elif self.name == "times":
+      answer = 1
+      for arg in arg_values:
+        answer *= arg
+      return answer
+    elif self.name == "minus":
+      answer = arg_values[0]
+      for arg in arg_values[1:]:
+        answer -= arg
+    elif self.name == "divide":
+      answer = arg_values[0]
+      for arg in arg_values[1:]:
+        answer /= arg
+    elif self.name == "power":
+      # power is interesting because it associates to the right
+      exponent = 1
+      # counts downwards from the last index to the 0.
+      # As an example, consider power(3,2,3), the answer should be
+      # 3 ** (2 ** 3) = 3 ** 8 = 6561, not (3 ** 2) ** 3 = 9 ** 3 = 81
+      # going through our loop here we have
+      # exp = 1
+      # exp = 3 ** exp = 3
+      # exp = 2 ** exp = 2 ** 3 = 8
+      # exp = 3 ** exp = 3 ** 8 = 6561
+      for i in range(len(arg_values) - 1, -1, -1):
+        exponent = arg_values[i] ** exponent
+      return exponent 
+    else:
+      raise ValueError("Unknown function name: " + self.name)  
+
+
 
 class FunctionDefinition(object):
   """A class to represent a function definition in SBML"""
