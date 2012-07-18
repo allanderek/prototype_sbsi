@@ -448,6 +448,33 @@ class SBMLSolver(object):
       value  = round_initial_value(name, value)
       population_dictionary[name] = value
 
+
+  def optimise_reaction_rates(self, reactions):
+    model = self.get_model()
+    # As a speed up, let's parse the reaction kinetic laws, we should
+    # potentially do this in SBMLSolver as it may help the ODE solver
+    # as well.
+    # We now increase our optimisation by reducing the expressions based
+    # upon a mapping for constant values. This allows us to reduce say:
+    # R * (factor ^ 2)
+    # to something like:
+    # R * 4
+    # if 'factor' is a constant with value '2'.
+    # So first we must calculate the constant dictionary.
+    constant_dictionary = dict()
+    for param in outline_sbml.get_list_of_parameters(model):
+      # If the parameter value is not set here, we assume that it
+      # is set in an initial assignment (if it isn't then we will later
+      # fail if the parameter is used).
+      if param.value and param.constant:
+        constant_dictionary[param.name] = float(param.value)
+
+    for reaction in reactions:
+      expr = outline_sbml.parse_expression(reaction.kinetic_law)
+      expr = expr.reduce(constant_dictionary)
+      reaction.kinetic_law = expr
+
+
    
 class ScipyOdeSbmlSolver(SBMLSolver):
   """A class which implements an ODE based solver for SBML models.
@@ -466,6 +493,9 @@ class ScipyOdeSbmlSolver(SBMLSolver):
     
     population_dictionary = dict()
     self.initialise_populations(population_dictionary)
+    # And also optimise the reaction rate expressions
+    self.optimise_reaction_rates(reactions)
+
 
     def get_rhs(current_pops, time):
       """The main function passed to the solver, it calculates from the
@@ -479,21 +509,29 @@ class ScipyOdeSbmlSolver(SBMLSolver):
       for index in range(len(species_names)):
         population_dictionary[species_names[index]] = current_pops[index]
       for reaction in reactions:
+        expr = reaction.kinetic_law
+        rate = expr.get_value(environment=population_dictionary)
+        # A negative rate is always possible, but it is usually because
+        # a given species has been allowed to reduce to a negative
+        # population. It is not quite clear what we should do in this
+        # circumstance.
+        # if rate < 0:
+        #   print ("This rate is negative: " + str(rate))
+        #   print ("  " + expr.show_expr())
+        #   for name, value in population_dictionary.items():
+        #     print (name + " = " + str(value))
+          # print ("Exiting!")
+          # sys.exit(1)
+          # rate = 0.0
+
         reactants = reaction.reactants
         products = reaction.products
-        expr_evaluator = outline_sbml.ExprEvaluator()
-        expr_evaluator.name_mapping = population_dictionary
-        expr_evaluator.visit_maths(reaction.kinetic_law) 
-        rate = expr_evaluator.get_results()
-        reactant_indices = [ species_names.index(reactant.name) 
-                               for reactant in reactants ]
-        # for reactant_index in reactant_indices:
-        #   rate *= current_pops[reactant_index]
-        for reactant_index in reactant_indices:
-          results[reactant_index] -= rate
+        for reactant in reactants:
+          reactant_index = species_names.index(reactant.name) 
+          results[reactant_index] -= (rate * reactant.stoich)
         for product in products:
           product_index = species_names.index(product.name)
-          results[product_index] += rate
+          results[product_index] += (rate * product.stoich)
         
       return results  
 
@@ -521,7 +559,7 @@ class ScipyOdeSbmlSolver(SBMLSolver):
 
     timecourse = timeseries.Timeseries(species_names, soln)
     # For debugging purposes we'll just quickly plot the results
-    timecourse.plot_timecourse()
+    # timecourse.plot_timecourse()
 
     return timecourse
    
@@ -585,8 +623,6 @@ class StochasticSimulationSolver(SBMLSolver):
        that should be called first if it is needed
     """
     model = self.get_model()
-
-    reactions = outline_sbml.get_list_of_reactions(model)
     species_names = [ s.name 
                         for s in outline_sbml.get_list_of_species(model)
                     ]
@@ -595,7 +631,9 @@ class StochasticSimulationSolver(SBMLSolver):
     self.initialise_populations(population_dictionary,
                                 rounded_species_names=species_names)
 
-
+    reactions = outline_sbml.get_list_of_reactions(model)
+    # Speed up the simulation by optimising the reaction rate expressions
+    self.optimise_reaction_rates(reactions)
 
     # Note that for the progress indicator we don't have to worry about
     # subtracting the start time from the stop time, since the start time
@@ -606,29 +644,6 @@ class StochasticSimulationSolver(SBMLSolver):
     # now the actual ssa algorithm
     time = configuration.start_time
     timecourse_rows = []
-
-    # As a speed up, let's parse the reaction kinetic laws, we should
-    # potentially do this in SBMLSolver as it may help the ODE solver
-    # as well.
-    # We now increase our optimisation by reducing the expressions based
-    # upon a mapping for constant values. This allows us to reduce say:
-    # R * (factor ^ 2)
-    # to something like:
-    # R * 4
-    # if 'factor' is a constant with value '2'.
-    # So first we must calculate the constant dictionary.
-    constant_dictionary = dict()
-    for param in outline_sbml.get_list_of_parameters(model):
-      # If the parameter value is not set here, we assume that it
-      # is set in an initial assignment (if it isn't then we will later
-      # fail if the parameter is used).
-      if param.value and param.constant:
-        constant_dictionary[param.name] = float(param.value)
-
-    for reaction in reactions:
-      expr = outline_sbml.parse_expression(reaction.kinetic_law)
-      expr = expr.reduce(constant_dictionary)
-      reaction.kinetic_law = expr
 
     while time < configuration.stop_time:
       # add up all the rates of all the reactions
