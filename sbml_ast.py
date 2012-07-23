@@ -253,7 +253,7 @@ def show_apply_expression(function_name, children):
  
   return result
 
-def product(factors):
+def list_product(factors):
   """Simple utility the same as 'sum' but for the product of the arguments.
      Note: returns 1 for the empty list, which seems reasonable, given that
      sum([]) = 0.
@@ -448,7 +448,7 @@ class ApplyExpression(Expression):
             factor_exp = NumExpression(factor)
             arg_expressions = [factor_exp] + arg_expressions
         else: # assume it equals "times", we above check this.
-          factor = product(factors)
+          factor = list_product(factors)
           if factor != 1:
             factor_exp = NumExpression(factor)
             arg_expressions = [factor_exp] + arg_expressions
