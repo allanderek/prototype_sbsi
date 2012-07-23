@@ -610,7 +610,45 @@ class SimpleProgressIndicator(object):
     if percentage_done > self.last_reported:
       self.last_reported = percentage_done
       print (str(percentage_done) + "% done")
-    
+
+
+class SimulationRecorder(object):
+  """A class to record simulation events, this is a simple recorder which
+     only builds up a time series and only records those rows which
+     we ultimately wish to output. But one could understand more
+     interesting recorders which build up a file for say traviando.
+  """
+  def __init__(self, time_points):
+    self.time_points     = time_points
+    self.next_time_index = 0
+    self.next_time       = time_points[0]
+    self.species_names   = []
+    self.timecourse_rows = []
+
+  def record_event(self, time, population_dictionary):
+    """Decide if we wish to record a new row (or rows) in the timeseries
+       and do so if required.
+    """
+    while self.next_time <= time:
+      this_row = [ self.next_time ]
+      for name in self.species_names:
+        this_row.append(population_dictionary[name])
+      self.timecourse_rows.append(this_row)
+      self.next_time_index += 1
+      if self.next_time_index >= len(self.time_points):
+        break
+      else:
+        self.next_time = self.time_points[self.next_time_index]
+
+  def get_results(self):
+    """Get the results so far, usually called after the end of the
+       simulation
+    """
+    column_names = [ "Time" ] + self.species_names
+    timecourse = timeseries.Timeseries(column_names, self.timecourse_rows)
+    return timecourse
+
+
 
 class StochasticSimulationSolver(SBMLSolver):
   """A class which implements a solver as stochastic simulation algorithm
@@ -643,7 +681,9 @@ class StochasticSimulationSolver(SBMLSolver):
 
     # now the actual ssa algorithm
     time = configuration.start_time
-    timecourse_rows = []
+    new_times = get_time_points(configuration)
+    sim_recorder = SimulationRecorder(new_times)
+    sim_recorder.species_names = species_names
 
     while time < configuration.stop_time:
       # add up all the rates of all the reactions
@@ -697,23 +737,14 @@ class StochasticSimulationSolver(SBMLSolver):
         population_dictionary[reactant.name] -= reactant.stoich
       for product in chosen_reaction.products:
         population_dictionary[product.name] += product.stoich
-        
-      # Record the time row, we could instead use the new times to
-      # only record those times which we will ultimately report.
-      this_row = [ time ]
-      for name in species_names:
-        this_row.append(population_dictionary[name])
-      timecourse_rows.append(this_row)
-    
-    column_names = [ "Time" ] + species_names
-    timecourse = timeseries.Timeseries(column_names, timecourse_rows)
+      
+      # Call the simulation record to record the time row, though it
+      # may only call selected time rows, eg the ones we wish to output.
+      sim_recorder.record_event(time, population_dictionary)
 
-    # We could instead figure these time points out before the simulation
-    # and then only record the times we will ultimately use.
-    new_times = get_time_points(configuration)
-    timecourse.re_timealise(new_times)
+    # End of the simulation, get the time course.
+    timecourse = sim_recorder.get_results()
     # timecourse.write_to_file(sys.stdout)
-
     # For debugging purposes we'll just quickly plot the results
     # timecourse.plot_timecourse()
 

@@ -1,0 +1,121 @@
+Results from profiling before any optimisation:
+
+Tue Jul 17 10:28:14 2012    profile.txt
+
+         111818736 function calls (78912935 primitive calls) in 183.159 CPU
+seconds
+
+   Ordered by: cumulative time
+   List reduced from 1999 to 10 due to restriction <10>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000  183.161  183.161 <string>:1(<module>)
+        1    0.007    0.007  183.161  183.161 {execfile}
+        1    0.008    0.008  183.154  183.154 solve_model.py:4(<module>)
+        1    0.007    0.007  182.621  182.621 solve_model.py:903(run)
+        1    5.140    5.140  182.564  182.564
+solve_model.py:583(solve_model)
+  2357964    5.632    0.000  176.192    0.000
+outline_sbml.py:488(evaluate_expression)
+19737108/2358002   35.337    0.000  165.059    0.000
+outline_sbml.py:256(generic_visit)
+  2358002    3.783    0.000  159.027    0.000
+outline_sbml.py:274(visit_maths)
+7510552/2357964   49.442    0.000  142.508    0.000
+outline_sbml.py:471(visit_apply)
+15021104/4715928   11.269    0.000  123.441    0.000
+outline_sbml.py:480(evaluate_argument)
+
+
+<pstats.Stats instance at 0x7f57ecfdcf80>
+
+So we see that indeed evaluate expression is taking up much time.
+
+Simple time based measurement:
+time python solve_model.py --solver ssa --stop-time 20.0 tmp/full-paramed.sbml 
+
+real	2m19.739s
+user	2m18.308s
+sys	0m0.275s
+
+So, parsing the rate expressions is a big time saver:
+real	0m29.285s
+user	0m24.214s
+sys	0m0.274s
+
+And here is the associated profiling information
+
+Tue Jul 17 11:30:27 2012    profile2.txt
+
+         25633580 function calls (20445211 primitive calls) in 33.468 CPU seconds
+
+   Ordered by: cumulative time
+   List reduced from 1995 to 10 due to restriction <10>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000   33.470   33.470 <string>:1(<module>)
+        1    0.007    0.007   33.470   33.470 {execfile}
+        1    0.007    0.007   33.463   33.463 solve_model.py:4(<module>)
+        1    0.007    0.007   32.793   32.793 solve_model.py:912(run)
+        1    4.065    4.065   32.737   32.737 solve_model.py:583(solve_model)
+7460672/2342304   22.502    0.000   27.676    0.000 sbml_ast.py:297(get_value)
+  7460676    2.783    0.000    2.783    0.000 sbml_ast.py:145(get_value)
+  2365090    1.537    0.000    1.537    0.000 {range}
+        1    0.002    0.002    0.625    0.625 timeseries.py:2(<module>)
+  3190529    0.511    0.000    0.511    0.000 {method 'append' of 'list' objects}
+
+
+<pstats.Stats instance at 0x7fb900f73f80>
+
+So we're still spending a lot of time evaluating the rate expressions, here it
+is now the call to 'get_value' which is taking up the time. 
+So next attempt will be to reduce the expressions based on parameters which do
+not change.
+
+With this second optimisation I now get the timings:
+real	0m16.777s
+user	0m16.548s
+sys	0m0.192s
+A less significant improvement, but still not too bad.
+
+A slight improvement to the way I handle get_value and 'reduce', rather than
+get_value returning None, it just allows the raising of KeyError, which reduce
+now catches. This means that get_value can be more blase' about not checking
+for such errors because it is now expected to except out. So this is faster
+for the common case during a simulation when you expect that no KeyErrors will
+occur (and in fact one could even make sure of that by checking it before
+starting the simulation).
+Slightly improved times are:
+real	0m14.627s
+user	0m14.355s
+sys	0m0.193s
+
+So now we update reduce such that it partially reduces times and plus
+expression in which more than one have a value, eg:
+R * 0.1 * 10 where R is a dynamic variable, would previously have not been
+reduced, but may now be reduced to: R * 1 (which in turn could be reduced to
+just R, but we'll ignore such optimisations for now.)
+
+Ahh, that final optimisation caused no speed up, the reason being that the
+file actually has R * 0.1 * 10, written down as:
+<apply>
+    <times/>
+    <apply>
+        <times/>
+        <ci>R</ci>
+        <cn>0.1</cn>
+    </apply>
+    <cn>10.0</cn>
+</apply>
+That is as a nested application.
+
+Okay another thing we can try is recording fewer time rows, that is rather
+than record all events and then re-timealise the time series, lets only
+record those rows which we will ultimately output anyway.
+
+Okay we have tried that to limited sucess we got:
+real	0m13.680s
+user	0m13.467s
+sys	0m0.190s
+Perhaps a slight improvement, but not significant.
+
