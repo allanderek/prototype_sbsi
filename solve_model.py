@@ -365,7 +365,6 @@ class SBMLSolver(object):
       params = outline_sbml.get_list_of_parameters(self.model)
       self._params = params
       return params
-     
 
   @property
   def species(self):
@@ -536,8 +535,8 @@ class SBMLSolver(object):
     # species (which may change value at initialise time due to the
     # probabilistic rounding of non-integer populations, see above).
     for init_assign in self.init_assigns:
-      name   = init_assign.variable
       # expr   = outline_sbml.parse_expression(init_assign.expression)
+      # hmm, they already are expressions, we can still reduce them.
       expr   = init_assign.expression
       expr   = expr.reduce(constant_dictionary)
       init_assign.expression = expr
@@ -569,7 +568,7 @@ class ScipyOdeSbmlSolver(SBMLSolver):
     # As we have noted because 'self.reactions' is really a property
     # which does a check etc, it's worth aliasing it here to speed up
     # 'get_rhs'.
-    reaction = self.reactions
+    reactions = self.reactions
     def get_rhs(current_pops, time):
       """The main function passed to the solver, it calculates from the
          current populations of species, the rate of change of each
@@ -674,7 +673,6 @@ class SimpleProgressIndicator(object):
     total_done = amount + (self.stop_amount * self.completed_runs)
     proportion_done = (total_done / self.total_stop_amount) * self.precision
     proportion_done = math.floor(proportion_done)
-
     percentage_done = (100.0 / self.precision) * proportion_done
 
     if percentage_done > self.last_reported:
@@ -727,6 +725,25 @@ class SimulationRecorder(object):
     return timecourse
 
 
+def dice_roll_choose_element(elements, values, sum_of_values):
+  """Chooses from the list of elements based on their values and the sum
+     of values. This is intended to choose a reaction from a list of
+     reactions which have different rates. The larger the rate the more
+     likely the reaction is to be chosen.
+  """
+  dice_roll = random.uniform(0, sum_of_values)
+  accumulated_probability = 0.0
+  index = 0
+  for value in values:
+    accumulated_probability += value
+    if dice_roll < accumulated_probability:
+      return elements[index]
+    index += 1
+  else:
+    message = "Very bad, got to the end of a list of value to choose from"
+    raise ValueError (message)
+
+
 
 class StochasticSimulationSolver(SBMLSolver):
   """A class which implements a solver as stochastic simulation algorithm
@@ -759,7 +776,7 @@ class StochasticSimulationSolver(SBMLSolver):
     self.progress_indicator.runs = configuration.runs
 
     timecourses = []
-    for i in range(configuration.runs):
+    for _ in range(configuration.runs):
       timecourse = self.simulate_model(configuration,
                                        species_names,
                                        reactions)
@@ -789,7 +806,6 @@ class StochasticSimulationSolver(SBMLSolver):
     population_dictionary = dict()
     self.initialise_populations(population_dictionary,
                                 rounded_species_names=species_names)
-
     sim_recorder = SimulationRecorder(configuration)
     sim_recorder.species_names = species_names
     # We have to start the simulation at 0.0 and not
@@ -846,17 +862,9 @@ class StochasticSimulationSolver(SBMLSolver):
         print (time)
         sys.exit(1)
 
-      dice_roll = random.uniform(0, overall_rate)
-      accumulated_probability = 0.0
-      for index in range(len(rates)):
-        accumulated_probability += rates[index]
-        if dice_roll < accumulated_probability:
-          chosen_reaction = reactions[index]
-          break
-      else:
-        message = "Very bad, got to the end of all the reactions????"
-        raise Exception(message)
-
+      chosen_reaction = dice_roll_choose_element(reactions,
+                                                 rates,
+                                                 overall_rate)
       # Update population dictionary based on chosen reaction
       for reactant in chosen_reaction.reactants:
         population_dictionary[reactant.name] -= reactant.stoich

@@ -1,4 +1,11 @@
-Results from profiling before any optimisation:
+Results from profiling before any optimisation, to obtain similar run:
+
+followed by:
+python -m cProfile -o profile.txt solve_model.py --solver ssa --stop-time 20.0 tmp/full-paramed.sbml
+$ python
+ >>>> import pstats
+ >>>> p = pstats.Stats('profile.txt')
+ >>>> p.sort_stats('cumulative').print_stats(10)
 
 Tue Jul 17 10:28:14 2012    profile.txt
 
