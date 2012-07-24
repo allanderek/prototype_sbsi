@@ -480,6 +480,7 @@ class ScipyOdeSbmlSolver(SBMLSolver):
   """A class which implements an ODE based solver for SBML models.
      Based on scipy
   """
+  # TODO: add use of the progress indicator here.
   def __init__(self, model_file):
     super(ScipyOdeSbmlSolver, self).__init__(model_file)
 
@@ -586,6 +587,9 @@ def get_time_points(configuration):
     new_times.append(current_time)
     current_time += out_interval 
 
+  # This ensures that the actual stop time is included.
+  new_times.append(stop_time)
+
   return new_times
 
 class SimpleProgressIndicator(object):
@@ -594,15 +598,28 @@ class SimpleProgressIndicator(object):
   """
   def __init__(self, stop_amount):
     self.stop_amount = stop_amount
+    self.total_stop_amount = stop_amount
     self.last_reported = 0
     self.precision = 100.0
+    self._runs = 1
+    self.completed_runs = 0
+
+  @property
+  def runs(self):
+    return self._runs 
+
+  @runs.setter
+  def runs(self, runs):
+    self._runs = runs
+    self.total_stop_amount = self.stop_amount * runs
 
   def done_work(self, amount):
     """To be called upon completing some amount of work, the amount
        reported is the total amount done, so for example it would be
        the time in a simulation.
     """
-    proportion_done = (amount / self.stop_amount) * self.precision
+    total_done = amount + (self.stop_amount * self.completed_runs)
+    proportion_done = (total_done / self.total_stop_amount) * self.precision
     proportion_done = math.floor(proportion_done)
 
     percentage_done = (100.0 / self.precision) * proportion_done
@@ -635,6 +652,8 @@ class SimulationRecorder(object):
         this_row.append(population_dictionary[name])
       self.timecourse_rows.append(this_row)
       self.next_time_index += 1
+      # This is a little fragile if the stop_time is not in the
+      # time_points then unfortunately we will 
       if self.next_time_index >= len(self.time_points):
         break
       else:
@@ -655,6 +674,7 @@ class StochasticSimulationSolver(SBMLSolver):
   """
   def __init__(self, model_file):
     super(StochasticSimulationSolver, self).__init__(model_file)
+    self.progress_indicator = None
 
   def solve_model(self, configuration):
     """Solve the model, this does not call 'parameterise_model' so
@@ -664,11 +684,6 @@ class StochasticSimulationSolver(SBMLSolver):
     species_names = [ s.name 
                         for s in outline_sbml.get_list_of_species(model)
                     ]
-
-    population_dictionary = dict()
-    self.initialise_populations(population_dictionary,
-                                rounded_species_names=species_names)
-
     reactions = outline_sbml.get_list_of_reactions(model)
     # Speed up the simulation by optimising the reaction rate expressions
     self.optimise_reaction_rates(reactions)
@@ -676,8 +691,42 @@ class StochasticSimulationSolver(SBMLSolver):
     # Note that for the progress indicator we don't have to worry about
     # subtracting the start time from the stop time, since the start time
     # only affects what we record, not what we actually have to simulate.
-    progress_indicator = SimpleProgressIndicator(configuration.stop_time)
-    progress_indicator.precision = 1000
+    stop_time = configuration.stop_time
+    self.progress_indicator = SimpleProgressIndicator(stop_time)
+    self.progress_indicator.precision = configuration.progress_points
+    self.progress_indicator.runs = configuration.runs
+
+    timecourses = []
+    for i in range(configuration.runs):
+      timecourse = self.simulate_model(configuration,
+                                       species_names,
+                                       reactions)
+      timecourses.append(timecourse)
+      self.progress_indicator.completed_runs += 1
+
+    average_timecourse = timeseries.average_timeseries(timecourses)
+    # average_timecourse.write_to_file(sys.stdout)
+    return average_timecourse
+    
+
+
+  def simulate_model(self, configuration, species_names, reactions):
+    """Simulate the model once, solve_model_calls this to perform one
+       simulation run, it may call it several times and then average the
+       results.
+    """
+    # Initialising the populations here, means that unfortunately we
+    # do initialise the populations for each simulation run if there are
+    # multiple runs. However recall that for stochastic simulation where
+    # the initial population is something like: 69.3, we have to
+    # probabilistically choose between 69 and 70. So we could do this
+    # initialisation only once but we would have to decouple the logic
+    # to probabilistically round the initial populations, this may actually
+    # be worthwhile since then we don't need to worry about doing that for
+    # the ODE simulator.
+    population_dictionary = dict()
+    self.initialise_populations(population_dictionary,
+                                rounded_species_names=species_names)
 
     # now the actual ssa algorithm
     time = configuration.start_time
@@ -712,7 +761,7 @@ class StochasticSimulationSolver(SBMLSolver):
         break
       overall_delay = exponential_delay(1.0 / overall_rate)
       time += overall_delay
-      progress_indicator.done_work(time)
+      self.progress_indicator.done_work(time)
 
       if time < 0:
         print ("--------")
@@ -873,8 +922,18 @@ def create_arguments_parser(add_help):
      to add this parser as a parent parser (ie. if you do not wish to add
      further arguments)"""
   description = "Solve a single model one single time"
+  epilog_usage_info = """
+Some arguments are only valid for some solvers, for example the --runs
+is only valid for the ssa solver, it doesn't really make any sense for
+the deterministic solvers
+
+The progress indicator is only implemented for some of the solvers,
+essentially those that we have implemented natively here rather than
+calling out to cvodes or the Bio-PEPA Eclipse compiler.
+"""
   parser = argparse.ArgumentParser(add_help=add_help, 
-                                   description=description)
+                                   description=description,
+                                   epilog = epilog_usage_info)
 
   solver_choices = ["cvodes", "biopepa", "scipy-ode", "ssa"]
   parser.add_argument('--solver', action='store',
@@ -891,6 +950,12 @@ def create_arguments_parser(add_help):
   parser.add_argument('--stop-time', action='store',
                       type=float, # default=1.0,
                       help="Set the stop time of the numerical analysis")
+  parser.add_argument('--runs', action='store',
+                      type=int, default=1,
+    help="Number of indepenent runs, only used by the ssa solver")
+  parser.add_argument('--progress-points', action='store',
+                      type=int, default=1000,
+    help="Number of progress indicator updates, 1000 gives 0.1% 0.2% etc")
   parser.add_argument('--reltol', action='store',
                       type=float, default=1.0e-6,
                       help="Set the solver's relative tolerance")

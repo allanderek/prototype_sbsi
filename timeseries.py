@@ -243,7 +243,34 @@ class Timeseries:
     plt.legend(loc=0)
     plt.show()
 
-    
+def average_timeseries(timecourses):
+  """Create a new timeseries with the results being the average of the
+     set of given timeseries.
+  """
+  # TODO: remove the assumptions of the same order of columns and the
+  # same times.
+  new_rows = []
+  minimum = min([ len(t.rows) for t in timecourses ])
+
+  for t in timecourses:
+    print (t.get_times())
+
+  for i in range(minimum):
+    this_row = []
+    rows = [ t.rows[i] for t in timecourses ]
+    # This will actually average the time column but they should all
+    # be identical anyway.
+    for j in range(len(rows[0])):
+      values = [ row[j] for row in rows ]
+      average = sum(values) / len(values)
+      this_row.append(average)
+    new_rows.append(this_row)
+
+  return Timeseries(timecourses[0].columns, new_rows)
+  
+  
+  
+ 
 
 def parse_csv(csv, separator=None):
   """Parse a comma-separated value file into a timeseries"""
