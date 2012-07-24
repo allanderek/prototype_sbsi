@@ -252,8 +252,8 @@ def average_timeseries(timecourses):
   new_rows = []
   minimum = min([ len(t.rows) for t in timecourses ])
 
-  for t in timecourses:
-    print (t.get_times())
+  # for t in timecourses:
+  #   print (t.get_times())
 
   for i in range(minimum):
     this_row = []

@@ -299,6 +299,8 @@ class SbmlCvodeSolver:
     return timecourse
 
 
+ 
+
 def get_time_grid(configuration):
   """From a solver configuration return the time points which should
      be returned from the solver
@@ -574,24 +576,6 @@ def exponential_delay(mean):
   """
   return -mean * math.log(random.random())
 
-
-def get_time_points(configuration):
-  """From the configuration, start_time, stop_time and out_interval
-     figure out the list of times which should be reported.
-  """
-  new_times = []
-  current_time = configuration.start_time
-  stop_time = configuration.stop_time
-  out_interval = configuration.out_interval
-  while current_time < stop_time:
-    new_times.append(current_time)
-    current_time += out_interval 
-
-  # This ensures that the actual stop time is included.
-  new_times.append(stop_time)
-
-  return new_times
-
 class SimpleProgressIndicator(object):
   """This is a very simple progress indicator which I will use
      for keeping the user updated about the amount of a simulation done
@@ -635,10 +619,10 @@ class SimulationRecorder(object):
      we ultimately wish to output. But one could understand more
      interesting recorders which build up a file for say traviando.
   """
-  def __init__(self, time_points):
-    self.time_points     = time_points
-    self.next_time_index = 0
-    self.next_time       = time_points[0]
+  def __init__(self, configuration):
+    self.next_time_point = configuration.start_time
+    self.interval   = configuration.out_interval
+    self.last_time_point = configuration.stop_time
     self.species_names   = []
     self.timecourse_rows = []
 
@@ -646,18 +630,24 @@ class SimulationRecorder(object):
     """Decide if we wish to record a new row (or rows) in the timeseries
        and do so if required.
     """
-    while self.next_time <= time:
-      this_row = [ self.next_time ]
+    # Using <= here for the first condition, since if the current time
+    # exactly hits a time point then we probably wish to record it as is.
+    # The second condition has less than because if we attempt to use
+    # self.next_time_point <= self.last_time_point we suffer if the
+    # interval doesn't exactly divide the stop time. Because then we do
+    # not record the time at exactly the stop time, this still doesn't
+    # do this quite correctly but we at least get a data point beyond
+    # the stop time. We could ensure that we get exactly the final data
+    # point by doing:
+    #  this_row = [ min(self.next_time_point, self.last_time_point) ]
+    while (self.next_time_point <= time and
+           self.next_time_point < self.last_time_point + self.interval) :
+
+      this_row = [ self.next_time_point ]
       for name in self.species_names:
         this_row.append(population_dictionary[name])
       self.timecourse_rows.append(this_row)
-      self.next_time_index += 1
-      # This is a little fragile if the stop_time is not in the
-      # time_points then unfortunately we will 
-      if self.next_time_index >= len(self.time_points):
-        break
-      else:
-        self.next_time = self.time_points[self.next_time_index]
+      self.next_time_point += self.interval
 
   def get_results(self):
     """Get the results so far, usually called after the end of the
@@ -728,12 +718,11 @@ class StochasticSimulationSolver(SBMLSolver):
     self.initialise_populations(population_dictionary,
                                 rounded_species_names=species_names)
 
-    # now the actual ssa algorithm
-    time = configuration.start_time
-    new_times = get_time_points(configuration)
-    sim_recorder = SimulationRecorder(new_times)
+    sim_recorder = SimulationRecorder(configuration)
     sim_recorder.species_names = species_names
-
+    # We have to start the simulation at 0.0 and not
+    # configuration.start_time, no matter where we start recording
+    time = 0.0
     while time < configuration.stop_time:
       # add up all the rates of all the reactions
       rates = []
@@ -763,6 +752,21 @@ class StochasticSimulationSolver(SBMLSolver):
       time += overall_delay
       self.progress_indicator.done_work(time)
 
+      # Call the simulation recorder to, possibly record the current
+      # populations, note that we do this *prior* to actually updating
+      # the populations but *after* we have udpated the time for the
+      # current delay. This is correct since the current populations will
+      # be correct right up until the end of this delay so any time points
+      # which occur between the current time before this delay and the time
+      # plus this delay should be recorded as the current populations not
+      # the updated ones. eg, if the current time was 0.23342 and the delay
+      # was 0.3 making the 'time' now 0.53342, and lets say we're
+      # recording every 0.1 time units, then then current populations
+      # should be recorded for 0.3, 0.4 and 0.5 (0.2 should have already
+      # been recorded previously)
+      sim_recorder.record_event(time, population_dictionary)
+
+
       if time < 0:
         print ("--------")
         print (overall_rate)
@@ -787,10 +791,6 @@ class StochasticSimulationSolver(SBMLSolver):
       for product in chosen_reaction.products:
         population_dictionary[product.name] += product.stoich
       
-      # Call the simulation record to record the time row, though it
-      # may only call selected time rows, eg the ones we wish to output.
-      sim_recorder.record_event(time, population_dictionary)
-
     # End of the simulation, get the time course.
     timecourse = sim_recorder.get_results()
     # timecourse.write_to_file(sys.stdout)
