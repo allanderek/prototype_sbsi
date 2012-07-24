@@ -82,8 +82,9 @@ class Expression:
 
   def get_value_none(self, environment=None):
     """The same as 'get_value' except that it returns None in the case
-       that we cannot evaluate the expression (because the environment either
-       is not given or does not define some name used in the expression)
+       that we cannot evaluate the expression (because the environment
+       either is not given or does not define some name used in the
+       expression)
     """
     try:
       return self.get_value(environment=environment)

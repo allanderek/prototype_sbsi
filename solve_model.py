@@ -323,22 +323,76 @@ class SBMLSolver(object):
   """
   def __init__(self, model_file):
     self.model_file = model_file
-    self.model = None
+    self._model = None
 
-  def get_model(self):
+    self._params = None
+    self._species = None
+    self._reactions = None
+    self._init_assigns = None
+
+  # We use a bunch of property values here, this is so that separate
+  # methods can refer to the list of reactions or species or the model,
+  # but we don't parse them in from the model xml each time, and also we
+  # do not need to pass them around as arguments. In theory we could just
+  # initialise all of these and we wouldn't need to check but this is
+  # a rather elegant way of ensuring that we never forget to initialise
+  # one of these, or that we initialise them twice, or attempt to use
+  # before initialising. This does mean that if you have code in a loop
+  # which say reference the set of reactions you should alias it first:
+  # reactions = self.reactions
+  # for 1 in range (1000000):
+  #   fire_all_the_reactions(reactions)
+
+  @property
+  def model(self):
     """Return the associated model, if the model file has already been
        parsed then we return the stored parsed model, if not then we first
        parse the model file and store the result before returning it.
     """
-    if self.model:
-      model = self.model
+    if self._model:
+      return self._model
     else:
       dom = xml.dom.minidom.parse(self.model_file)
       model = dom.getElementsByTagName("model")[0]
-      self.model = model
+      self._model = model
+      return model
 
-    return model
+  @property
+  def params(self):
+    if self._params:
+      return self._params
+    else:
+      params = outline_sbml.get_list_of_parameters(self.model)
+      self._params = params
+      return params
+     
 
+  @property
+  def species(self):
+    if self._species:
+      return self._species
+    else:
+      species = outline_sbml.get_list_of_species(self.model)
+      self._species = species
+      return species
+
+  @property
+  def reactions(self):
+    if self._reactions:
+      return self._reactions
+    else:
+      reactions = outline_sbml.get_list_of_reactions(self.model)
+      self._reactions = reactions
+      return reactions
+
+  @property
+  def init_assigns(self):
+    if self._init_assigns:
+      return self._init_assigns
+    else:
+      init_assigns = outline_sbml.get_list_of_init_assigns(self.model)
+      self._init_assigns = init_assigns
+      return init_assigns
 
 
   def initialise_solver(self):
@@ -428,8 +482,7 @@ class SBMLSolver(object):
         else:
           return floored
 
-    model = self.get_model()
-    for param in outline_sbml.get_list_of_parameters(model):
+    for param in self.params:
       # If the parameter value is not set here, we assume that it
       # is set in an initial assignment (if it isn't then we will later
       # fail if the parameter is used).
@@ -437,12 +490,12 @@ class SBMLSolver(object):
         value = round_initial_value(param.name, float(param.value))
         population_dictionary[param.name] = value
 
-    species = outline_sbml.get_list_of_species(model)
+    species = self.species
     for spec in species:
       if spec.initial_amount:
         population_dictionary[spec.name] = float(spec.initial_amount)
 
-    init_assigns = outline_sbml.get_list_of_init_assigns(model)
+    init_assigns = self.init_assigns
     for init_assign in init_assigns:
       name   = init_assign.variable
       expr   = init_assign.expression
@@ -451,8 +504,15 @@ class SBMLSolver(object):
       population_dictionary[name] = value
 
 
-  def optimise_reaction_rates(self, reactions):
-    model = self.get_model()
+  def optimise_expressions(self):
+    """Optimises the expressions within the model, so in particular the
+       reaction rate expressions are first parsed and then reduced
+       (according to known constant values). This means that during the
+       numerical evaluation they are far faster to evaluate than
+       re-examining the xml. We also do this for initial assignments which
+       might not seem like a big improvement but if we are performing many
+       stochastic simulations it can be quite a speed-up.
+    """
     # As a speed up, let's parse the reaction kinetic laws, we should
     # potentially do this in SBMLSolver as it may help the ODE solver
     # as well.
@@ -464,14 +524,25 @@ class SBMLSolver(object):
     # if 'factor' is a constant with value '2'.
     # So first we must calculate the constant dictionary.
     constant_dictionary = dict()
-    for param in outline_sbml.get_list_of_parameters(model):
+    for param in self.params:
       # If the parameter value is not set here, we assume that it
       # is set in an initial assignment (if it isn't then we will later
       # fail if the parameter is used).
       if param.value and param.constant:
         constant_dictionary[param.name] = float(param.value)
 
-    for reaction in reactions:
+    # Note that here we could also put the results into the constant
+    # dictionary if they reduce to a single value and it is not a
+    # species (which may change value at initialise time due to the
+    # probabilistic rounding of non-integer populations, see above).
+    for init_assign in self.init_assigns:
+      name   = init_assign.variable
+      # expr   = outline_sbml.parse_expression(init_assign.expression)
+      expr   = init_assign.expression
+      expr   = expr.reduce(constant_dictionary)
+      init_assign.expression = expr
+
+    for reaction in self.reactions:
       expr = outline_sbml.parse_expression(reaction.kinetic_law)
       expr = expr.reduce(constant_dictionary)
       reaction.kinetic_law = expr
@@ -490,16 +561,15 @@ class ScipyOdeSbmlSolver(SBMLSolver):
     """Solve the model, this does not call 'parameterise_model' so
        that should be called first if it is needed
     """
-    model = self.get_model()
-
-    reactions = outline_sbml.get_list_of_reactions(model)
-    
     population_dictionary = dict()
     self.initialise_populations(population_dictionary)
     # And also optimise the reaction rate expressions
-    self.optimise_reaction_rates(reactions)
+    self.optimise_expressions()
 
-
+    # As we have noted because 'self.reactions' is really a property
+    # which does a check etc, it's worth aliasing it here to speed up
+    # 'get_rhs'.
+    reaction = self.reactions
     def get_rhs(current_pops, time):
       """The main function passed to the solver, it calculates from the
          current populations of species, the rate of change of each
@@ -545,8 +615,7 @@ class ScipyOdeSbmlSolver(SBMLSolver):
     # each species look it up in the population dictionary and we need
     # not mind whether this initialisation is due to the species spec
     # or an initial assignment.
-    species_names = [ s.name 
-                      for s in outline_sbml.get_list_of_species(model)]
+    species_names = [ s.name for s in self.species ]
     initials = [0] * len(species_names)
     for name, value in population_dictionary.items():
       # If the name is not in the species name then it is likely a
@@ -670,13 +739,16 @@ class StochasticSimulationSolver(SBMLSolver):
     """Solve the model, this does not call 'parameterise_model' so
        that should be called first if it is needed
     """
-    model = self.get_model()
-    species_names = [ s.name 
-                        for s in outline_sbml.get_list_of_species(model)
-                    ]
-    reactions = outline_sbml.get_list_of_reactions(model)
+    species_names = [ s.name for s in self.species ]
+    # Again it's worth aliasing self.reactions because that is ultimately
+    # a property which does a little checking before actually returning
+    # the set of reactions which we do not wish to do every iteration of
+    # the main loop. In fact we wouldn't do that any way, we would do it
+    # each time we simulated the model though, which might be many many
+    # times.
+    reactions = self.reactions
     # Speed up the simulation by optimising the reaction rate expressions
-    self.optimise_reaction_rates(reactions)
+    self.optimise_expressions()
 
     # Note that for the progress indicator we don't have to worry about
     # subtracting the start time from the stop time, since the start time
