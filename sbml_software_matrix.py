@@ -4,6 +4,10 @@ from BeautifulSoup import BeautifulSoup
 
 class SoftwarePackage(object):
   """A class for representing a single software package"""
+  # pylint: disable=R0902
+  # We get a warning about too many instance attributes, which is a
+  # fair enough warning but I think here it is appropriate to have this
+  # many and that's why we're disabling that warning for here.
   def __init__(self):
     self.name = None
     self.recent_contact = False
