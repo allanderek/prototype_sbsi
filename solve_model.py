@@ -481,7 +481,16 @@ def dice_roll_choose_element(elements, values, sum_of_values):
     message = "Very bad, got to the end of a list of value to choose from"
     raise ValueError (message)
 
+def log_simulation_state(pop_dictionary, reactions):
+  """Logs, using logging.debug, the state given to it"""
+  for reaction in reactions:
+    expr = reaction.kinetic_law
+    rate = expr.get_value(environment=pop_dictionary)
+    logging.debug(reaction.format_reaction())
+    logging.debug(str(rate))
 
+  for name, value in pop_dictionary.items():
+    logging.debug(name + " = " + str(value))
 
 class StochasticSimulationSolver(SBMLSolver):
   """A class which implements a solver as stochastic simulation algorithm
@@ -525,8 +534,6 @@ class StochasticSimulationSolver(SBMLSolver):
     # average_timecourse.write_to_file(sys.stdout)
     return average_timecourse
     
-
-
   def simulate_model(self, configuration, species_names, reactions):
     """Simulate the model once, solve_model_calls this to perform one
        simulation run, it may call it several times and then average the
@@ -564,8 +571,6 @@ class StochasticSimulationSolver(SBMLSolver):
           print ("  " + expr.show_expr())
           for name, value in population_dictionary.items():
             print (name + " = " + str(value))
-          # print ("Exiting!")
-          # sys.exit(1)
           rate = 0.0
         rates.append(rate)
 
@@ -608,6 +613,13 @@ class StochasticSimulationSolver(SBMLSolver):
         population_dictionary[reactant.name] -= reactant.stoich
       for product in chosen_reaction.products:
         population_dictionary[product.name] += product.stoich
+   
+    # This is a somewhat annoying quirk of the logging facility,
+    # I'd really like to query what the current level is and only
+    # call this function based on that, this would avoid needlessly
+    # scanning over the state and calling logging.debug when the loglevel
+    # is set lower.
+    log_simulation_state(population_dictionary, reactions)
       
     # End of the simulation, get the time course.
     timecourse = sim_recorder.get_results()
