@@ -160,3 +160,14 @@ def get_output_filename(filename, arguments, new_ext):
   else:
     return change_filename_ext(filename, new_ext)
 
+class StringFile(object):
+  """An object masquerading as an open file to be written to"""
+  def __init__(self):
+    self.output_lines = []
+
+  def write(self, line):
+    self.output_lines.append(line)
+
+  def get_results(self):
+    return "".join(self.output_lines)
+ 
