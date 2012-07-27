@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block body %}
+  {% if session.logged_in %}
+    <form action="{{ url_for('add_entry') }}" method=post class=add-entry>
+      <dl>
+        <dt>Title:
+        <dd><input type=text size=30 name=title>
+        <dt>Text:
+        <dd><textarea name=text rows=5 cols=40></textarea>
+        <dd><input type=submit value=Share>
+      </dl>
+    </form>
+  {% endif %}
+  <ul class=entries>
+  {% for entry in entries %}
+    <li><h2>{{ entry.title }}</h2>
+     <h3>The id is: {{ entry.id}}.</h3>
+    <textarea name=modeltext rows=10 cols=50
+              readonly="readonly">{{ entry.text|safe }}</textarea>
+    <h3>LaTeX</h3>
+    {% if entry.latex %}
+    <textarea name=modellatex rows=10 cols=50 
+              readonly="readonly">{{ entry.latex|safe }}</textarea>
+    {% else %}
+    <form action="{{ url_for('convert_entry') }}"
+          method=post class=add-entry>
+    <input type=hidden value="{{entry.id}}" name=convert_id>
+    <input type=submit value=Convert>
+    </form>
+    {% endif %}
+    <form action="{{ url_for('delete_entry') }}" 
+          method=post class=add-entry>
+    <input type=hidden value="{{entry.id}}" name=convert_id>
+    <input type=submit value=Delete>
+    </form>
+  {% else %}
+    <li><em>Unbelievable.  No entries here so far</em>
+  {% endfor %}
+  </ul>
+{% endblock %}
