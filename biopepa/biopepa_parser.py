@@ -339,7 +339,7 @@ class ComponentPopulation:
   def format(self):
     """Return a string of a Bio-PEPA formatted component population"""
     result = self.name
-    if self.location != "default location":
+    if self.location != None and self.location != "default location":
       result += "@" + self.location
     result += "[" + self.initial_expression.show_expr() + "]"
     return result
