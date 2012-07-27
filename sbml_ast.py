@@ -140,6 +140,11 @@ class NumExpression(Expression):
   def __init__(self, number):
     Expression.__init__(self)
     self.number = number
+
+  def visit (self, visitor):
+    """Implements the visit method allowing ExpressionVisitors to work"""
+    visitor.visit_NumExpression(self)
+
   def convert_to_sbml(self):
     """Convert the number expression to SBML code for the expression"""
     return "<cn>" + str(self.number) + "</cn>"
@@ -171,6 +176,11 @@ class NameExpression(Expression):
   def __init__(self, name):
     Expression.__init__(self) 
     self.name = name
+
+  def visit (self, visitor):
+    """Implements the visit method allowing ExpressionVisitors to work"""
+    visitor.visit_NameExpression(self)
+
 
   def show_expr(self):
     """Format as a string the name expression"""
@@ -271,6 +281,11 @@ class ApplyExpression(Expression):
     Expression.__init__(self)
     self.name = name
     self.args = args
+
+  def visit (self, visitor):
+    """Implements the visit method allowing ExpressionVisitors to work"""
+    visitor.visit_ApplyExpression(self)
+
 
   def show_expr(self):
     """Format as a string the application expression"""
@@ -474,6 +489,48 @@ class ApplyExpression(Expression):
                               for arg in self.args ]
         return ApplyExpression(self.name, arg_expressions)
      
+
+class ExpressionVisitor(object):
+  """A parent class for classes which descend through the abstract syntax
+     of expressions, generally storing a result along the way.
+  """
+  def __init__(self):
+    self.result = None
+
+  def generic_visit(self, expression):
+    """The main entry for visiting generic expression whose type we do
+       not yet know, this is the most klutchy part of this, but there is
+       no way around this.
+    """
+    expression.visit(self)
+
+  def generic_visit_get_results(self, expression):
+    """Performs the visit and also returns the result, sort of useful
+       for doing this within a list comprehension.
+    """
+    self.generic_visit(expression)
+    return self.result
+
+  ###################################
+  # These are the unimplemented methods that you would be likely
+  # to override for your expression visitor.
+  def visit_NumExpression(self, _expression):
+    """Visit a NumExpression element"""
+    message = "visit_NumExpression element for expression visitor"
+    raise NotImplementedError(message)
+
+  def visit_NameExpression(self, _expression):
+    """Visit a NameExpression"""
+    message = "visit_NameExpression element for expression visitor"
+    raise NotImplementedError(message)
+
+  def visit_ApplyExpression(self, _expression):
+    """Visit an ApplyExpression element"""
+    message = "visit_ApplyExpression element for expression visitor"
+    raise NotImplementedError(message)
+
+
+
 
 class FunctionDefinition(object):
   """A class to represent a function definition in SBML"""
