@@ -124,14 +124,16 @@ def delete_entry():
 @app.route('/no-store-biopepa-latex', methods=['GET', 'POST'])
 def no_store_biopepa_latex():
   error = None
-  source = None
+  model_source = None
   latex = None
   if request.method == 'POST':
     model_source = request.form['modelsource']
     latex = convert_model(model_source)
+  current_user = flasklogin.current_user 
   return render_template('raw-to-latex.html', 
                          source=model_source,
-                         latex=latex, error=error)
+                         latex=latex, error=error,
+                         user=current_user)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

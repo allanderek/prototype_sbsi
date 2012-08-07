@@ -1,0 +1,25 @@
+{% extends "layout.html" %}
+{% block body %}
+  {% if error %}<p class=error><strong>Error:</strong> {{ error }}
+  {% endif %}
+  {% if latex and source %}
+  <h2>Original Source</h2>
+   {% set no_rows = source.count("\n") %}
+   <textarea name=modelsource rows={{no_rows + 1 }} cols=50
+             readonly="readonly">{{ source|safe }}</textarea>
+
+  <h2>Converted LaTeX</h2>
+   {% set no_rows = latex.count("\n") %}
+    <textarea name=modellatex rows={{no_rows + 1}} cols=50 
+              readonly="readonly">{{ latex|safe }}</textarea>
+  {% else %} 
+  <h2>Convert To LaTeX</h2>
+    <form action="{{ url_for('no_store_biopepa_latex') }}" method=post>
+      <dl>
+        <dt>Model Source:
+        <dd><textarea name=modelsource rows=5 cols=40></textarea>
+        <dd><input type=submit value=Convert>
+      </dl>
+    </form>
+  {% endif %}
+{% endblock %}
