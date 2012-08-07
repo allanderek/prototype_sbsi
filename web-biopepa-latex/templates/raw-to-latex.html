@@ -5,11 +5,13 @@
   {% if latex and source %}
   <h2>Original Source</h2>
    {% set no_rows = source.count("\n") %}
+   {% set no_rows = no_rows if no_rows < 51 else 51 %}
    <textarea name=modelsource rows={{no_rows + 1 }} cols=50
              readonly="readonly">{{ source|safe }}</textarea>
 
   <h2>Converted LaTeX</h2>
    {% set no_rows = latex.count("\n") %}
+   {% set no_rows = no_rows if no_rows < 51 else 51 %}
     <textarea name=modellatex rows={{no_rows + 1}} cols=50 
               readonly="readonly">{{ latex|safe }}</textarea>
   {% else %} 
