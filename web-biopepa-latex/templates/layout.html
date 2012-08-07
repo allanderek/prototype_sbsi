@@ -4,10 +4,11 @@
 <div class=page>
   <h1>Bio-PEPA To LaTeX</h1>
   <div class=metanav>
-  {% if not session.logged_in %}
-    <a href="{{ url_for('login') }}">log in</a>
+  {% if user.is_anonymous()  %}
+    <a href="{{ url_for('login') }}">log in</a> /
+    <a href="{{ url_for('register') }}">register</a>
   {% else %}
-    <a href="{{ url_for('logout') }}">log out</a>
+    <a href="{{ url_for('logout') }}">log out({{user.name}})</a>
   {% endif %}
   </div>
   {% for message in get_flashed_messages() %}
