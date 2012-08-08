@@ -6,6 +6,7 @@ import parcon
 from parcon import Forward, InfixExpr, Translate, Optional, ZeroOrMore
 
 import sbml_ast
+import expressions
 
 # A simply utility for creating parsers which accept a list of
 # somethings, separated by something elses.
@@ -35,11 +36,11 @@ def create_separated_by(element_parser, separator_parser):
 def create_number_expression(number_str):
   """Simple utility to create a number expression from the parse result
      of parsing a simple number"""
-  return sbml_ast.NumExpression(float(number_str))
+  return expressions.NumExpression(float(number_str))
  
 def make_name_expression(parse_result):
   """Simple post parsing creation method for NameExpression"""
-  return sbml_ast.NameExpression(parse_result)
+  return expressions.NameExpression(parse_result)
 
    
 def make_apply_expression(parse_result):
@@ -47,26 +48,26 @@ def make_apply_expression(parse_result):
   if len(parse_result) == 1:
     # We assume then that there are no arguments, and that it was
     # an application expression such as: f()
-    return sbml_ast.ApplyExpression(parse_result[0], [])
+    return expressions.ApplyExpression(parse_result[0], [])
   # Otherwise the second part of the parse result should be a list
   # of arguments
-  return sbml_ast.ApplyExpression(parse_result[0], parse_result[1])
+  return expressions.ApplyExpression(parse_result[0], parse_result[1])
 
 def make_plus_expression(left, right):
   """simple post-parsing creation method for add expressions"""
-  return sbml_ast.ApplyExpression("plus", [left, right])
+  return expressions.ApplyExpression("plus", [left, right])
 def make_minus_expression(left, right):
   """simple post-parsing creation method for subtract expressions"""
-  return sbml_ast.ApplyExpression("minus", [left, right])
+  return expressions.ApplyExpression("minus", [left, right])
 def make_times_expression(left, right):
   """simple post-parsing creation method for multiply expressions"""
-  return sbml_ast.ApplyExpression("times", [left, right])
+  return expressions.ApplyExpression("times", [left, right])
 def make_divide_expression(left, right):
   """simple post-parsing creation method for divide expressions"""
-  return sbml_ast.ApplyExpression("divide", [left, right])
+  return expressions.ApplyExpression("divide", [left, right])
 def make_power_expression(left, right):
   """simple post-parsing creation method for power expressions"""
-  return sbml_ast.ApplyExpression("power", [left, right])
+  return expressions.ApplyExpression("power", [left, right])
 
 
 expr = Forward()

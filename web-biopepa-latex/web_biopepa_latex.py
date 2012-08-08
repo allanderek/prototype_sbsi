@@ -1,3 +1,4 @@
+""" A web application for translating Bio-PEPA files into LaTeX"""
 import argparse
 import sqlite3
 from flask import Flask, request, session, g, redirect, url_for, \
@@ -180,9 +181,9 @@ def register():
 @app.route("/logout")
 @flasklogin.login_required
 def logout():
-    flasklogin.logout_user()
-    flash('You were logged out')
-    return redirect(url_for('show_entries'))
+  flasklogin.logout_user()
+  flash('You were logged out')
+  return redirect(url_for('show_entries'))
 
 def create_arguments_parser():
   """Create the command-line arguments parser"""

@@ -4,11 +4,10 @@ import sys
 import argparse
 import parcon
 
-
-sys.path.append("/home/aclark6/Source/prototype_sbsi")
 import utils
 import facile.facile_parser as facile_parser
 import sbml_ast
+import expressions
 import static_analyser_sbml
 
 def uniquely_name_reactions(reactions):
@@ -84,7 +83,7 @@ def translate_facile_model(facile_model, arguments):
   def apply_fma(kinetic_law):
     """Apply the fMA method to the given rate law as is implied
        in the syntax of facile models"""
-    return sbml_ast.ApplyExpression("fMA", [kinetic_law])
+    return expressions.ApplyExpression("fMA", [kinetic_law])
 
   # Note that this changes all equation kinetic laws from RateLaw
   # to simple Expression which is expected by the formatter

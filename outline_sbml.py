@@ -3,6 +3,7 @@ import xml.dom.minidom
 import argparse
 
 import sbml_ast
+import expressions
 
 
 def get_element_children(node):
@@ -318,12 +319,12 @@ class ExprBuilder(ExprVisitor):
   def visit_ci(self, element):
     """Visit a 'ci' element"""
     name = element.firstChild.data.lstrip().rstrip()
-    self.result = sbml_ast.NameExpression(name)
+    self.result = expressions.NameExpression(name)
 
   def visit_cn(self, element):
     """Visit a 'cn' element"""
     number_string =  element.firstChild.data.lstrip().rstrip()
-    self.result = sbml_ast.NumExpression(float(number_string))
+    self.result = expressions.NumExpression(float(number_string))
 
   def visit_apply(self, element):
     """Visit an 'apply' element"""
@@ -337,7 +338,7 @@ class ExprBuilder(ExprVisitor):
     for child in children[1:]:
       self.generic_visit(child)
       arguments.append(self.result)
-    apply_expr = sbml_ast.ApplyExpression(function_name, arguments) 
+    apply_expr = expressions.ApplyExpression(function_name, arguments) 
     self.result = apply_expr
 
 class ExprFormatter(ExprVisitor):
@@ -374,36 +375,8 @@ class ExprFormatter(ExprVisitor):
       arg_strings.append(self.result)
       self.result = current_result
 
-    formatted = sbml_ast.show_apply_expression(function_name, arg_strings)
+    formatted = expressions.show_apply_expression(function_name, arg_strings)
     self.print_str(formatted)
-
-#     function_dict = { "plus" : "+", 
-#                       "minus" : "-",
-#                       "divide" : "/",
-#                       "times" : "*",
-#                       "power" : "^",
-#                      }
-#     # The check on the length of children is just in case someone
-#     # has managed to say apply 'times' to no arguments which would
-#     # otherwise cause an error when we attempt to print the first one.
-#     # It's unclear what we should do in that case, but for now I fall
-#     # through to the generic case and basically you'll end up with
-#     # just the 'times' (named as 'times' not as *) printed out.
-#     if function_name in function_dict and len(children) > 1 :
-#       self.print_str("(")
-#       self.generic_visit(children[1])
-#       prefix = " " + function_dict[function_name] + " "
-#       for child in children[2:]:
-#         self.print_str(prefix)
-#         self.generic_visit(child)
-#       self.print_str(")") 
-#     else:
-#       self.print_str (function_name + "(")
-#       for child in children[1:]:
-#         self.generic_visit(child)
-#         self.print_str (", ")
-#       self.print_str (")")
-
 
 def evaluate_function_application(function_name, arguments):
   """Takes in the function name and the arguments which we will assume

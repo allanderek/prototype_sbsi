@@ -2,14 +2,15 @@
    to the LaTeX document processing system
 """
 
-import sys
 import argparse
+import sys
 
-import utils
 import biopepa.biopepa_parser as biopepa_parser
+import utils
 import sbml_ast
+import expressions
 
-class ExpressionLatexifer(sbml_ast.ExpressionVisitor):
+class ExpressionLatexifer(expressions.ExpressionVisitor):
   """A parent class for classes which descend through the abstract syntax
      of expressions, generally storing a result along the way.
   """
@@ -19,6 +20,7 @@ class ExpressionLatexifer(sbml_ast.ExpressionVisitor):
   ###################################
   # These are the unimplemented methods that you would be likely
   # to override for your expression visitor.
+  # pylint: disable=C0103
   def visit_NumExpression(self, expression):
     """Visit a NumExpression element"""
     self.result = str(expression.number)
@@ -129,10 +131,10 @@ def translate_biopepa_model(model, out_file):
     out_file.write ("\n")
 
 
- 
-
-# We need a separate convert string method similar to convert_file.
 def convert_source(source):
+  """Converts the source of a Bio-PEPA model, represented as a string,
+     into a string representing the LaTeX source
+  """
   model = biopepa_parser.parse_model(source)
   outfile_imposter = utils.StringFile()
   translate_biopepa_model(model, outfile_imposter)
@@ -143,9 +145,9 @@ def convert_source(source):
 # return the results of the string consumer.
 
 
-def convert_file(filename, arguments):
-  """Parse in a Bio-PEPA file, translate to SBML and create an
-     SBML file which should be the translated Bio-PEPA model.
+def latexify_file(filename, arguments):
+  """ Converts a file containing Bio-PEPA source into a file containing
+      LaTeX source to format the same model.
   """
   model_file = open(filename, "r")
   parse_result = biopepa_parser.parse_model_file_exit_on_error(model_file)
@@ -165,17 +167,14 @@ def main():
   """The main work of processing the command-line arguments and then
      converting the Bio-PEPA file into LaTeX
   """
-  description = "Translates Bio-PEPA model files to SBML"
-  parser = argparse.ArgumentParser(add_help=True,
-                                   description=description)
-   # Might want to make the type of this 'FileType('r')'
-  parser.add_argument('filenames', metavar='F', nargs='+',
-                      help="A Bio-PEPA model file to translate")
+  description = "Translates Bio-PEPA model files to LaTeX"
+  file_help = "A model file to translate to LaTeX"
+  parser = utils.argparser_withfiles(description, file_help, True)
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 
-  for filename in arguments.filenames:
-    convert_file(filename, arguments)
+  for file in arguments.filenames:
+    latexify_file(file, arguments)
 
 
 if __name__ == '__main__':

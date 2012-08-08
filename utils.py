@@ -160,14 +160,36 @@ def get_output_filename(filename, arguments, new_ext):
   else:
     return change_filename_ext(filename, new_ext)
 
+def argparser_withfiles(description, file_help, add_help):
+  """ Creates an argparse argument parser which accepts files as arguments.
+      A good start for many small utilities.
+      The first argument is the description of the command, the second
+      is the help for the file arguments and the final is whether or not to
+      automatically add the '--help' option. 
+  """
+  parser = argparse.ArgumentParser(add_help=add_help,
+                                   description=description)
+  # Might want to make the type of this 'FileType('r')'
+  parser.add_argument('filenames', metavar='F', nargs='+', help=file_help)
+  return parser
+
+
+
+
 class StringFile(object):
   """An object masquerading as an open file to be written to"""
   def __init__(self):
     self.output_lines = []
 
   def write(self, line):
+    """Pretend to write out to a file, but we're actually just adding
+       to the output lines of the string file object.
+    """
     self.output_lines.append(line)
 
   def get_results(self):
+    """Returns what has been written to this pretend file object as a
+       string.
+    """
     return "".join(self.output_lines)
  
