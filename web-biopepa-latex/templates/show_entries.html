@@ -14,7 +14,7 @@
   <ul class=entries>
   {% for entry in entries %}
     <li><h2>{{ entry.title }}</h2>
-     <h3>The id is: {{ entry.id}}.</h3>
+     <h3>The id is: {{ entry.ident}}.</h3>
     <textarea name=modeltext rows=10 cols=50
               readonly="readonly">{{ entry.text|safe }}</textarea>
     <h3>LaTeX</h3>
@@ -24,13 +24,13 @@
     {% else %}
     <form action="{{ url_for('convert_entry') }}"
           method=post class=add-entry>
-    <input type=hidden value="{{entry.id}}" name=convert_id>
+    <input type=hidden value="{{entry.ident}}" name=convert_id>
     <input type=submit value=Convert>
     </form>
     {% endif %}
     <form action="{{ url_for('delete_entry') }}" 
           method=post class=add-entry>
-    <input type=hidden value="{{entry.id}}" name=convert_id>
+    <input type=hidden value="{{entry.ident}}" name=convert_id>
     <input type=submit value=Delete>
     </form>
   {% else %}

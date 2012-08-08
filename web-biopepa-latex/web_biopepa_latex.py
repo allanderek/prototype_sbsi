@@ -8,9 +8,9 @@ from contextlib import closing
 import flask.ext.login as flasklogin
 
 # configuration
-DATABASE = '/tmp/flaskr.db'
+DATABASE = '/home/aclark6/tmp/web-biopepa-latex.db'
 DEBUG = True
-SECRET_KEY = 'development key'
+SECRET_KEY = 'development key of biopepa latex'
 USERNAME = 'admin'
 PASSWORD = 'default'
 
@@ -26,18 +26,22 @@ login_manager.login_view = "login"
 
 # silly user model
 class User(flasklogin.UserMixin):
-  def __init__(self, id):
-    self.id = id
+  def __init__(self, ident):
+    self.ident = ident
     self.name = None
 
+  def get_id(self):
+    """Return the id of this user"""
+    return self.ident
+
   def __repr__(self):
-    return "%d/%s/%s" % (self.id, self.name, self.password)
+    return "%d/%s/%s" % (self.ident, self.name, self.password)
 
 # callback to reload the user object        
 @login_manager.user_loader
 def load_user(userid):
   g.db = connect_db()
-  cur = g.db.execute("select name from users where id=?", [userid])
+  cur = g.db.execute("select name from users where ident=?", [userid])
   users = cur.fetchall()
   if not users:
     return flasklogin.AnonymousUser()
@@ -73,9 +77,9 @@ def show_entries():
   # First get the current user:
   current_user = flasklogin.current_user 
 
-  fields = "id, title, text, latex"
-  cur = g.db.execute("select " + fields + " from entries order by id desc")
-  entries = [ dict(id=row[0], title=row[1], text=row[2], latex=row[3])
+  fields = "ident, title, text, latex"
+  cur = g.db.execute("select " + fields + " from entries order by ident desc")
+  entries = [ dict(ident=row[0], title=row[1], text=row[2], latex=row[3])
               for row in cur.fetchall()]
   return render_template('show_entries.html',
                          entries=entries,
@@ -100,13 +104,13 @@ def convert_entry():
   if not session.get('logged_in'):
     abort(401)
   convert_id = request.form["convert_id"]
-  cur = g.db.execute('select text from entries where id=?', [convert_id])
+  cur = g.db.execute('select text from entries where ident=?', [convert_id])
   texts = cur.fetchall()
   # Should do some error handling here but for now:
   text = texts[0]
   new_text = convert_model(text[0])
   # g.db.execute("update entries set latex=?", [new_text])
-  g.db.execute('update entries set latex=? where id=?',
+  g.db.execute('update entries set latex=? where ident=?',
                [new_text, convert_id])
   g.db.commit()
   flash ("You wanted to convert: " + str(convert_id))
@@ -117,9 +121,9 @@ def delete_entry():
   if not session.get('logged_in'):
     abort(401)
   convert_id = request.form["convert_id"]
-  g.db.execute('delete from entries where id=?', [convert_id])
+  g.db.execute('delete from entries where ident=?', [convert_id])
   g.db.commit()
-  flash ("You just deleted the id: " + convert_id)
+  # flash ("You just deleted the identity: " + convert_id)
   return redirect(url_for('show_entries'))
 
 @app.route('/no-store-biopepa-latex', methods=['GET', 'POST'])
@@ -136,21 +140,29 @@ def no_store_biopepa_latex():
                          latex=latex, error=error,
                          user=current_user)
 
+def goto_anonymous_login(error=None):
+  return render_template('login.html',
+                         error=error,
+                         user=flasklogin.AnonymousUser())
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
   if request.method == 'POST':
     username = request.form['username']
     password = request.form['password']
-    cur = g.db.execute("select id, password from users where name=?",
+    cur = g.db.execute("select ident, password from users where name=?",
                        [username])
     user_pairs = cur.fetchall()
     cur.close()
     # print ("user-pairs")
     # print (user_pairs)
     # Should do some error handling here but for now:
-    (id, actual_password) = user_pairs[0]
+    if not user_pairs:
+      return goto_anonymous_login(error="No such user as: " + username)
+    (ident, actual_password) = user_pairs[0]
     if password == actual_password:
-      user = User(id)
+      user = User(ident)
       user.name = username
       # user.password = password
       flasklogin.login_user(user)
@@ -159,20 +171,31 @@ def login():
     else:
       return abort(401)
   else:
-    return render_template('login.html', error=None,
-                           user=flasklogin.AnonymousUser())
+      return goto_anonymous_login(error=None)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
   if request.method == 'POST':
     # TODO: We should check if the user name is available:
     name = request.form['username']
+    cur = g.db.execute("select name from users where name=?", [name])
+    user_pairs = cur.fetchall()
+    cur.close()
+    if user_pairs:
+      error = "Username: " + name + " already exists :("
+      return render_template('register.html', error=error,
+                           user=flasklogin.AnonymousUser())
     # TODO: Of course we shouldn't store the plaintext password but
     # instead some hash of it.
     password = request.form['password']
-    g.db.execute('insert into users (name, password) values (?, ?)',
-               [name, password])
+    cur = g.db.execute('insert into users (name, password) values (?, ?)',
+                       [name, password])
+    new_ident = cur.lastrowid
+    print(new_ident) 
     g.db.commit()
+    user = User(new_ident)
+    user.name = name
+    flasklogin.login_user(user)
     return redirect(url_for('show_entries'))
   else: # We assume it was a GET
     return render_template('register.html', error=None,
@@ -192,6 +215,8 @@ def create_arguments_parser():
                                    description=description)
   parser.add_argument('--init-db', action='store_true',
                       help="Initialise the data base on startup")
+  parser.add_argument('--auto-reload', action='store_true',
+                      help="Use auto-reload of code on edit in folder")
 
   return parser
 
@@ -202,7 +227,7 @@ def run():
   if arguments.init_db:
     init_db()
 
-  app.run()
+  app.run(debug=True, use_reloader=arguments.auto_reload)
 
 if __name__ == '__main__':
   run()
