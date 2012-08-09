@@ -140,11 +140,6 @@ def convert_source(source):
   translate_biopepa_model(model, outfile_imposter)
   return outfile_imposter.get_results()
   
-
-# Open a string consumer which pretends it's a file
-# return the results of the string consumer.
-
-
 def latexify_file(filename, arguments):
   """ Converts a file containing Bio-PEPA source into a file containing
       LaTeX source to format the same model.
