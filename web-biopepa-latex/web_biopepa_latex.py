@@ -4,8 +4,10 @@ import sqlite3
 from flask import Flask, request, session, g, redirect, url_for, \
      abort, render_template, flash
 from contextlib import closing
-
 import flask.ext.login as flasklogin
+
+import biopepa.biopepa_to_latex as biopepa_to_latex
+import biopepa.biopepa_to_sbml as biopepa_to_sbml
 
 # configuration
 DATABASE = '/home/aclark6/tmp/web-biopepa-latex.db'
@@ -88,56 +90,114 @@ def show_entries():
   """
   # First get the current user:
   current_user = flasklogin.current_user 
-
-  fields = "ident, title, text, latex"
-  cur = g.db.execute("select " + fields + " from entries order by ident desc")
-  entries = [ dict(ident=row[0], title=row[1], text=row[2], latex=row[3])
+  owner_id = current_user.get_id()
+  fields = "ident, visibility, title, modelsource, latex, modelsbml"
+  from_part = "from entries order by ident desc"
+  where_part = "where owner_id=?"
+  command = " ".join(["select", fields,
+                      "from entries", where_part,
+                      "order by ident desc"])
+  cur = g.db.execute(command, [owner_id])
+  entries = [ dict(ident=row[0], 
+                   visibility=row[1],
+                   title=row[2],
+                   modelsource=row[3],
+                   latex=row[4],
+                   modelsbml=row[5])
               for row in cur.fetchall()]
   return render_template('show_entries.html',
                          entries=entries,
                          user=current_user)
 
+
+def create_insert_command(table_name, names):
+  """Creates an insert command for the data base given a set of names
+     for the element to create and their associated values"""
+  # So lets say names is something like ["title", "text", "owner"]
+  # data_form will be "(title, text, owner)"
+  data_form  = "(" + ", ".join(names) + ")"
+  # and question_marks would simply be a list of 3 '?'s
+  question_marks = ["?"] * len(names)
+  # and data_holes would be "(?, ?, ?)"
+  data_holes = "(" + ", ".join(question_marks) + ")"
+  # So we should return in our example case:
+  # "insert into table (title, text, owner) values (?,?,?)
+  return " ".join(["insert into", table_name,
+                   data_form,
+                   "values", data_holes])
+
 @app.route('/add', methods=['POST'])
+@flasklogin.login_required
 def add_entry():
   """Handles request to add a new entry"""
-  if not session.get('logged_in'):
-    abort(401)
-  g.db.execute('insert into entries (title, text) values (?, ?)',
-               [request.form['title'], request.form['text']])
+  current_user = flasklogin.current_user 
+  
+  owner_id = current_user.get_id()
+  visibility = "private"
+  title = request.form['title']
+  modelsource = request.form['modelsource']
+  
+  insert_command = create_insert_command("entries", [ "owner_id",
+                                                      "visibility",
+                                                      "title",
+                                                      "modelsource" ]) 
+  values = [ owner_id, visibility, title, modelsource ]
+  g.db.execute(insert_command, values)
   g.db.commit()
   flash('New entry was successfully posted')
   return redirect(url_for('show_entries'))
 
-import biopepa.biopepa_to_latex as biopepa_to_latex
+#TODO: These methods need to be wrapped up within a timeout.
 def convert_model(source):
   """The method to call to convert model source into latex source"""
   return biopepa_to_latex.convert_source(source)
+
+def convert_model_to_sbml(source):
+  """The method to call to convert the model source into SBML source"""
+  return biopepa_to_sbml.convert_source(source)
 
 @app.route('/convert', methods=['POST'])
 def convert_entry():
   """Handles conversion requests, that is a request to convert a model
      from Bio-PEPA to LaTeX
   """
-  if not session.get('logged_in'):
-    abort(401)
   convert_id = request.form["convert_id"]
-  cur = g.db.execute('select text from entries where ident=?', [convert_id])
-  texts = cur.fetchall()
-  # Should do some error handling here but for now:
-  text = texts[0]
-  new_text = convert_model(text[0])
-  # g.db.execute("update entries set latex=?", [new_text])
+  cur = g.db.execute('select modelsource from entries where ident=?',
+                     [convert_id])
+  model_source = cur.fetchone()
+  cur.close()
+  new_text = convert_model(model_source[0])
   g.db.execute('update entries set latex=? where ident=?',
                [new_text, convert_id])
   g.db.commit()
-  flash ("You wanted to convert: " + str(convert_id))
+  flash ("Model: " + str(convert_id) + " converted to LaTeX")
   return redirect(url_for('show_entries'))
+
+#TODO: too much commonality between these convert methods, pull some
+# out as a method.
+@app.route('/convert-to-sbml', methods=['POST'])
+def convert_to_sbml():
+  """Handles conversion to sbml requests, that is a request to convert a
+     model from Bio-PEPA to SBML
+  """
+  convert_id = request.form["convert_id"]
+  cur = g.db.execute('select modelsource from entries where ident=?',
+                     [convert_id])
+  model_source = cur.fetchone()
+  cur.close()
+  new_text = convert_model_to_sbml(model_source[0])
+  g.db.execute('update entries set modelsbml=? where ident=?',
+               [new_text, convert_id])
+  g.db.commit()
+  flash ("Model: " + str(convert_id) + " converted to SBML")
+  return redirect(url_for('show_entries'))
+ 
+  
+
 
 @app.route('/delete', methods=['POST'])
 def delete_entry():
   """Handles requests to delete a given entry/model"""
-  if not session.get('logged_in'):
-    abort(401)
   convert_id = request.form["convert_id"]
   g.db.execute('delete from entries where ident=?', [convert_id])
   g.db.commit()
@@ -262,8 +322,8 @@ def run():
   arguments = parser.parse_args()
   if arguments.init_db:
     init_db()
-
-  app.run(debug=True, use_reloader=arguments.auto_reload)
+  else:
+    app.run(debug=True, use_reloader=arguments.auto_reload)
 
 if __name__ == '__main__':
   run()

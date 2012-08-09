@@ -1,9 +1,12 @@
 drop table if exists entries;
 create table entries (
   ident integer primary key autoincrement,
+  owner_id integer,
+  visibility string not null,
   title string not null,
-  text string not null,
-  latex string
+  modelsource string not null,
+  latex string,
+  modelsbml string 
 );
 
 drop table if exists users;

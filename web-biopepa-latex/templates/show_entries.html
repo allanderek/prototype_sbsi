@@ -1,38 +1,67 @@
 {% extends "layout.html" %}
 {% block body %}
-  {% if session.logged_in %}
+  {% if not user.is_anonymous()  %}
     <form action="{{ url_for('add_entry') }}" method=post class=add-entry>
       <dl>
         <dt>Title:
         <dd><input type=text size=30 name=title>
-        <dt>Text:
-        <dd><textarea name=text rows=5 cols=40></textarea>
-        <dd><input type=submit value=Share>
+        <dt>Model Source:
+        <dd><textarea name=modelsource rows=5 cols=40></textarea>
+        <dd><input type=submit value=Add>
       </dl>
     </form>
   {% endif %}
   <ul class=entries>
   {% for entry in entries %}
     <li><h2>{{ entry.title }}</h2>
-     <h3>The id is: {{ entry.ident}}.</h3>
-    <textarea name=modeltext rows=10 cols=50
-              readonly="readonly">{{ entry.text|safe }}</textarea>
-    <h3>LaTeX</h3>
+    {% set no_rows = entry.modelsource.count("\n") %}
+    {% set no_rows = no_rows if no_rows < 51 else 51 %}
+    <textarea name=modeltext rows={{no_rows + 1}} cols=50
+              readonly="readonly">{{ entry.modelsource|safe }}</textarea>
     {% if entry.latex %}
-    <textarea name=modellatex rows=10 cols=50 
+    <h3>LaTeX</h3>
+    {% set no_rows = entry.latex.count("\n") %}
+    {% set no_rows = no_rows if no_rows < 51 else 51 %}
+    <textarea name=modellatex rows={{no_rows + 1}} cols=50 
               readonly="readonly">{{ entry.latex|safe }}</textarea>
-    {% else %}
-    <form action="{{ url_for('convert_entry') }}"
-          method=post class=add-entry>
-    <input type=hidden value="{{entry.ident}}" name=convert_id>
-    <input type=submit value=Convert>
-    </form>
     {% endif %}
-    <form action="{{ url_for('delete_entry') }}" 
-          method=post class=add-entry>
-    <input type=hidden value="{{entry.ident}}" name=convert_id>
-    <input type=submit value=Delete>
-    </form>
+    {% if entry.modelsbml %}
+    <h3>SBML</h3>
+    {% set no_rows = entry.modelsbml.count("\n") %}
+    {% set no_rows = no_rows if no_rows < 51 else 51 %}
+    <textarea name=modellatex rows={{no_rows + 1}} cols=50 
+              readonly="readonly">{{ entry.modelsbml|safe }}</textarea>
+    {% endif %}
+
+    <h3>Actions</h3>
+    <ul>
+        {% if not entry.latex %}
+        <li> Convert to LaTeX:
+              <form action="{{ url_for('convert_entry') }}"
+                    method=post class=add-entry>
+              <input type=hidden value="{{entry.ident}}" name=convert_id>
+              <input type=submit value=Convert>
+              </form>
+        </li>
+        {% endif %}
+        {% if not entry.modelsbml %}
+        <li> Convert to SBML:
+              <form action="{{ url_for('convert_to_sbml') }}"
+                    method=post class=add-entry>
+              <input type=hidden value="{{entry.ident}}" name=convert_id>
+              <input type=submit value=Convert>
+              </form>
+        </li>
+        {% endif %}
+ 
+        <li> Delete the model:
+              <form action="{{ url_for('delete_entry') }}" 
+                    method=post class=add-entry>
+              <input type=hidden value="{{entry.ident}}" name=convert_id>
+              <input type=submit value=Delete>
+              </form>
+        </li>
+    </ul>  
   {% else %}
     <li><em>Unbelievable.  No entries here so far</em>
   {% endfor %}
