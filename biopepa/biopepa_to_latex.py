@@ -2,12 +2,10 @@
    to the LaTeX document processing system
 """
 
-import argparse
 import sys
 
 import biopepa.biopepa_parser as biopepa_parser
 import utils
-import sbml_ast
 import expressions
 
 class ExpressionLatexifer(expressions.ExpressionVisitor):
@@ -44,6 +42,44 @@ def latexify_expression(expression):
   latexifier.generic_visit(expression)
   return latexifier.result
 
+
+def latexify_operator(operator):
+  """Convert the ascii operator into a latex equivalent"""
+  if operator == "<<":
+    return "\\reactant"
+  elif operator == ">>":
+    return "\\product"
+  elif operator == "(+)":
+    return "\\activator"
+  elif operator == "(-)":
+    return "\\inhibitor"
+  elif operator == "(.)":
+    return "\\modifier"
+  # And just to allow unknown operators, remember this is Bio-PEPA to
+  # LaTeX so there is no guarantee we particularly wish to only allow
+  # valid Bio-PEPA.
+  else:
+    return operator
+
+
+def latexify_behaviour(behaviour, component_name):
+  """Print out the behaviour as a string in Bio-PEPA format"""
+  if behaviour.stoichiometry == ['1']:
+    result = (behaviour.reaction_name + " " +
+              latexify_operator(behaviour.operator[0]))
+  else:
+    stoichs = ", ".join([str(s) for s in behaviour.stoichiometry])
+    opers = " ".join([ latexify_operator(op)
+                         for op in behaviour.operator])
+    result =  ("(" + behaviour.reaction_name + ", " + 
+           stoichs + ") " + opers)
+
+  if behaviour.location != None:
+    result += " " + component_name + "@" + behaviour.location
+
+  return result
+
+
 def translate_biopepa_model(model, out_file):
   """Translate the parsed Bio-PEPA model into a LaTeX document"""
 
@@ -70,45 +106,9 @@ def translate_biopepa_model(model, out_file):
       
     out_file.write("\\end{gather*}\n\n\n")
 
-
-  # Now on to component definitions we first write a function to
-  # latexify a component behaviour.
-  def latexify_operator(operator):
-    """Convert the ascii operator into a latex equivalent"""
-    if operator == "<<":
-      return "\\reactant"
-    elif operator == ">>":
-      return "\\product"
-    elif operator == "(+)":
-      return "\\activator"
-    elif operator == "(-)":
-      return "\\inhibitor"
-    elif operator == "(.)":
-      return "\\modifier"
-    # And just to allow unknown operators, remember this is Bio-PEPA to
-    # LaTeX so there is no guarantee we particularly wish to only allow
-    # valid Bio-PEPA.
-    else:
-      return operator
-    
-  def latexify_behaviour(behaviour, component_name):
-    """Print out the behaviour as a string in Bio-PEPA format"""
-    if behaviour.stoichiometry == ['1']:
-      result = (behaviour.reaction_name + " " +
-                latexify_operator(behaviour.operator[0]))
-    else:
-      stoichs = ", ".join([str(s) for s in behaviour.stoichiometry])
-      opers = " ".join([ latexify_operator(op)
-                           for op in behaviour.operator])
-      result =  ("(" + behaviour.reaction_name + ", " + 
-             stoichs + ") " + opers)
-
-    if behaviour.location != None:
-      result += " " + component_name + "@" + behaviour.location
-
-    return result
-
-
+  # Now on to component definitions 
+ 
+  
   if model.component_defs != None and model.component_defs:
     out_file.write("\\section{Component Definitions}\n\n")
     out_file.write("\\begin{gather*}\n")
@@ -173,8 +173,8 @@ def main():
   utils.add_output_file_arg(parser)
   arguments = parser.parse_args()
 
-  for file in arguments.filenames:
-    latexify_file(file, arguments)
+  for biopepa_file in arguments.filenames:
+    latexify_file(biopepa_file, arguments)
 
 
 if __name__ == '__main__':
