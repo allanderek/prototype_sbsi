@@ -132,6 +132,16 @@ def translate_biopepa_model(biopepa_model):
 
   return sbml_model.create_sbml_document()
 
+def convert_source(source):
+  """Converts the source of a Bio-PEPA model, represented as a string,
+     into a string representing the SBML.
+  """
+  model = biopepa_parser.parse_model(source)
+  outfile_imposter = utils.StringFile()
+  sbml_document = translate_biopepa_model(model)
+  sbml_ast.output_to_file(outfile_imposter, sbml_document)
+  return outfile_imposter.get_results()
+
 def convert_file(filename, arguments):
   """Parse in a Bio-PEPA file, translate to SBML and create an
      SBML file which should be the translated Bio-PEPA model.
