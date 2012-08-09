@@ -20,6 +20,19 @@ class SBMLConfiguration(object):
     self.sbml_level_version = 1
     self.copasi_spec_ref_workaround = False
 
+def output_to_file(sbml_file, document):
+  """Output the document to the open sbml_file. Note that the first
+     argument is an open file object, NOT the sbml filename. We do not
+     open or close the file here, merely output to it. This means that
+     you can use a utils.StringFile object to masquerade as an open
+     file and hence output the sbml to a string.
+  """
+  document.writexml(sbml_file, 
+                    encoding="UTF-8",
+                    indent="",
+                    addindent="  ",
+                    newl="\n")
+
 
 def output_to_sbml_file(filename, arguments, document):
   """A utility function for consumers of this module to calculate
@@ -36,12 +49,9 @@ def output_to_sbml_file(filename, arguments, document):
     sbml_file = sys.stdout
   else:
     sbml_file =  open(sbml_filename, "w")
+  
+  output_to_file(sbml_file, document)
 
-  document.writexml(sbml_file, 
-                    encoding="UTF-8",
-                    indent="",
-                    addindent="  ",
-                    newl="\n")
   if sbml_filename != "stdout":
     sbml_file.close()
 
