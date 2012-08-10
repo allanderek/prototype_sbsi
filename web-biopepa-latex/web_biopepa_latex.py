@@ -6,6 +6,8 @@ from flask import Flask, request, session, g, redirect, url_for, \
 from contextlib import closing
 import flask.ext.login as flasklogin
 
+import parcon
+
 import biopepa.biopepa_to_latex as biopepa_to_latex
 import biopepa.biopepa_to_sbml as biopepa_to_sbml
 
@@ -166,11 +168,14 @@ def convert_entry():
                      [convert_id])
   model_source = cur.fetchone()
   cur.close()
-  new_text = convert_model(model_source[0])
-  g.db.execute('update entries set latex=? where ident=?',
-               [new_text, convert_id])
-  g.db.commit()
-  flash ("Model: " + str(convert_id) + " converted to LaTeX")
+  try:
+    new_text = convert_model(model_source[0])
+    g.db.execute('update entries set latex=? where ident=?',
+                 [new_text, convert_id])
+    g.db.commit()
+    flash ("Model: " + str(convert_id) + " converted to LaTeX")
+  except parcon.ParseException as parse_exception:
+    flash (parse_exception.message) 
   return redirect(url_for('show_entries'))
 
 #TODO: too much commonality between these convert methods, pull some
@@ -185,11 +190,14 @@ def convert_to_sbml():
                      [convert_id])
   model_source = cur.fetchone()
   cur.close()
-  new_text = convert_model_to_sbml(model_source[0])
-  g.db.execute('update entries set modelsbml=? where ident=?',
-               [new_text, convert_id])
-  g.db.commit()
-  flash ("Model: " + str(convert_id) + " converted to SBML")
+  try:
+    new_text = convert_model_to_sbml(model_source[0])
+    g.db.execute('update entries set modelsbml=? where ident=?',
+                 [new_text, convert_id])
+    g.db.commit()
+    flash ("Model: " + str(convert_id) + " converted to SBML")
+  except parcon.ParseException as parse_exception:
+    flash (parse_exception.message)
   return redirect(url_for('show_entries'))
  
   
