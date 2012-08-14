@@ -1,7 +1,7 @@
 """ A web application for translating Bio-PEPA files into LaTeX"""
 import argparse
 import sqlite3
-from flask import Flask, request, session, g, redirect, url_for, \
+from flask import Flask, request, g, redirect, url_for, \
      abort, render_template, flash
 from contextlib import closing
 import flask.ext.login as flasklogin
@@ -15,8 +15,6 @@ import biopepa.biopepa_to_sbml as biopepa_to_sbml
 DATABASE = '/home/aclark6/tmp/web-biopepa-latex.db'
 DEBUG = True
 SECRET_KEY = 'development key of biopepa latex'
-USERNAME = 'admin'
-PASSWORD = 'default'
 
 # create our little application :)
 app = Flask(__name__)
@@ -93,19 +91,19 @@ def show_entries():
   # First get the current user:
   current_user = flasklogin.current_user 
   owner_id = current_user.get_id()
-  fields = "ident, visibility, title, modelsource, latex, modelsbml"
-  from_part = "from entries order by ident desc"
+  fields = "ident, visibility, title, errors, modelsource, latex, modelsbml"
+  from_part = "from entries"
   where_part = "where owner_id=?"
-  command = " ".join(["select", fields,
-                      "from entries", where_part,
-                      "order by ident desc"])
+  order_part = "order by ident desc"
+  command = " ".join(["select", fields, from_part, where_part, order_part])
   cur = g.db.execute(command, [owner_id])
   entries = [ dict(ident=row[0], 
                    visibility=row[1],
                    title=row[2],
-                   modelsource=row[3],
-                   latex=row[4],
-                   modelsbml=row[5])
+                   errors=row[3],
+                   modelsource=row[4],
+                   latex=row[5],
+                   modelsbml=row[6])
               for row in cur.fetchall()]
   return render_template('show_entries.html',
                          entries=entries,
@@ -175,6 +173,9 @@ def convert_entry():
     g.db.commit()
     flash ("Model: " + str(convert_id) + " converted to LaTeX")
   except parcon.ParseException as parse_exception:
+    g.db.execute('update entries set errors=? where ident=?',
+                 [parse_exception.message, convert_id])
+    g.db.commit()
     flash (parse_exception.message) 
   return redirect(url_for('show_entries'))
 
@@ -197,7 +198,10 @@ def convert_to_sbml():
     g.db.commit()
     flash ("Model: " + str(convert_id) + " converted to SBML")
   except parcon.ParseException as parse_exception:
-    flash (parse_exception.message)
+    g.db.execute('update entries set errors=? where ident=?',
+                 [parse_exception.message, convert_id])
+    g.db.commit()
+    flash (parse_exception.message) 
   return redirect(url_for('show_entries'))
  
   

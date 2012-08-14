@@ -18,6 +18,11 @@
     {% set no_rows = no_rows if no_rows < 51 else 51 %}
     <textarea name=modeltext rows={{no_rows + 1}} cols=50
               readonly="readonly">{{ entry.modelsource|safe }}</textarea>
+    {% if entry.errors %}
+    <h3>Model Errors</h3>
+      <p class=error><strong>Error:</strong> {{ entry.errors }}
+      </p>
+    {% endif %}
     {% if entry.latex %}
     <h3>LaTeX</h3>
     {% set no_rows = entry.latex.count("\n") %}

@@ -4,6 +4,7 @@ create table entries (
   owner_id integer,
   visibility string not null,
   title string not null,
+  errors string,
   modelsource string not null,
   latex string,
   modelsbml string 
