@@ -196,7 +196,7 @@ class Parameter(IdNamedElement):
     """Format this parameter as an assignment if there is a value and
        just as the name otherwise"""
     result = self.name
-    if self.value != None:
+    if self.value != None and self.value != "":
       result += " = " + str(self.value)
     return result
 
