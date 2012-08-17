@@ -42,7 +42,7 @@
     <ul>
         {% if not entry.latex %}
         <li> Convert to LaTeX:
-              <form action="{{ url_for('convert_entry') }}"
+              <form action="{{ url_for('convert_to_latex') }}"
                     method=post class=add-entry>
               <input type=hidden value="{{entry.ident}}" name=convert_id>
               <input type=submit value=Convert>

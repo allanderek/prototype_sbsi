@@ -1,15 +1,13 @@
 """ A web application for translating Bio-PEPA files into LaTeX"""
 import argparse
+from subprocess import Popen
 import sqlite3
 from flask import Flask, request, g, redirect, url_for, \
      abort, render_template, flash
 from contextlib import closing
 import flask.ext.login as flasklogin
 
-import parcon
-
 import biopepa.biopepa_to_latex as biopepa_to_latex
-import biopepa.biopepa_to_sbml as biopepa_to_sbml
 
 # configuration
 DATABASE = '/home/aclark6/tmp/web-biopepa-latex.db'
@@ -147,61 +145,26 @@ def add_entry():
   flash('New entry was successfully posted')
   return redirect(url_for('show_entries'))
 
-#TODO: These methods need to be wrapped up within a timeout.
-def convert_model(source):
-  """The method to call to convert model source into latex source"""
-  return biopepa_to_latex.convert_source(source)
-
-def convert_model_to_sbml(source):
-  """The method to call to convert the model source into SBML source"""
-  return biopepa_to_sbml.convert_source(source)
-
-@app.route('/convert', methods=['POST'])
-def convert_entry():
+@app.route('/convert-to-latex', methods=['POST'])
+def convert_to_latex():
   """Handles conversion requests, that is a request to convert a model
      from Bio-PEPA to LaTeX
   """
   convert_id = request.form["convert_id"]
-  cur = g.db.execute('select modelsource from entries where ident=?',
-                     [convert_id])
-  model_source = cur.fetchone()
-  cur.close()
-  try:
-    new_text = convert_model(model_source[0])
-    g.db.execute('update entries set latex=? where ident=?',
-                 [new_text, convert_id])
-    g.db.commit()
-    flash ("Model: " + str(convert_id) + " converted to LaTeX")
-  except parcon.ParseException as parse_exception:
-    g.db.execute('update entries set errors=? where ident=?',
-                 [parse_exception.message, convert_id])
-    g.db.commit()
-    flash (parse_exception.message) 
+  command = [ "python", "web-biopepa-latex/execute_command.py", 
+              "convert_to_latex", "5", convert_id ]
+  _process = Popen(command)
   return redirect(url_for('show_entries'))
-
-#TODO: too much commonality between these convert methods, pull some
-# out as a method.
+ 
 @app.route('/convert-to-sbml', methods=['POST'])
 def convert_to_sbml():
   """Handles conversion to sbml requests, that is a request to convert a
      model from Bio-PEPA to SBML
   """
   convert_id = request.form["convert_id"]
-  cur = g.db.execute('select modelsource from entries where ident=?',
-                     [convert_id])
-  model_source = cur.fetchone()
-  cur.close()
-  try:
-    new_text = convert_model_to_sbml(model_source[0])
-    g.db.execute('update entries set modelsbml=? where ident=?',
-                 [new_text, convert_id])
-    g.db.commit()
-    flash ("Model: " + str(convert_id) + " converted to SBML")
-  except parcon.ParseException as parse_exception:
-    g.db.execute('update entries set errors=? where ident=?',
-                 [parse_exception.message, convert_id])
-    g.db.commit()
-    flash (parse_exception.message) 
+  command = [ "python", "web-biopepa-latex/execute_command.py", 
+              "convert_to_sbml", "5", convert_id ]
+  _process = Popen(command)
   return redirect(url_for('show_entries'))
  
   
@@ -227,7 +190,7 @@ def no_store_biopepa_latex():
   latex = None
   if request.method == 'POST':
     model_source = request.form['modelsource']
-    latex = convert_model(model_source)
+    latex = biopepa_to_latex.convert_source(model_source)
   current_user = flasklogin.current_user 
   return render_template('raw-to-latex.html', 
                          source=model_source,
