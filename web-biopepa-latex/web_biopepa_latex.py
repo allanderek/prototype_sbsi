@@ -1,22 +1,28 @@
 """ A web application for translating Bio-PEPA files into LaTeX"""
 import argparse
 from subprocess import Popen
-import sqlite3
 from flask import Flask, request, g, redirect, url_for, \
      abort, render_template, flash
-from contextlib import closing
 import flask.ext.login as flasklogin
 
 import biopepa.biopepa_to_latex as biopepa_to_latex
-
-# configuration
-DATABASE = '/home/aclark6/tmp/web-biopepa-latex.db'
-DEBUG = True
-SECRET_KEY = 'development key of biopepa latex'
+import datastore
 
 # create our little application :)
+# app = Flask("web-biopepa-latex")
 app = Flask(__name__)
-app.config.from_object(__name__)
+
+class Configuration(object):
+  """A simple object to hold the configuration"""
+  def __init__(self):
+    # pylint complains about all capitals but that is exactly what the
+    # configuration from_object does so we disable the warning here.
+    # pylint: disable=C0103
+    self.DEBUG = True
+    self.SECRET_KEY = "development key of biopepa latex"
+configuration_object = Configuration()
+app.config.from_object(configuration_object)
+
 
 # Create the login code for our little application
 login_manager = flasklogin.LoginManager()
@@ -44,7 +50,7 @@ def load_user(userid):
      This essentially must take the unicode userid and return a User object
      which represents that user.
   """
-  g.db = connect_db()
+  g.db = datastore.connect_db()
   cur = g.db.execute("select name from users where ident=?", [userid])
   users = cur.fetchall()
   if not users:
@@ -56,22 +62,11 @@ def load_user(userid):
   
   return user
 
-def connect_db():
-  """A simple method to connect to the database"""
-  return sqlite3.connect(app.config['DATABASE'])
-
-def init_db():
-  """A simple method to initialise the database"""
-  with closing(connect_db()) as database:
-    with app.open_resource('schema.sql') as schema_file:
-      database.cursor().executescript(schema_file.read())
-    database.commit()
-
 
 @app.before_request
 def before_request():
   """Occurs before every request, we make a connection to the database"""
-  g.db = connect_db()
+  g.db = datastore.connect_db()
 
 @app.teardown_request
 def teardown_request(_exception):
@@ -151,6 +146,8 @@ def convert_to_latex():
      from Bio-PEPA to LaTeX
   """
   convert_id = request.form["convert_id"]
+  new_text = "Calculating ..."
+  datastore.update_model_field(None, convert_id, "latex", new_text)
   command = [ "python", "web-biopepa-latex/execute_command.py", 
               "convert_to_latex", "5", convert_id ]
   _process = Popen(command)
@@ -162,6 +159,8 @@ def convert_to_sbml():
      model from Bio-PEPA to SBML
   """
   convert_id = request.form["convert_id"]
+  new_text = "Calculating ..."
+  datastore.update_model_field(None, convert_id, "modelsbml", new_text)
   command = [ "python", "web-biopepa-latex/execute_command.py", 
               "convert_to_sbml", "5", convert_id ]
   _process = Popen(command)
@@ -287,6 +286,8 @@ def create_arguments_parser():
                       help="Initialise the data base on startup")
   parser.add_argument('--auto-reload', action='store_true',
                       help="Use auto-reload of code on edit in folder")
+  parser.add_argument('--debug', action='store_true',
+                      help="Run in debug mode")
 
   return parser
 
@@ -296,9 +297,9 @@ def run():
   parser = create_arguments_parser() 
   arguments = parser.parse_args()
   if arguments.init_db:
-    init_db()
+    datastore.init_db(app)
   else:
-    app.run(debug=True, use_reloader=arguments.auto_reload)
+    app.run(debug=arguments.debug, use_reloader=arguments.auto_reload)
 
 if __name__ == '__main__':
   run()
