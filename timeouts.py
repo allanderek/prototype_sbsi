@@ -25,6 +25,8 @@ def timeout(timeout_time, return_default=False, default=None):
     def time_limited_method(*args):
       """The time limited method we return"""
       def timeout_handler(_signum, _frame):
+        """Simple signal handler which simply raises the time out
+           TimeoutError exception"""
         raise TimeoutError()
 
       old_handler = signal.signal(signal.SIGALRM, timeout_handler) 
