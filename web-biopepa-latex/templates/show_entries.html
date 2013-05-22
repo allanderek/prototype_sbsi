@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+
 {% block body %}
   {% if not user.is_anonymous()  %}
     <form action="{{ url_for('add_entry') }}" method=post class=add-entry>
@@ -11,6 +12,23 @@
       </dl>
     </form>
   {% endif %}
+
+<script type=text/javascript>
+function update_field() {
+  model_id = $('input[name="model_id"]').val();
+  field_name = $('input[name="field_name"]').val();
+  result_name = $('input[name="result_name"]').val();
+  call_back = function(data){
+    document.getElementById(result_name).innerHTML=data.result;
+  };
+  field_value = $.getJSON($SCRIPT_ROOT + '/_refresh_field',
+                          { model_id : model_id,
+                            field_name : field_name
+                          },
+                          call_back);
+}
+</script>
+
   <ul class=entries>
   {% for entry in entries %}
     <li><h2>{{ entry.title }}</h2>
@@ -24,20 +42,29 @@
       </p>
     {% endif %}
     {% if entry.latex %}
-    <h3>LaTeX</h3>
-    {% set no_rows = entry.latex.count("\n") %}
-    {% set no_rows = no_rows if no_rows < 51 else 51 %}
-    <textarea name=modellatex rows={{no_rows + 1}} cols=50 
-              readonly="readonly">{{ entry.latex|safe }}</textarea>
+      <h3>LaTeX</h3>
+      {% if entry.latex == "Calculating ..." %}
+        <p>
+          <input type=hidden name=model_id value={{entry.ident}}> 
+          <input type=hidden name=field_name value=latex> 
+          <input type=hidden name=result_name value=latex_{{entry.ident}}>
+          <!-- <span id=latex_entry.ident>?</span> -->
+          <button type="button" onclick="update_field()">Refresh</button>
+        </p>
+      {% endif %}
+      {% set no_rows = entry.latex.count("\n") %}
+      {% set no_rows = no_rows if no_rows < 51 else 51 %}
+        <textarea name=modellatex rows={{no_rows + 1}} cols=50 
+                  id=latex_{{entry.ident}}
+                  readonly="readonly">{{ entry.latex|safe }}</textarea>
     {% endif %}
     {% if entry.modelsbml %}
-    <h3>SBML</h3>
-    {% set no_rows = entry.modelsbml.count("\n") %}
-    {% set no_rows = no_rows if no_rows < 51 else 51 %}
-    <textarea name=modellatex rows={{no_rows + 1}} cols=50 
-              readonly="readonly">{{ entry.modelsbml|safe }}</textarea>
+      <h3>sbml</h3>
+      {% set no_rows = entry.modelsbml.count("\n") %}
+      {% set no_rows = no_rows if no_rows < 51 else 51 %}
+      <textarea name=modellatex rows={{no_rows + 1}} cols=50 
+                readonly="readonly">{{ entry.modelsbml|safe }}</textarea>
     {% endif %}
-
     <h3>Actions</h3>
     <ul>
         {% if not entry.latex %}

@@ -8,7 +8,8 @@ from contextlib import closing
 def connect_db(databasefile=None):
   """A simple method to connect to the database"""
   if databasefile == None:
-    databasefile = '/home/aclark6/tmp/web-biopepa-latex.db'
+    # databasefile = '/home/aclark6/tmp/web-biopepa-latex.db'
+    databasefile = '/afs/inf.ed.ac.uk/user/a/aclark6/tmp/web-biopepa-latex.db'
   return sqlite3.connect(databasefile)
 
 def init_db(app):
@@ -19,15 +20,20 @@ def init_db(app):
     database.commit()
 
 
-def get_model_source(database, convert_id):
-  """Obtain the model source from the database using the model's id"""
+def get_model_field(database, model_id, field_name):
+  """Return the given field value of a model's entry"""
   if database == None:
     database = connect_db()
-  cur = database.execute('select modelsource from entries where ident=?',
-                         [convert_id])
-  model_source = cur.fetchone()
+  select_command = "select " + field_name + " from entries where ident=?"
+  cur = database.execute(select_command, [model_id])
+  field_value = cur.fetchone()
   cur.close()
-  return model_source
+  return field_value[0]
+
+
+def get_model_source(database, model_id):
+  """Obtain the model source from the database using the model's id"""
+  return get_model_field(database, model_id, "modelsource")
 
 def add_error(database, convert_id, message):
   """Add an error to the given model"""

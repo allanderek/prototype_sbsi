@@ -2,7 +2,7 @@
 import argparse
 from subprocess import Popen
 from flask import Flask, request, g, redirect, url_for, \
-     abort, render_template, flash
+     abort, render_template, flash, jsonify
 import flask.ext.login as flasklogin
 
 import biopepa.biopepa_to_latex as biopepa_to_latex
@@ -73,6 +73,23 @@ def teardown_request(_exception):
   """At the end of dealing with every request we close the connection to
      the database."""
   g.db.close()
+
+
+# To be called as 
+@app.route('/_refresh_field')
+def refresh_field():
+  """ Essentially does the work of datastore.get_model_field, but wraps
+      this up as a request and returns the data using JSON.
+  """
+  # Okay we definitely shouldn't have a default here, we should fail
+  # if there is no such id, otherwise we may return the incorrect
+  # data.
+  model_id = request.args.get("model_id", 0, type=int)
+  # Okay I'm not sure about setting a default here, is this wise?
+  field_name = request.args.get("field", "latex")
+  field_value = datastore.get_model_field(None, model_id, field_name)
+  print ("returning: " + str(field_value))
+  return jsonify(result=field_value)
 
 
 @app.route('/')

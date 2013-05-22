@@ -1,4 +1,19 @@
 <!doctype html>
+
+<head>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.1/jquery.js"></script>
+<script>window.jQuery || document.write('<script src="{{
+  url_for('static', filename='jquery.js') }}">\x3C/script>')</script>
+
+<!-- So that we always know where our application is even if we move
+     to a different host
+-->
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
+
+</head>
+
 <title>Bio-PEPA To LaTeX</title>
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">
 <div class=page>
@@ -10,6 +25,9 @@
   {% else %}
     <a href="{{ url_for('logout') }}">log out({{user.name}})</a>
   {% endif %}
+  </div>
+  <div class=nowarranty>
+  Note: This software is in development and comes with NO WARRANTY
   </div>
   {% for message in get_flashed_messages() %}
     <div class=flash>{{ message }}</div>

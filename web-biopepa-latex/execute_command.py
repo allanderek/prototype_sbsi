@@ -19,14 +19,16 @@ def convert_to_latex(timeout, database, arguments):
   convert = convert_method(biopepa_to_latex.convert_source)
 
   try:
-    new_text = convert(model_source[0])
+    new_text = convert(model_source)
     datastore.update_model_field(database, convert_id, "latex", new_text)
   except parcon.ParseException as parse_exception:
     message = "Operation to convert to LaTeX failed due to a parse error: "
     message += str(parse_exception)
+    datastore.update_model_field(database, convert_id, "latex", "")
     datastore.add_error(database, convert_id, message)
   except timeouts.TimeoutError:
     message = "Operation to convert to LaTeX timed-out"
+    datastore.update_model_field(database, convert_id, "latex", "")
     datastore.add_error(database, convert_id, message)
 
 
@@ -41,15 +43,17 @@ def convert_to_sbml(timeout, database, arguments):
   convert = convert_method(biopepa_to_sbml.convert_source)
 
   try:
-    new_text = convert(model_source[0])
+    new_text = convert(model_source)
     datastore.update_model_field(database, convert_id,
                                  "modelsbml", new_text)
   except parcon.ParseException as parse_exception:
     message = "Operation to convert to SBML failed due to a parse error: "
     message += str(parse_exception)
+    datastore.update_model_field(database, convert_id, "modelsbml", "")
     datastore.add_error(database, convert_id, message)
   except timeouts.TimeoutError:
     message = "Operation to convert to SBML timed-out"
+    datastore.update_model_field(database, convert_id, "modelsbml", "")
     datastore.add_error(database, convert_id, message)
 
 def run():
