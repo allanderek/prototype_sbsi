@@ -8,8 +8,7 @@ from contextlib import closing
 def connect_db(databasefile=None):
   """A simple method to connect to the database"""
   if databasefile == None:
-    # databasefile = '/home/aclark6/tmp/web-biopepa-latex.db'
-    databasefile = '/afs/inf.ed.ac.uk/user/a/aclark6/tmp/web-biopepa-latex.db'
+    databasefile = "/tmp/web-biopepa-latex.db"
   return sqlite3.connect(databasefile)
 
 def init_db(app):

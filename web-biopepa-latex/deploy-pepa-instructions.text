@@ -1,0 +1,6 @@
+Simply
+$ cd ../
+$ python web-biopepa-latex/cyclone.py
+
+Then it should be available at:
+http://pepa.inf.ed.ac.uk:5000/
